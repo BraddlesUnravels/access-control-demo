@@ -5,6 +5,9 @@ import { loginInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { withApiHandler } from '@/lib/with-api-handler';
 
+/**
+ * POST /api/auth/login
+ */
 export const POST = withApiHandler(async (request: Request) => {
   const { supabase, applyServerCookies } = await serverResponseClient();
   let payload: unknown;

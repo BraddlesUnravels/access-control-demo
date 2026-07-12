@@ -13,6 +13,10 @@ type ConsultationUpdatePatch = {
   cancelled_at?: string | null;
 };
 
+/**
+ * PATCH /api/consultations/:id
+ * Updates a consultation with the given ID for the authenticated user.
+ */
 export const PATCH = withApiHandler(
   async (request: Request, context: { params: Promise<{ id: string }> }) => {
     const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
@@ -94,6 +98,10 @@ export const PATCH = withApiHandler(
   },
 );
 
+/**
+ * DELETE /api/consultations/:id
+ * Cancels a consultation with the given ID for the authenticated user.
+ */
 export const DELETE = withApiHandler(
   async (_request: Request, context: { params: Promise<{ id: string }> }) => {
     const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
