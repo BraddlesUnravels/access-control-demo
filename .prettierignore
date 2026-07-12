@@ -1,0 +1,7 @@
+**/.next
+**/dist
+**/node_modules
+**/coverage
+**/build
+**/out
+**/public
