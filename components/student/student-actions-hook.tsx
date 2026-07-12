@@ -53,7 +53,11 @@ export const useStudentActions = () => {
   };
 
   useEffect(() => {
-    void loadConsultations();
+    const timeoutId = setTimeout(() => {
+      void loadConsultations();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const setActionLoading = (consultationId: string, loadingState: boolean) => {

@@ -11,32 +11,33 @@ export const AdminConsultationsView = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
 
-  const loadConsultations = async () => {
-    setLoading(true);
-    setError(undefined);
-
-    try {
-      const response = await fetch('/api/admin/consultations', { method: 'GET' });
-      const payload = await readJsonResponse<{ data?: ConsultationRecord[]; error?: string }>(
-        response,
-      );
-
-      if (!response.ok)
-        throw new Error(getApiErrorMessage(payload, 'Failed to load admin consultations'));
-      if (!payload?.data) throw new Error('Failed to load admin consultations');
-
-      setConsultations(payload.data);
-    } catch (loadError) {
-      const message =
-        loadError instanceof Error ? loadError.message : 'Failed to load admin consultations';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    void loadConsultations();
+    const loadConsultations = async () => {
+      try {
+        const response = await fetch('/api/admin/consultations', { method: 'GET' });
+        const payload = await readJsonResponse<{ data?: ConsultationRecord[]; error?: string }>(
+          response,
+        );
+
+        if (!response.ok)
+          throw new Error(getApiErrorMessage(payload, 'Failed to load admin consultations'));
+        if (!payload?.data) throw new Error('Failed to load admin consultations');
+
+        setConsultations(payload.data);
+      } catch (loadError) {
+        const message =
+          loadError instanceof Error ? loadError.message : 'Failed to load admin consultations';
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timeoutId = setTimeout(() => {
+      void loadConsultations();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, []);
 
   return (

@@ -81,11 +81,11 @@ declare
 begin
   select id into student_id
   from auth.users
-  where email = 'student@example.com';
+  where email = 'student1@lms.com';
 
   select id into admin_id
   from auth.users
-  where email = 'admin@example.com';
+  where email = 'admin@lms.com';
 
   if student_id is null then
     raise exception 'Seeded student user not found';

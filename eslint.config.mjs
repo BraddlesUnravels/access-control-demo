@@ -1,26 +1,19 @@
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { FlatCompat } from '@eslint/eslintrc';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+import { defineConfig, globalIgnores } from 'eslint/config';
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
+import nextTypescript from 'eslint-config-next/typescript';
 
 const eslintConfig = [
-  {
-    ignores: [
-      '**/node_modules/**',
-      '**/.next/**',
-      '**/dist/**',
-      '**/build/**',
-      '**/coverage/**',
-      '**/.turbo/**',
-    ],
-  },
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  ...nextCoreWebVitals,
+  ...nextTypescript,
+  globalIgnores([
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+    'dist/**',
+    'coverage/**',
+    '.turbo/**',
+  ]),
 ];
 
-export default eslintConfig;
+export default defineConfig(eslintConfig);

@@ -64,7 +64,6 @@ Core paths:
 - Student dashboard: `app/protected/page.tsx`
 - Admin page: `app/admin/page.tsx`
 - API routes:
-  - `app/api/auth/login/route.ts`
   - `app/api/consultations/route.ts`
   - `app/api/consultations/[id]/route.ts`
   - `app/api/admin/consultations/route.ts`
@@ -83,6 +82,22 @@ Install these before running locally:
   - Docs: https://supabase.com/docs/reference/cli/introduction
 
 You also need Docker running locally for `supabase start`.
+
+## Assessor Quick Start (single command)
+
+Run one command:
+
+```bash
+npm run assessor:start
+```
+
+This command installs dependencies, resets local Supabase (migrations + seed), generates `.env.local`, and starts the app.
+
+Then sign in with seeded users:
+
+- Student: `student1@lms.com` / `password123`
+- Student: `student2@lms.com` / `password123`
+- Admin: `admin@lms.com` / `password123`
 
 ## Environment Variables
 
@@ -136,6 +151,12 @@ Script details:
 
 Populate values from local Supabase output (`supabase status`) or your hosted project.
 
+For local Supabase, this command auto-generates `.env.local`:
+
+```bash
+npm run infra:env
+```
+
 ### 5) Run the app
 
 ```bash
@@ -166,10 +187,11 @@ This is useful for testing email-based sign-up confirmation and password reset f
 
 `supabase/seed.sql` creates these users if missing:
 
-- `student@example.com` / `password123`
-- `admin@example.com` / `password123`
+- `student1@lms.com` / `password123`
+- `student2@lms.com` / `password123`
+- `admin@lms.com` / `password123`
 
-It also promotes `admin@example.com` to role `admin` in `public.profiles`.
+It also promotes `admin@lms.com` to role `admin` in `public.profiles`.
 
 ## Functional Walkthrough
 
@@ -488,6 +510,8 @@ From `package.json`:
 - `npm run infra:up` - start Supabase local stack
 - `npm run infra:reset` - reset local DB and reapply migrations/seed
 - `npm run infra:down` - stop Supabase local stack
+- `npm run infra:env` - generate `.env.local` from local Supabase status output
+- `npm run assessor:start` - one-command local bootstrap for assessors
 - `npm run db:types` - generate Supabase database TS types
 - `npm run test:rls` - run SQL checks for RLS behavior in local Supabase
 

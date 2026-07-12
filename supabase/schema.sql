@@ -6,6 +6,7 @@ create type public.consultation_status as enum ('scheduled', 'completed', 'cance
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = timezone('utc', now());
@@ -55,7 +56,7 @@ create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 begin
   insert into public.profiles (id, role)
@@ -70,3 +71,68 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row
 execute function public.handle_new_user();
+
+create schema if not exists private;
+
+create or replace function private.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = (select auth.uid())
+      and role = 'admin'
+  );
+$$;
+
+grant usage on schema public to authenticated;
+grant usage on schema private to authenticated;
+
+grant select on table public.profiles to authenticated;
+grant select, insert, update on table public.consultations to authenticated;
+grant execute on function private.is_admin() to authenticated;
+
+revoke delete on table public.consultations from authenticated;
+
+revoke execute on function public.handle_new_user() from public;
+revoke execute on function public.handle_new_user() from anon;
+revoke execute on function public.handle_new_user() from authenticated;
+
+alter table public.profiles enable row level security;
+alter table public.consultations enable row level security;
+
+drop policy if exists "profiles_select_own" on public.profiles;
+create policy "profiles_select_own"
+on public.profiles
+for select
+to authenticated
+using ((select auth.uid()) = id);
+
+drop policy if exists "consultations_select_own_or_admin" on public.consultations;
+create policy "consultations_select_own_or_admin"
+on public.consultations
+for select
+to authenticated
+using (
+  (select auth.uid()) = student_user_id
+  or (select private.is_admin())
+);
+
+drop policy if exists "consultations_insert_own" on public.consultations;
+create policy "consultations_insert_own"
+on public.consultations
+for insert
+to authenticated
+with check ((select auth.uid()) = student_user_id);
+
+drop policy if exists "consultations_update_own" on public.consultations;
+create policy "consultations_update_own"
+on public.consultations
+for update
+to authenticated
+using ((select auth.uid()) = student_user_id)
+with check ((select auth.uid()) = student_user_id);
