@@ -14,7 +14,7 @@
     "infra:reset": "supabase db reset",
     "infra:env": "node scripts/generate-local-env.mjs",
     "assessor:start": "npm install && npm run infra:up && npm run infra:env && npm run dev",
-    "test:rls": "cat supabase/tests/rls_checks.sql | docker exec -i supabase_db_contour psql -v ON_ERROR_STOP=1 -U postgres -d postgres",
+    "test:rls": "node scripts/run-rls-tests.mjs",
     "db:types": "supabase start -x vector && supabase gen types typescript --local > lib/supabase/database.types.ts",
     "typecheck": "tsc --noEmit"
   },

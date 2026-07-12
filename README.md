@@ -20,6 +20,21 @@ This section maps the implementation directly to the requested deliverables.
   - Cancel: Implemented
 - Admin can view all consultations (read-only): Implemented
 - README with setup, assumptions, implementation summary, migrations/schema: Implemented in this document
+## Assessor Fast Check (5-10 minutes)
+
+1. Run `npm run assessor:start`
+2. Sign in as `student1@lms.com` / `password123`
+3. Validate student flow:
+   - create consultation
+   - mark complete then incomplete
+   - reschedule
+   - cancel
+4. Sign in as `admin@lms.com` / `password123`
+5. Validate admin flow:
+   - view all consultations (read-only)
+6. Spot-check security:
+   - student API responses only include own consultations
+   - non-admin receives `403` from `/api/admin/consultations`
 
 ## Technology Stack
 
@@ -591,11 +606,13 @@ Result:
 
 ## Scalability and Maintainability Notes
 
-Current implementation is intentionally straightforward. It can scale further by adding:
-- pagination and filtering on consultation lists
-- stronger API test coverage and end-to-end tests
-- audit logs for status transitions
-- richer admin tooling (search, filtering, moderation actions)
+Current implementation is intentionally straightforward for a 1.5-day timebox.
+The most direct scale-up path is:
+
+1. API pagination/filtering for consultation lists (starting with the admin list)
+2. Broader automated coverage for route authorization and lifecycle transitions
+3. Audit/event trail for status transitions
+4. Admin query ergonomics (search by student/date/status)
 
 ## Known Gaps / Next Improvements
 
@@ -604,6 +621,13 @@ If more time were available, the first improvements would be:
 2. Add optimistic UI and better loading/error recovery states
 3. Add API-level pagination/search for admin list
 4. Add lightweight audit trails for consultation status transitions
+
+## Timebox Tradeoffs (Intentional)
+
+- Prioritized secure API boundaries and clear RBAC over UI polish.
+- Kept admin functionality read-only to satisfy scope with lower implementation risk.
+- Used explicit route-handler logic rather than introducing additional abstraction layers.
+- Focused schema on required consultation lifecycle states (`scheduled`, `completed`, `cancelled`).
 
 ## Repository Structure (Relevant Excerpts)
 
