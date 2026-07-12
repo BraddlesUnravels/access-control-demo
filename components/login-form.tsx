@@ -1,7 +1,6 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,26 +12,38 @@ import { useState } from 'react';
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
-    setError(null);
+    setError(undefined);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
-      if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push('/protected');
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'An error occurred');
+      const responseContentType = response.headers.get('content-type') ?? '';
+      const isJsonResponse = responseContentType.includes('application/json');
+      const payload = isJsonResponse ? await response.json() : undefined;
+
+      if (!response.ok) {
+        if (payload && typeof payload === 'object' && 'error' in payload) {
+          throw new Error(String(payload.error));
+        }
+
+        throw new Error('Failed to login');
+      }
+
+      router.replace('/protected');
+      router.refresh();
+    } catch (loginError) {
+      const message = loginError instanceof Error ? loginError.message : 'Failed to login';
+      setError(message);
     } finally {
       setIsLoading(false);
     }

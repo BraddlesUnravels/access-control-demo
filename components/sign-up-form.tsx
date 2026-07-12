@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
+import { browserClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
+    const supabase = browserClient();
     setIsLoading(true);
     setError(null);
 

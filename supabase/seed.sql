@@ -17,6 +17,7 @@ begin
       role,
       email,
       encrypted_password,
+      confirmation_token,
       email_confirmed_at,
       raw_app_meta_data,
       raw_user_meta_data,
@@ -30,6 +31,7 @@ begin
       'authenticated',
       'student@example.com',
       crypt('password123', gen_salt('bf')),
+      '',
       now(),
       '{"provider":"email","providers":["email"]}',
       '{}',
@@ -50,6 +52,7 @@ begin
       role,
       email,
       encrypted_password,
+      confirmation_token,
       email_confirmed_at,
       raw_app_meta_data,
       raw_user_meta_data,
@@ -63,6 +66,7 @@ begin
       'authenticated',
       'admin@example.com',
       crypt('password123', gen_salt('bf')),
+      '',
       now(),
       '{"provider":"email","providers":["email"]}',
       '{}',
@@ -71,6 +75,24 @@ begin
     );
   end if;
 end $$;
+
+update auth.users
+set
+  confirmation_token = coalesce(confirmation_token, ''),
+  recovery_token = coalesce(recovery_token, ''),
+  email_change = coalesce(email_change, ''),
+  email_change_token_new = coalesce(email_change_token_new, '')
+where
+  (
+    confirmation_token is null
+    or recovery_token is null
+    or email_change is null
+    or email_change_token_new is null
+  )
+  and id in (
+    '11111111-1111-1111-1111-111111111111',
+    '22222222-2222-2222-2222-222222222222'
+  );
 
 insert into auth.identities (
   provider_id,

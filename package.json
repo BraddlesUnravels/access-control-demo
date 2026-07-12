@@ -7,7 +7,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "infra:up": "supabase start && supabase db reset --local",
+    "infra:up": "supabase start -x vector && supabase db reset",
     "infra:down": "supabase stop --all --no-backup",
     "infra:reset": "npm run infra:down && npm run infra:up",
     "db:types": "supabase start -x vector && supabase gen types typescript --local > lib/supabase/database.types.ts",

@@ -3,6 +3,7 @@ import {
   consultationCreateInputSchema,
   consultationUpdateInputSchema,
 } from './consultation';
+import { loginInputSchema } from './auth';
 import {
   profileRoleSchema,
   profileSchema,
@@ -14,6 +15,7 @@ export {
   consultationStatusSchema,
   consultationCreateInputSchema,
   consultationUpdateInputSchema,
+  loginInputSchema,
   profileRoleSchema,
   profileSchema,
   profileCreateInputSchema,

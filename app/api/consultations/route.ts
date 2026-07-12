@@ -1,5 +1,5 @@
 import { requireAuthContext } from '@/lib/server/auth';
-import { createClient } from '@/lib/supabase/server';
+import { serverClient } from '@/lib/supabase/server';
 import { consultationCreateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { NextResponse } from 'next/server';
@@ -9,7 +9,7 @@ const UNAUTHENTICATED_ERROR = 'Unauthenticated';
 export const GET = async () => {
   try {
     const { userId } = await requireAuthContext();
-    const supabase = await createClient();
+    const supabase = await serverClient();
 
     const { data, error } = await supabase
       .from('consultations')
@@ -55,7 +55,7 @@ export const POST = async (request: Request) => {
     }
 
     const { firstName, lastName, reason, scheduledFor } = validation.data;
-    const supabase = await createClient();
+    const supabase = await serverClient();
 
     const { data, error } = await supabase
       .from('consultations')

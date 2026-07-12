@@ -1,5 +1,5 @@
 import { requireAuthContext } from '@/lib/server/auth';
-import { createClient } from '@/lib/supabase/server';
+import { serverClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 const UNAUTHENTICATED_ERROR = 'Unauthenticated';
@@ -12,7 +12,7 @@ export const GET = async () => {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const supabase = await createClient();
+    const supabase = await serverClient();
     const { data, error } = await supabase
       .from('consultations')
       .select('*')

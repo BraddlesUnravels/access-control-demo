@@ -1,5 +1,5 @@
 import { requireAuthContext } from '@/lib/server/auth';
-import { createClient } from '@/lib/supabase/server';
+import { serverClient } from '@/lib/supabase/server';
 import { consultationUpdateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { NextResponse } from 'next/server';
@@ -37,7 +37,7 @@ export const PATCH = async (request: Request, context: { params: Promise<{ id: s
       );
     }
 
-    const supabase = await createClient();
+    const supabase = await serverClient();
     const { data: existingConsultation, error: existingError } = await supabase
       .from('consultations')
       .select('*')
@@ -95,7 +95,7 @@ export const DELETE = async (_request: Request, context: { params: Promise<{ id:
   try {
     const { userId } = await requireAuthContext();
     const { id } = await context.params;
-    const supabase = await createClient();
+    const supabase = await serverClient();
 
     const { data: existingConsultation, error: existingError } = await supabase
       .from('consultations')

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { serverClient } from '@/lib/supabase/server';
 
 export type AppRole = 'student' | 'admin';
 
@@ -8,7 +8,7 @@ export type AuthContext = {
 };
 
 export const requireAuthContext = async (): Promise<AuthContext> => {
-  const supabase = await createClient();
+  const supabase = await serverClient();
   const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) throw new Error('Unauthenticated');
