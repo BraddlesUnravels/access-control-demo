@@ -2,14 +2,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "infra:up": "supabase start -x vector && supabase db reset",
+    "infra:up": "supabase start -x vector",
     "infra:down": "supabase stop --all --no-backup",
+    "infra:reset": "supabase db reset",
+    "test:rls": "cat supabase/tests/rls_checks.sql | docker exec -i supabase_db_contour psql -v ON_ERROR_STOP=1 -U postgres -d postgres",
     "db:types": "supabase start -x vector && supabase gen types typescript --local > lib/supabase/database.types.ts",
     "typecheck": "tsc --noEmit"
   },
