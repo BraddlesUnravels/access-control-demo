@@ -27,7 +27,7 @@ Priority is:
 - Do not introduce non-required architecture layers unless they clearly reduce risk.
 - Prefer APIs/route handlers over adding new action-heavy patterns.
 - Use simple, consistent patterns that can be explained quickly.
-- Keep UI basic; functionality and correctness are primary.
+- Keep UI basic and minimal. UI polish is the least priority compared to backend correctness and security.
 
 ## Required feature scope (no extras until done)
 
@@ -60,6 +60,53 @@ If any answer is “no”, choose the simpler option.
 - Enforce ownership: students can only access their own consultations.
 - Enforce admin role check for all-consultations view.
 - Keep validation and authorization checks explicit and close to API boundaries.
+- Treat backend/API route security as a top priority and non-negotiable.
+- Do not trust client-side checks for authorization; enforce access at server boundaries.
+- Prefer clear, explicit auth/ownership checks in each protected route over implicit patterns.
+
+## Agent handoff checklist (quick-start)
+
+Use this when handing to another agent so they can continue without re-discovery.
+
+1. Confirm required flows status:
+   - Auth: signup, login, logout
+   - Student dashboard: list own consultations
+   - Consultation create: first name, last name, reason, datetime
+   - Student actions: complete/incomplete, reschedule, cancel
+   - Admin view all consultations (read-only acceptable)
+2. Verify security on every API route touching consultations:
+   - Student can only read/update/delete own records
+   - Admin-only access for global/all-consultations endpoints
+   - Validation and authorization checks occur at route boundary
+3. Keep implementation simple:
+   - Prefer straightforward route handlers
+   - Avoid extra architecture that does not directly reduce risk
+4. Keep UI minimal:
+   - Functional screens/forms only
+   - No cosmetic polish until required flows are fully complete
+5. Update README before handoff completion:
+   - Setup steps
+   - Assumptions
+   - Schema/migrations summary
+   - Design tradeoffs and what to improve with more time
+
+## Recommended validation runbook
+
+Run these before declaring done (adjust based on available scripts):
+
+1. Install and project checks:
+   - `npm install` (or package manager in repo)
+   - `npm run lint`
+   - `npm run typecheck`
+   - `npm test`
+2. Manual flow validation:
+   - Signup/login/logout works
+   - Student can create and manage only own consultations
+   - Admin can view all consultations
+   - Unauthorized access attempts are denied
+3. Final pass:
+   - Re-check for obvious authorization gaps in API routes
+   - Ensure README reflects actual implemented behavior
 
 ## Definition of done
 

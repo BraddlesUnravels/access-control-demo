@@ -1,6 +1,7 @@
-import { validateCreateConsultationInput } from '@/lib/server/consultation-validation';
 import { requireAuthContext } from '@/lib/server/auth';
 import { createClient } from '@/lib/supabase/server';
+import { consultationCreateInputSchema } from '@/lib/validation/schemas';
+import { validateWithSchema } from '@/lib/validation/validate';
 import { NextResponse } from 'next/server';
 
 const UNAUTHENTICATED_ERROR = 'Unauthenticated';
@@ -33,11 +34,24 @@ export const GET = async () => {
 export const POST = async (request: Request) => {
   try {
     const { userId } = await requireAuthContext();
-    const payload = await request.json();
-    const validation = validateCreateConsultationInput(payload);
+    let payload: unknown;
 
-    if ('error' in validation) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
+    try {
+      payload = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+    }
+    const validation = validateWithSchema(consultationCreateInputSchema, payload);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: validation.errors[0] ?? 'Consultation input is invalid',
+          errors: validation.errors,
+          fieldErrors: validation.fieldErrors,
+        },
+        { status: 400 },
+      );
     }
 
     const { firstName, lastName, reason, scheduledFor } = validation.data;
