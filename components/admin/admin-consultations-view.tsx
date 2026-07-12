@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ConsultationSummaryCard } from '@/components/consultations/consultation-summary-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getApiErrorMessage, readJsonResponse } from '@/lib/api-response';
 import type { ConsultationRecord } from '@/lib/validation/types';
 
 export const AdminConsultationsView = () => {
@@ -16,11 +17,15 @@ export const AdminConsultationsView = () => {
 
     try {
       const response = await fetch('/api/admin/consultations', { method: 'GET' });
-      const payload = await response.json();
+      const payload = await readJsonResponse<{ data?: ConsultationRecord[]; error?: string }>(
+        response,
+      );
 
-      if (!response.ok) throw new Error(payload.error ?? 'Failed to load admin consultations');
+      if (!response.ok)
+        throw new Error(getApiErrorMessage(payload, 'Failed to load admin consultations'));
+      if (!payload?.data) throw new Error('Failed to load admin consultations');
 
-      setConsultations(payload.data as ConsultationRecord[]);
+      setConsultations(payload.data);
     } catch (loadError) {
       const message =
         loadError instanceof Error ? loadError.message : 'Failed to load admin consultations';

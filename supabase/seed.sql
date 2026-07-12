@@ -1,6 +1,7 @@
 -- Local development seed data only.
 -- Test credentials:
--- - student@lms.com / password123
+-- - student1@lms.com / password123
+-- - student1@lms.com / password123
 -- - admin@lms.com / password123
 
 do $$
@@ -8,7 +9,7 @@ begin
   if not exists (
     select 1
     from auth.users
-    where email = 'student@lms.com'
+    where email = 'student1@lms.com'
   ) then
     insert into auth.users (
       instance_id,
@@ -29,7 +30,42 @@ begin
       gen_random_uuid(),
       'authenticated',
       'authenticated',
-      'student@lms.com',
+      'student1@lms.com',
+      crypt('password123', gen_salt('bf')),
+      '',
+      now(),
+      '{"provider":"email","providers":["email"]}',
+      '{}',
+      now(),
+      now()
+    );
+  end if;
+
+  if not exists (
+    select 1
+    from auth.users
+    where email = 'student2@lms.com'
+  ) then
+    insert into auth.users (
+      instance_id,
+      id,
+      aud,
+      role,
+      email,
+      encrypted_password,
+      confirmation_token,
+      email_confirmed_at,
+      raw_app_meta_data,
+      raw_user_meta_data,
+      created_at,
+      updated_at
+    )
+    values (
+      '00000000-0000-0000-0000-000000000000',
+      gen_random_uuid(),
+      'authenticated',
+      'authenticated',
+      'student2@lms.com',
       crypt('password123', gen_salt('bf')),
       '',
       now(),
@@ -150,7 +186,56 @@ from (
 cross join (
   select id
   from auth.users
-  where email = 'student@lms.com'
+  where email = 'student1@lms.com'
+) as student
+where not exists (
+  select 1
+  from public.consultations as existing
+  where existing.student_user_id = student.id
+    and existing.reason = consultations.reason
+    and existing.status = consultations.status
+);
+
+insert into public.consultations (
+  student_user_id,
+  first_name,
+  last_name,
+  reason,
+  scheduled_for,
+  status,
+  completed_at
+)
+select
+  student.id,
+  consultations.first_name,
+  consultations.last_name,
+  consultations.reason,
+  consultations.scheduled_for,
+  consultations.status,
+  consultations.completed_at
+from (
+  values
+    (
+      'Brad',
+      'Student',
+      'Review assignment feedback',
+      timezone('utc', now()) + interval '2 days',
+      'scheduled'::public.consultation_status,
+      null::timestamptz
+    ),
+    (
+      'Brad',
+      'Student',
+      'Discuss interview preparation',
+      timezone('utc', now()) - interval '1 day',
+      'completed'::public.consultation_status,
+      timezone('utc', now()) - interval '20 hours'
+    )
+) as consultations(first_name, last_name, reason, scheduled_for, status, completed_at)
+cross join (
+  select id
+  from auth.users
+  where email = 'student2@lms.com'
 ) as student
 where not exists (
   select 1

@@ -11,7 +11,7 @@ export const StudentConsultationsView = () => {
     loading,
     error,
     actionInProgressById,
-    rescheduleById,
+    getRescheduleValue,
     setRescheduleValue,
     createConsultation,
     toggleCompleted,
@@ -49,7 +49,7 @@ export const StudentConsultationsView = () => {
               onReschedule={reschedule}
               onRescheduleChange={setRescheduleValue}
               onToggleCompleted={toggleCompleted}
-              rescheduleById={rescheduleById}
+              getRescheduleValue={getRescheduleValue}
             />
           ) : null}
         </CardContent>

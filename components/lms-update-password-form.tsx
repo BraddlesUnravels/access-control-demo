@@ -31,20 +31,15 @@ export function UpdatePasswordForm({ className, ...props }: React.ComponentProps
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+      setPassword('');
+      setRepeatPassword('');
 
       router.push('/protected');
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
-      formReset();
       setIsLoading(false);
     }
-  };
-
-  const formReset = () => {
-    setPassword('');
-    setRepeatPassword('');
-    setError(undefined);
   };
 
   return (

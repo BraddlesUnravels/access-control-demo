@@ -29,20 +29,15 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
         password,
       });
       if (loginError) throw loginError;
+      setEmail('');
+      setPassword('');
       router.replace('/protected');
       router.refresh();
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Failed to login');
     } finally {
-      formReset();
       setIsLoading(false);
     }
-  };
-
-  const formReset = () => {
-    setEmail('');
-    setPassword('');
-    setError(undefined);
   };
 
   return (

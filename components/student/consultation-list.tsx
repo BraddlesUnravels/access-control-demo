@@ -6,21 +6,21 @@ import { ConsultationItem } from './consultation-item';
 type ConsultationListProps = {
   actionInProgressById: Record<string, boolean>;
   consultations: ConsultationRecord[];
+  getRescheduleValue: (consultation: ConsultationRecord) => string;
   onCancel: (consultation: ConsultationRecord) => Promise<void>;
   onReschedule: (consultation: ConsultationRecord) => Promise<void>;
   onRescheduleChange: (consultationId: string, value: string) => void;
   onToggleCompleted: (consultation: ConsultationRecord) => Promise<void>;
-  rescheduleById: Record<string, string>;
 };
 
 export const ConsultationList = ({
   actionInProgressById,
   consultations,
+  getRescheduleValue,
   onCancel,
   onReschedule,
   onRescheduleChange,
   onToggleCompleted,
-  rescheduleById,
 }: ConsultationListProps) => {
   if (consultations.length === 0) {
     return <p className="text-sm text-muted-foreground">No consultations yet.</p>;
@@ -37,7 +37,7 @@ export const ConsultationList = ({
           onReschedule={onReschedule}
           onRescheduleChange={onRescheduleChange}
           onToggleCompleted={onToggleCompleted}
-          rescheduleValue={rescheduleById[consultation.id] ?? ''}
+          rescheduleValue={getRescheduleValue(consultation)}
         />
       ))}
     </div>

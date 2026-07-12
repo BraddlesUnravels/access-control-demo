@@ -26,19 +26,13 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
         redirectTo: `${window.location.origin}/auth/update-password`,
       });
       if (error) throw error;
+      setEmail('');
       setSuccess(true);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
-      formReset();
       setIsLoading(false);
     }
-  };
-
-  const formReset = () => {
-    setEmail('');
-    setError(undefined);
-    setSuccess(false);
   };
 
   return (

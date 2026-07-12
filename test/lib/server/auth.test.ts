@@ -1,0 +1,82 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { redirect } from 'next/navigation';
+import { requireAuthContext } from '@/lib/server/auth';
+import { serverReadClient } from '@/lib/supabase/server';
+
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn(),
+}));
+
+vi.mock('@/lib/supabase/server', () => ({
+  serverReadClient: vi.fn(),
+}));
+
+type ServerAuthMocks = {
+  eq: ReturnType<typeof vi.fn>;
+  getUser: ReturnType<typeof vi.fn>;
+  maybeSingle: ReturnType<typeof vi.fn>;
+};
+
+const setupServerReadClientMock = (): ServerAuthMocks => {
+  const getUser = vi.fn();
+  const maybeSingle = vi.fn();
+  const eq = vi.fn(() => ({ maybeSingle }));
+  const select = vi.fn(() => ({ eq }));
+  const from = vi.fn(() => ({ select }));
+
+  vi.mocked(serverReadClient).mockResolvedValue({
+    auth: { getUser },
+    from,
+  } as never);
+
+  return {
+    eq,
+    getUser,
+    maybeSingle,
+  };
+};
+
+describe('lib/server/auth', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return user id and role when user and profile are available', async () => {
+    const { eq, getUser, maybeSingle } = setupServerReadClientMock();
+    getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    maybeSingle.mockResolvedValue({ data: { role: 'admin' }, error: null });
+
+    const authContext = await requireAuthContext({ redirectOnUnauthenticated: false });
+
+    expect(eq).toHaveBeenCalledWith('id', 'user-1');
+    expect(authContext).toEqual({ role: 'admin', userId: 'user-1' });
+  });
+
+  it('should throw unauthenticated error when user is missing and redirect is disabled', async () => {
+    const { getUser } = setupServerReadClientMock();
+    getUser.mockResolvedValue({ data: { user: null }, error: null });
+
+    await expect(requireAuthContext({ redirectOnUnauthenticated: false })).rejects.toThrow(
+      'Unauthenticated',
+    );
+    expect(vi.mocked(redirect)).not.toHaveBeenCalled();
+  });
+
+  it('should redirect to login when unauthenticated and redirect is enabled', async () => {
+    const { getUser } = setupServerReadClientMock();
+    getUser.mockResolvedValue({ data: { user: null }, error: null });
+
+    await expect(requireAuthContext()).rejects.toThrow('Unauthenticated');
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith('/auth/login');
+  });
+
+  it('should throw when profile row is missing', async () => {
+    const { getUser, maybeSingle } = setupServerReadClientMock();
+    getUser.mockResolvedValue({ data: { user: { id: 'user-2' } }, error: null });
+    maybeSingle.mockResolvedValue({ data: null, error: null });
+
+    await expect(requireAuthContext({ redirectOnUnauthenticated: false })).rejects.toThrow(
+      'User profile was not found',
+    );
+  });
+});

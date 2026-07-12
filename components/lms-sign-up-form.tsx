@@ -39,20 +39,15 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
         },
       });
       if (error) throw error;
+      setEmail('');
+      setPassword('');
+      setRepeatPassword('');
       router.push('/auth/sign-up-success');
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
-      formReset();
       setIsLoading(false);
     }
-  };
-
-  const formReset = () => {
-    setEmail('');
-    setPassword('');
-    setRepeatPassword('');
-    setError(undefined);
   };
 
   return (

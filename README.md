@@ -186,7 +186,7 @@ It also promotes `admin@example.com` to role `admin` in `public.profiles`.
   - Redirect confirmation target: `/auth/confirm?next=/protected`
 - Login:
   - UI: `/auth/login`
-  - Calls `POST /api/auth/login`
+  - Uses Supabase browser client `auth.signInWithPassword`
   - On success routes to `/protected`
 - Logout:
   - Triggered from navigation auth button
@@ -195,6 +195,8 @@ It also promotes `admin@example.com` to role `admin` in `public.profiles`.
 - Password reset/update:
   - `/auth/forgot-password`
   - `/auth/update-password`
+
+Authentication intentionally uses Supabase Auth client lifecycle methods (sign in/up/out, reset, confirm). LMS domain behavior (consultations and admin access) is handled through internal route handlers under `app/api/**` so validation and authorization remain explicit at API boundaries.
 
 ### Student dashboard
 
@@ -224,24 +226,11 @@ Behavior:
 
 All APIs are implemented as Next.js route handlers.
 
-### `POST /api/auth/login`
+Assessment alignment note:
 
-Authenticates a user with email/password.
+- Route handlers are the default for application business logic.
+- Authentication session lifecycle stays on Supabase Auth client methods, while LMS domain actions use internal API routes.
 
-Request body:
-
-- `email: string`
-- `password: string`
-
-Validation:
-
-- Valibot schema (`loginInputSchema`)
-
-Responses:
-
-- `200` `{ data: { authenticated: true } }`
-- `400` validation/json errors
-- `401` invalid credentials
 
 ### `GET /api/consultations`
 
@@ -471,10 +460,6 @@ Behavior:
 ## Validation Strategy
 
 Validation is implemented with Valibot at API boundaries:
-
-- Login schema:
-  - email required + email format
-  - password required
 - Consultation create schema:
   - firstName, lastName, reason required non-empty strings
   - scheduledFor must parse as valid date
@@ -483,7 +468,7 @@ Validation is implemented with Valibot at API boundaries:
   - requires at least one field
   - status restricted to `scheduled | completed`
 
-Error response shape includes:
+Consultation API error response shape includes:
 
 - `error` (primary message)
 - `errors` (flattened list)
@@ -537,6 +522,8 @@ The implementation intentionally uses explicit API route handlers for business o
 - they provide clear server boundaries for auth and authorization
 - they align with the assessment preference to favor APIs
 - they keep request/response contracts explicit and testable
+
+Auth is the deliberate exception: Supabase-managed authentication flows use the Supabase Auth client directly, while LMS domain actions (consultation CRUD/status transitions and admin list access) follow the API-route boundary pattern.
 ### Why API errors are handled at boundaries
 
 Route handlers use a shared API boundary wrapper (`withApiHandler`) for centralized error-to-response mapping.
@@ -569,8 +556,6 @@ The server Supabase helper now uses two explicit variants:
 This was done to avoid broad swallow-catches around cookie writes and to make cookie-write intent explicit at call sites.
 
 ## Recent Implementation Updates
-
-- Standardized API error handling in `POST /api/auth/login` to follow the same `withApiHandler` + `AppError` pattern used by consultations endpoints.
 - Replaced ad-hoc per-route Supabase cookie buffering in auth routes with shared `serverResponseClient()` + `applyServerCookies(response)`.
 - Introduced `serverReadClient()` and migrated read-oriented callers (`requireAuthContext`, consultation/admin API reads, and server auth button checks) to use it.
 

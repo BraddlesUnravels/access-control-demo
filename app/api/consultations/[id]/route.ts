@@ -8,7 +8,7 @@ import { withApiHandler } from '@/lib/with-api-handler';
 
 type ConsultationUpdatePatch = {
   scheduled_for?: string;
-  status?: 'scheduled' | 'completed' | 'cancelled';
+  status?: 'scheduled' | 'completed';
   completed_at?: string | null;
   cancelled_at?: string | null;
 };
