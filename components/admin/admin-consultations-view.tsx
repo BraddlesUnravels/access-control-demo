@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ConsultationSummaryCard } from '@/components/consultations/consultation-summary-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ConsultationRecord } from '@/lib/types/consultation';
 
@@ -60,17 +61,11 @@ export const AdminConsultationsView = () => {
           ) : null}
           <div className="flex flex-col gap-4">
             {consultations.map((consultation) => (
-              <div key={consultation.id} className="rounded-md border p-4">
-                <p className="font-medium">
-                  {consultation.first_name} {consultation.last_name}
-                </p>
-                <p className="text-sm text-muted-foreground">{consultation.reason}</p>
-                <p className="text-sm">Student user id: {consultation.student_user_id}</p>
-                <p className="text-sm">
-                  Scheduled for {new Date(consultation.scheduled_for).toLocaleString()}
-                </p>
-                <p className="text-sm capitalize">Status: {consultation.status}</p>
-              </div>
+              <ConsultationSummaryCard
+                key={consultation.id}
+                consultation={consultation}
+                showStudentUserId
+              />
             ))}
           </div>
         </CardContent>

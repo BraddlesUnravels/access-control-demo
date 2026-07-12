@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { AdminConsultationsView } from '@/components/consultations/admin-consultations-view';
+import { AdminConsultationsView } from '@/components/admin/admin-consultations-view';
 import { requireAuthContext } from '@/lib/server/auth';
 import { Suspense } from 'react';
 

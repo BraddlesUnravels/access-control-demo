@@ -1,0 +1,45 @@
+'use client';
+
+import type { ConsultationRecord } from '@/lib/types/consultation';
+import { ConsultationItem } from './consultation-item';
+
+type ConsultationListProps = {
+  actionInProgressById: Record<string, boolean>;
+  consultations: ConsultationRecord[];
+  onCancel: (consultation: ConsultationRecord) => Promise<void>;
+  onReschedule: (consultation: ConsultationRecord) => Promise<void>;
+  onRescheduleChange: (consultationId: string, value: string) => void;
+  onToggleCompleted: (consultation: ConsultationRecord) => Promise<void>;
+  rescheduleById: Record<string, string>;
+};
+
+export const ConsultationList = ({
+  actionInProgressById,
+  consultations,
+  onCancel,
+  onReschedule,
+  onRescheduleChange,
+  onToggleCompleted,
+  rescheduleById,
+}: ConsultationListProps) => {
+  if (consultations.length === 0) {
+    return <p className="text-sm text-muted-foreground">No consultations yet.</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {consultations.map((consultation) => (
+        <ConsultationItem
+          key={consultation.id}
+          actionInProgress={actionInProgressById[consultation.id] ?? false}
+          consultation={consultation}
+          onCancel={onCancel}
+          onReschedule={onReschedule}
+          onRescheduleChange={onRescheduleChange}
+          onToggleCompleted={onToggleCompleted}
+          rescheduleValue={rescheduleById[consultation.id] ?? ''}
+        />
+      ))}
+    </div>
+  );
+};

@@ -6,6 +6,10 @@ import { NextResponse } from 'next/server';
 
 const UNAUTHENTICATED_ERROR = 'Unauthenticated';
 
+/**
+ * GET /api/consultations
+ * Retrieves all consultations for the authenticated user.
+ */
 export const GET = async () => {
   try {
     const { userId } = await requireAuthContext();
@@ -31,6 +35,10 @@ export const GET = async () => {
   }
 };
 
+/**
+ * POST /api/consultations
+ * Creates a new consultation for the authenticated user.
+ */
 export const POST = async (request: Request) => {
   try {
     const { userId } = await requireAuthContext();

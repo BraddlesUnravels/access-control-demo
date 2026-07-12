@@ -12,7 +12,10 @@ type ConsultationUpdatePatch = {
 };
 
 const UNAUTHENTICATED_ERROR = 'Unauthenticated';
-
+/**
+ * PATCH /api/consultations/:id
+ * Updates an existing consultation for the authenticated user.
+ */
 export const PATCH = async (request: Request, context: { params: Promise<{ id: string }> }) => {
   try {
     const { userId } = await requireAuthContext();

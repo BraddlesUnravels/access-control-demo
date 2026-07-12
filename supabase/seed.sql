@@ -8,7 +8,7 @@ begin
   if not exists (
     select 1
     from auth.users
-    where id = '11111111-1111-1111-1111-111111111111'
+    where email = 'student@example.com'
   ) then
     insert into auth.users (
       instance_id,
@@ -26,7 +26,7 @@ begin
     )
     values (
       '00000000-0000-0000-0000-000000000000',
-      '11111111-1111-1111-1111-111111111111',
+      gen_random_uuid(),
       'authenticated',
       'authenticated',
       'student@example.com',
@@ -43,7 +43,7 @@ begin
   if not exists (
     select 1
     from auth.users
-    where id = '22222222-2222-2222-2222-222222222222'
+    where email = 'admin@example.com'
   ) then
     insert into auth.users (
       instance_id,
@@ -61,7 +61,7 @@ begin
     )
     values (
       '00000000-0000-0000-0000-000000000000',
-      '22222222-2222-2222-2222-222222222222',
+      gen_random_uuid(),
       'authenticated',
       'authenticated',
       'admin@example.com',
@@ -89,44 +89,29 @@ where
     or email_change is null
     or email_change_token_new is null
   )
-  and id in (
-    '11111111-1111-1111-1111-111111111111',
-    '22222222-2222-2222-2222-222222222222'
-  );
+  and email in ('student@example.com', 'admin@example.com');
 
-insert into auth.identities (
-  provider_id,
-  user_id,
-  identity_data,
-  provider,
-  created_at,
-  updated_at
-)
-values
-  (
-    '11111111-1111-1111-1111-111111111111',
-    '11111111-1111-1111-1111-111111111111',
-    '{"sub":"11111111-1111-1111-1111-111111111111","email":"student@example.com"}',
-    'email',
-    now(),
-    now()
-  ),
-  (
-    '22222222-2222-2222-2222-222222222222',
-    '22222222-2222-2222-2222-222222222222',
-    '{"sub":"22222222-2222-2222-2222-222222222222","email":"admin@example.com"}',
-    'email',
-    now(),
-    now()
-  )
+insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)
+select
+  users.id::text,
+  users.id,
+  jsonb_build_object('sub', users.id::text, 'email', users.email),
+  'email',
+  now(),
+  now()
+from auth.users as users
+where users.email in ('student@example.com', 'admin@example.com')
 on conflict (provider, provider_id) do nothing;
 
 update public.profiles
 set role = 'admin'
-where id = '22222222-2222-2222-2222-222222222222';
+where id = (
+  select id
+  from auth.users
+  where email = 'admin@example.com'
+);
 
 insert into public.consultations (
-  id,
   student_user_id,
   first_name,
   last_name,
@@ -135,25 +120,42 @@ insert into public.consultations (
   status,
   completed_at
 )
-values
-  (
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    '11111111-1111-1111-1111-111111111111',
-    'Sam',
-    'Student',
-    'Review assignment feedback',
-    timezone('utc', now()) + interval '2 days',
-    'scheduled',
-    null
-  ),
-  (
-    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-    '11111111-1111-1111-1111-111111111111',
-    'Sam',
-    'Student',
-    'Discuss interview preparation',
-    timezone('utc', now()) - interval '1 day',
-    'completed',
-    timezone('utc', now()) - interval '20 hours'
-  )
-on conflict (id) do nothing;
+select
+  student.id,
+  consultations.first_name,
+  consultations.last_name,
+  consultations.reason,
+  consultations.scheduled_for,
+  consultations.status,
+  consultations.completed_at
+from (
+  values
+    (
+      'Sam',
+      'Student',
+      'Review assignment feedback',
+      timezone('utc', now()) + interval '2 days',
+      'scheduled'::public.consultation_status,
+      null::timestamptz
+    ),
+    (
+      'Sam',
+      'Student',
+      'Discuss interview preparation',
+      timezone('utc', now()) - interval '1 day',
+      'completed'::public.consultation_status,
+      timezone('utc', now()) - interval '20 hours'
+    )
+) as consultations(first_name, last_name, reason, scheduled_for, status, completed_at)
+cross join (
+  select id
+  from auth.users
+  where email = 'student@example.com'
+) as student
+where not exists (
+  select 1
+  from public.consultations as existing
+  where existing.student_user_id = student.id
+    and existing.reason = consultations.reason
+    and existing.status = consultations.status
+);

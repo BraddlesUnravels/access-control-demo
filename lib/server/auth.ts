@@ -1,4 +1,5 @@
 import { serverClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 
 export type AppRole = 'student' | 'admin';
 
@@ -10,8 +11,7 @@ export type AuthContext = {
 export const requireAuthContext = async (): Promise<AuthContext> => {
   const supabase = await serverClient();
   const { data, error } = await supabase.auth.getUser();
-
-  if (error || !data.user) throw new Error('Unauthenticated');
+  if (error || !data.user) redirect('/auth/login');
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')

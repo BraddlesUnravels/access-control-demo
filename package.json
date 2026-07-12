@@ -2,6 +2,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -9,7 +10,6 @@
     "format:check": "prettier --check .",
     "infra:up": "supabase start -x vector && supabase db reset",
     "infra:down": "supabase stop --all --no-backup",
-    "infra:reset": "npm run infra:down && npm run infra:up",
     "db:types": "supabase start -x vector && supabase gen types typescript --local > lib/supabase/database.types.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -23,7 +23,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.511.0",
-    "next": "latest",
+    "next": "16.2.10",
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
