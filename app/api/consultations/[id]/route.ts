@@ -5,13 +5,13 @@ import { serverReadClient } from '@/lib/supabase/server';
 import { consultationUpdateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { withApiHandler } from '@/lib/with-api-handler';
-
-type ConsultationUpdatePatch = {
-  scheduled_for?: string;
-  status?: 'scheduled' | 'completed';
-  completed_at?: string | null;
-  cancelled_at?: string | null;
-};
+import {
+  parseRequestJson,
+  createValidationErrorResponse,
+  getOwnedConsultationOrThrow,
+  assertConsultationCanBeUpdated,
+  buildConsultationUpdatePatch,
+} from './helpers';
 
 /**
  * PATCH /api/consultations/:id
@@ -21,63 +21,16 @@ export const PATCH = withApiHandler(
   async (request: Request, context: { params: Promise<{ id: string }> }) => {
     const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
     const { id } = await context.params;
-    let payload: unknown;
-
-    try {
-      payload = await request.json();
-    } catch {
-      throw new AppError('Request body must be valid JSON', {
-        status: 400,
-        safeMessage: 'Request body must be valid JSON',
-      });
-    }
+    const payload = await parseRequestJson(request);
     const validation = validateWithSchema(consultationUpdateInputSchema, payload);
 
     if (!validation.success)
-      return NextResponse.json(
-        {
-          error: validation.errors[0] ?? 'Consultation input is invalid',
-          errors: validation.errors,
-          fieldErrors: validation.fieldErrors,
-        },
-        { status: 400 },
-      );
+      return createValidationErrorResponse(validation.errors, validation.fieldErrors);
 
     const supabase = await serverReadClient();
-    const { data: existingConsultation, error: existingError } = await supabase
-      .from('consultations')
-      .select('*')
-      .eq('id', id)
-      .eq('student_user_id', userId)
-      .maybeSingle();
-
-    if (existingError)
-      throw new AppError('Failed to read consultation', {
-        status: 500,
-        safeMessage: 'Failed to read consultation',
-        meta: { id, userId },
-      });
-
-    if (!existingConsultation)
-      throw new AppError('Consultation was not found', {
-        status: 404,
-        safeMessage: 'Consultation was not found',
-      });
-
-    if (existingConsultation.status === 'cancelled')
-      throw new AppError('Cancelled consultations cannot be updated', {
-        status: 400,
-        safeMessage: 'Cancelled consultations cannot be updated',
-      });
-
-    const patch: ConsultationUpdatePatch = {};
-    const { scheduledFor, status } = validation.data;
-
-    if (scheduledFor) patch.scheduled_for = scheduledFor;
-    if (status) {
-      patch.status = status;
-      patch.completed_at = status === 'completed' ? new Date().toISOString() : null;
-    }
+    const consultation = await getOwnedConsultationOrThrow(supabase, id, userId);
+    assertConsultationCanBeUpdated(consultation);
+    const patch = buildConsultationUpdatePatch(validation.data);
 
     const { data, error } = await supabase
       .from('consultations')
@@ -107,25 +60,7 @@ export const DELETE = withApiHandler(
     const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
     const { id } = await context.params;
     const supabase = await serverReadClient();
-    const { data: existingConsultation, error: existingError } = await supabase
-      .from('consultations')
-      .select('*')
-      .eq('id', id)
-      .eq('student_user_id', userId)
-      .maybeSingle();
-
-    if (existingError)
-      throw new AppError('Failed to read consultation', {
-        status: 500,
-        safeMessage: 'Failed to read consultation',
-        meta: { id, userId },
-      });
-
-    if (!existingConsultation)
-      throw new AppError('Consultation was not found', {
-        status: 404,
-        safeMessage: 'Consultation was not found',
-      });
+    const existingConsultation = await getOwnedConsultationOrThrow(supabase, id, userId);
 
     if (existingConsultation.status === 'cancelled')
       return NextResponse.json({ data: existingConsultation }, { status: 200 });

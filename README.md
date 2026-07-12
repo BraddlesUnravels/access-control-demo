@@ -180,6 +180,19 @@ npm run dev
 
 The app runs at `http://localhost:3000`.
 
+### Important: Test sign-up and password-reset emails in MailPit
+
+To verify auth email flows locally, open MailPit in your browser:
+
+- `http://*********:54324/`
+
+Then:
+
+1. Trigger sign up from `/auth/sign-up`.
+2. In MailPit, open the registration email and follow the confirmation link.
+3. Trigger forgot-password from `/auth/forgot-password`.
+4. In MailPit, open the reset-password email and follow the link to `/auth/update-password`.
+
 ### 6) Optional quality checks
 
 ```bash
