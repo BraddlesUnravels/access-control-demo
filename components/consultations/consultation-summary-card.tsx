@@ -37,7 +37,10 @@ export const ConsultationSummaryCard = ({
           Scheduled for {new Date(consultation.scheduled_for).toLocaleString()}
         </p>
         <div className="text-sm capitalize">
-          Status: <Badge variant={statusVariantByConsultationStatus[consultation.status]}>{consultation.status}</Badge>
+          Status:{' '}
+          <Badge variant={statusVariantByConsultationStatus[consultation.status]}>
+            {consultation.status}
+          </Badge>
         </div>
       </div>
       {actions}

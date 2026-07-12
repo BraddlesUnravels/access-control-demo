@@ -1,8 +1,10 @@
+import { NextResponse } from 'next/server';
+import { AppError } from '@/lib/errors';
 import { requireAuthContext } from '@/lib/server/auth';
 import { serverClient } from '@/lib/supabase/server';
 import { consultationUpdateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
-import { NextResponse } from 'next/server';
+import { withApiHandler } from '@/lib/with-api-handler';
 
 type ConsultationUpdatePatch = {
   scheduled_for?: string;
@@ -11,21 +13,19 @@ type ConsultationUpdatePatch = {
   cancelled_at?: string | null;
 };
 
-const UNAUTHENTICATED_ERROR = 'Unauthenticated';
-/**
- * PATCH /api/consultations/:id
- * Updates an existing consultation for the authenticated user.
- */
-export const PATCH = async (request: Request, context: { params: Promise<{ id: string }> }) => {
-  try {
-    const { userId } = await requireAuthContext();
+export const PATCH = withApiHandler(
+  async (request: Request, context: { params: Promise<{ id: string }> }) => {
+    const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
     const { id } = await context.params;
     let payload: unknown;
 
     try {
       payload = await request.json();
     } catch {
-      return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+      throw new AppError('Request body must be valid JSON', {
+        status: 400,
+        safeMessage: 'Request body must be valid JSON',
+      });
     }
     const validation = validateWithSchema(consultationUpdateInputSchema, payload);
 
@@ -49,18 +49,25 @@ export const PATCH = async (request: Request, context: { params: Promise<{ id: s
       .maybeSingle();
 
     if (existingError) {
-      return NextResponse.json({ error: 'Failed to read consultation' }, { status: 500 });
+      throw new AppError('Failed to read consultation', {
+        status: 500,
+        safeMessage: 'Failed to read consultation',
+        meta: { id, userId },
+      });
     }
 
     if (!existingConsultation) {
-      return NextResponse.json({ error: 'Consultation was not found' }, { status: 404 });
+      throw new AppError('Consultation was not found', {
+        status: 404,
+        safeMessage: 'Consultation was not found',
+      });
     }
 
     if (existingConsultation.status === 'cancelled') {
-      return NextResponse.json(
-        { error: 'Cancelled consultations cannot be updated' },
-        { status: 400 },
-      );
+      throw new AppError('Cancelled consultations cannot be updated', {
+        status: 400,
+        safeMessage: 'Cancelled consultations cannot be updated',
+      });
     }
 
     const patch: ConsultationUpdatePatch = {};
@@ -81,25 +88,22 @@ export const PATCH = async (request: Request, context: { params: Promise<{ id: s
       .single();
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to update consultation' }, { status: 500 });
+      throw new AppError('Failed to update consultation', {
+        status: 500,
+        safeMessage: 'Failed to update consultation',
+        meta: { id, userId },
+      });
     }
 
     return NextResponse.json({ data }, { status: 200 });
-  } catch (error) {
-    if (error instanceof Error && error.message === UNAUTHENTICATED_ERROR) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  },
+);
 
-    return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
-  }
-};
-
-export const DELETE = async (_request: Request, context: { params: Promise<{ id: string }> }) => {
-  try {
-    const { userId } = await requireAuthContext();
+export const DELETE = withApiHandler(
+  async (_request: Request, context: { params: Promise<{ id: string }> }) => {
+    const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
     const { id } = await context.params;
     const supabase = await serverClient();
-
     const { data: existingConsultation, error: existingError } = await supabase
       .from('consultations')
       .select('*')
@@ -108,11 +112,18 @@ export const DELETE = async (_request: Request, context: { params: Promise<{ id:
       .maybeSingle();
 
     if (existingError) {
-      return NextResponse.json({ error: 'Failed to read consultation' }, { status: 500 });
+      throw new AppError('Failed to read consultation', {
+        status: 500,
+        safeMessage: 'Failed to read consultation',
+        meta: { id, userId },
+      });
     }
 
     if (!existingConsultation) {
-      return NextResponse.json({ error: 'Consultation was not found' }, { status: 404 });
+      throw new AppError('Consultation was not found', {
+        status: 404,
+        safeMessage: 'Consultation was not found',
+      });
     }
 
     if (existingConsultation.status === 'cancelled') {
@@ -131,15 +142,13 @@ export const DELETE = async (_request: Request, context: { params: Promise<{ id:
       .single();
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to cancel consultation' }, { status: 500 });
+      throw new AppError('Failed to cancel consultation', {
+        status: 500,
+        safeMessage: 'Failed to cancel consultation',
+        meta: { id, userId },
+      });
     }
 
     return NextResponse.json({ data }, { status: 200 });
-  } catch (error) {
-    if (error instanceof Error && error.message === UNAUTHENTICATED_ERROR) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
-  }
-};
+  },
+);

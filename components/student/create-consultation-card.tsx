@@ -22,7 +22,7 @@ export const CreateConsultationCard = ({ onCreateConsultation }: CreateConsultat
   const [createForm, setCreateForm] = useState<CreateConsultationForm>(DEFAULT_FORM);
   const [submittingCreate, setSubmittingCreate] = useState(false);
 
-  const handleCreateConsultation = async (event: React.FormEvent) => {
+  const handleCreateConsultation = async (event: React.SubmitEvent) => {
     event.preventDefault();
     setSubmittingCreate(true);
 

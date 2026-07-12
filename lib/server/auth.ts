@@ -8,10 +8,17 @@ export type AuthContext = {
   role: AppRole;
 };
 
-export const requireAuthContext = async (): Promise<AuthContext> => {
+export const requireAuthContext = async (
+  options: { redirectOnUnauthenticated?: boolean } = {},
+): Promise<AuthContext> => {
+  const redirectOnUnauthenticated = options.redirectOnUnauthenticated ?? true;
   const supabase = await serverClient();
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) redirect('/auth/login');
+
+  if (error || !data.user) {
+    if (redirectOnUnauthenticated) redirect('/auth/login');
+    throw new Error('Unauthenticated');
+  }
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')

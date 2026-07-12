@@ -1,33 +1,28 @@
+import { NextResponse } from 'next/server';
+import { AppError } from '@/lib/errors';
 import { requireAuthContext } from '@/lib/server/auth';
 import { serverClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { withApiHandler } from '@/lib/with-api-handler';
 
-const UNAUTHENTICATED_ERROR = 'Unauthenticated';
+export const GET = withApiHandler(async () => {
+  const { role } = await requireAuthContext({ redirectOnUnauthenticated: false });
 
-export const GET = async () => {
-  try {
-    const { role } = await requireAuthContext();
-
-    if (role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const supabase = await serverClient();
-    const { data, error } = await supabase
-      .from('consultations')
-      .select('*')
-      .order('scheduled_for', { ascending: true });
-
-    if (error) {
-      return NextResponse.json({ error: 'Failed to load consultations' }, { status: 500 });
-    }
-
-    return NextResponse.json({ data }, { status: 200 });
-  } catch (error) {
-    if (error instanceof Error && error.message === UNAUTHENTICATED_ERROR) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 });
+  if (role !== 'admin') {
+    throw new AppError('Forbidden', { status: 403, safeMessage: 'Forbidden' });
   }
-};
+
+  const supabase = await serverClient();
+  const { data, error } = await supabase
+    .from('consultations')
+    .select('*')
+    .order('scheduled_for', { ascending: true });
+
+  if (error) {
+    throw new AppError('Failed to load consultations', {
+      status: 500,
+      safeMessage: 'Failed to load consultations',
+    });
+  }
+
+  return NextResponse.json({ data }, { status: 200 });
+});

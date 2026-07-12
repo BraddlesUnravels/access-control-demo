@@ -1,8 +1,10 @@
 # Mini-LMS Technical Assessment
+
 This repository contains a full-stack mini-LMS implementation built with Next.js App Router, TypeScript, Supabase, and PostgreSQL.
 The application supports student consultation booking/management and an admin read-only consultation overview.
 
 ## Assessment Deliverables Status
+
 This section maps the implementation directly to the requested deliverables.
 
 - Authentication (sign up, login, logout): Implemented
@@ -20,6 +22,7 @@ This section maps the implementation directly to the requested deliverables.
 - README with setup, assumptions, implementation summary, migrations/schema: Implemented in this document
 
 ## Technology Stack
+
 - Framework: Next.js `16.2.10`
 - Routing model: App Router
 - Language: TypeScript
@@ -34,6 +37,7 @@ This section maps the implementation directly to the requested deliverables.
 - Validation: Valibot
 
 ## Project Goals
+
 The project is intentionally scoped to prioritize:
 
 1. End-to-end functionality for all required assessment flows
@@ -42,6 +46,7 @@ The project is intentionally scoped to prioritize:
 4. Minimal UI complexity with clear, functional UX
 
 ## High-Level Architecture
+
 The app follows a route-handler-centric pattern:
 
 - UI components (client and server components) render forms/lists/actions
@@ -69,6 +74,7 @@ Core paths:
   - `supabase/seed.sql`
 
 ## Prerequisites
+
 Install these before running locally:
 
 - Node.js (LTS recommended)
@@ -79,6 +85,7 @@ Install these before running locally:
 You also need Docker running locally for `supabase start`.
 
 ## Environment Variables
+
 Create `.env.local` in project root:
 
 - Start from `.env.example`
@@ -99,12 +106,15 @@ Notes:
 - The codebase uses the `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` variable name.
 
 ## Local Development Setup
+
 ### 1) Install dependencies
+
 ```bash
 npm install
 ```
 
 ### 2) Start local Supabase and reset database
+
 This applies migrations and seed data:
 
 ```bash
@@ -117,9 +127,11 @@ Script details:
 - `supabase db reset`
 
 ### 3) Configure `.env.local`
+
 Populate values from local Supabase output (`supabase status`) or your hosted project.
 
 ### 4) Run the app
+
 ```bash
 npm run dev
 ```
@@ -127,12 +139,14 @@ npm run dev
 The app runs at `http://localhost:3000`.
 
 ### 5) Optional quality checks
+
 ```bash
 npm run typecheck
 npm run lint
 ```
 
 ## Supabase Local Runtime Notes
+
 From `supabase/config.toml`, notable local service ports are:
 
 - API: `54321`
@@ -143,6 +157,7 @@ From `supabase/config.toml`, notable local service ports are:
 This is useful for testing email-based sign-up confirmation and password reset flows locally.
 
 ## Seeded Development Users
+
 `supabase/seed.sql` creates these users if missing:
 
 - `student@example.com` / `password123`
@@ -151,11 +166,14 @@ This is useful for testing email-based sign-up confirmation and password reset f
 It also promotes `admin@example.com` to role `admin` in `public.profiles`.
 
 ## Functional Walkthrough
+
 ### Entry and auth routing
+
 - `/` redirects to `/auth/login`
 - Unauthenticated access to protected routes is redirected to `/auth/login` via the session proxy (`proxy.ts` + `lib/supabase/proxy.ts`)
 
 ### Authentication flows
+
 - Sign up:
   - UI: `/auth/sign-up`
   - Uses Supabase browser client `auth.signUp`
@@ -173,6 +191,7 @@ It also promotes `admin@example.com` to role `admin` in `public.profiles`.
   - `/auth/update-password`
 
 ### Student dashboard
+
 Path: `/protected` (for non-admin users)
 
 Capabilities:
@@ -184,6 +203,7 @@ Capabilities:
 - Cancel (implemented as status transition to `cancelled`)
 
 ### Admin view
+
 Paths:
 
 - `/admin` (direct admin page)
@@ -195,9 +215,11 @@ Behavior:
 - No mutation actions rendered in admin UI
 
 ## API Endpoints
+
 All APIs are implemented as Next.js route handlers.
 
 ### `POST /api/auth/login`
+
 Authenticates a user with email/password.
 
 Request body:
@@ -216,6 +238,7 @@ Responses:
 - `401` invalid credentials
 
 ### `GET /api/consultations`
+
 Returns consultations for the authenticated student only.
 
 Authorization:
@@ -230,6 +253,7 @@ Responses:
 - `500` server errors
 
 ### `POST /api/consultations`
+
 Creates a consultation for the authenticated student.
 
 Request body:
@@ -251,6 +275,7 @@ Responses:
 - `500` server errors
 
 ### `PATCH /api/consultations/:id`
+
 Updates consultation status and/or scheduled datetime for the authenticated student.
 
 Request body (at least one field required):
@@ -275,6 +300,7 @@ Responses:
 - `500` server errors
 
 ### `DELETE /api/consultations/:id`
+
 Cancels consultation for authenticated student.
 
 Behavior:
@@ -292,6 +318,7 @@ Responses:
 - `500` server errors
 
 ### `GET /api/admin/consultations`
+
 Returns all consultations for admin users.
 
 Authorization:
@@ -307,7 +334,9 @@ Responses:
 - `500` server errors
 
 ## Authorization and Security Model
+
 ### Current model
+
 Authorization is enforced at route-handler boundaries using:
 
 - `requireAuthContext()` for authentication + role resolution
@@ -319,30 +348,37 @@ Authorization is enforced at route-handler boundaries using:
 This ensures UI-level actions are backed by server checks.
 
 ### Important security note
-The current SQL grants include:
+
+The implementation uses both API boundary authorization and database-level RLS.
+
+Migrations include:
 
 - `grant select, insert, update, delete on table public.consultations to authenticated;`
-
-and there are no RLS policies currently defined in migrations.
+- `supabase/migrations/20260712120500_enable_rls_and_policies.sql` to:
+  - enable RLS on `public.profiles` and `public.consultations`
+  - enforce own-row access for students
+  - allow admin visibility for all consultations
+  - revoke `DELETE` from `authenticated` and enforce cancellation through status updates
 
 Implication:
 
 - API-layer authorization is present and functional
-- Database-layer row restrictions are not currently enforced via RLS
-- In a production hardening pass, RLS should be added to guarantee row-level isolation even outside app route handlers
-
-This tradeoff was accepted for implementation speed in the assessment timebox and should be explicitly called out in review.
+- Database-layer row restrictions are enforced via RLS
+- The design applies defense-in-depth: route checks plus RLS
 
 ## Database Migrations and Schema Summary
+
 The database model is defined through SQL migrations and mirrored by a schema snapshot.
 
 Primary files:
 
 - `supabase/migrations/20260711094235_init_profiles_and_consultations.sql`
 - `supabase/migrations/20260712083000_add_authenticated_grants.sql`
+- `supabase/migrations/20260712120500_enable_rls_and_policies.sql`
 - `supabase/schema.sql` (readable snapshot)
 
 ### Enumerated types
+
 - `public.app_role`
   - `student`
   - `admin`
@@ -352,6 +388,7 @@ Primary files:
   - `cancelled`
 
 ### `public.profiles`
+
 Purpose:
 
 - Application-level profile extension for Supabase auth users
@@ -370,6 +407,7 @@ Triggers/functions:
 - `profiles_set_updated_at` trigger uses `set_updated_at()`
 
 ### `public.consultations`
+
 Purpose:
 
 - Stores student consultation records and lifecycle status
@@ -405,6 +443,7 @@ Triggers:
 - `consultations_set_updated_at` trigger uses `set_updated_at()`
 
 ### Auth-to-profile provisioning
+
 Function and trigger:
 
 - `public.handle_new_user()`
@@ -416,6 +455,7 @@ Behavior:
 - Defaults new users to role `student`
 
 ### Grants migration
+
 `20260712083000_add_authenticated_grants.sql` grants:
 
 - schema usage on `public` to `authenticated`
@@ -423,6 +463,7 @@ Behavior:
 - full CRUD on consultations for `authenticated`
 
 ## Validation Strategy
+
 Validation is implemented with Valibot at API boundaries:
 
 - Login schema:
@@ -443,6 +484,7 @@ Error response shape includes:
 - `fieldErrors` (field-level map)
 
 ## Scripts
+
 From `package.json`:
 
 - `npm run dev` - run Next.js dev server
@@ -458,6 +500,7 @@ From `package.json`:
 - `npm run db:types` - generate Supabase database TS types
 
 ## Manual Verification Checklist
+
 Suggested walkthrough before submission:
 
 1. Start local infra and app
@@ -472,13 +515,16 @@ Suggested walkthrough before submission:
 10. Verify forgot-password and update-password flows
 
 ## Assumptions
+
 - The assessment prioritizes secure backend behavior and consistency over UI polish.
 - Admin responsibilities are read-only for consultations unless explicitly required otherwise.
 - Consultation lifecycle can be represented with a compact status enum and timestamp fields.
 - Input validation is applied at API boundaries; client-side validation is supplemental UX.
 
 ## Design Choices and Justifications
+
 ### Why route handlers over server actions
+
 The implementation intentionally uses explicit API route handlers for business operations because:
 
 - they provide clear server boundaries for auth and authorization
@@ -486,15 +532,19 @@ The implementation intentionally uses explicit API route handlers for business o
 - they keep request/response contracts explicit and testable
 
 ### Why keep RBAC logic close to endpoints
+
 Role and ownership checks are colocated with endpoint behavior to make security expectations obvious and auditable.
 
 ### Why use profile table
+
 Supabase `auth.users` is extended with a `profiles` table for app role management (`student`/`admin`) without overloading auth metadata parsing in every route.
 
 ### Why keep admin view read-only
+
 Read-only admin scope satisfies required deliverables while reducing accidental complexity and risk.
 
 ## Scalability and Maintainability Notes
+
 Current implementation is intentionally straightforward. It can scale further by adding:
 
 - RLS policies for DB-native row enforcement
@@ -504,6 +554,7 @@ Current implementation is intentionally straightforward. It can scale further by
 - richer admin tooling (search, filtering, moderation actions)
 
 ## Known Gaps / Next Improvements
+
 If more time were available, the first improvements would be:
 
 1. Add robust RLS policies for `profiles` and `consultations`
@@ -512,6 +563,7 @@ If more time were available, the first improvements would be:
 4. Add API-level pagination/search for admin list
 
 ## Repository Structure (Relevant Excerpts)
+
 - `app/`
   - `api/` route handlers
   - `auth/` auth pages + confirm route
@@ -531,16 +583,20 @@ If more time were available, the first improvements would be:
   - seed data
 
 ## Troubleshooting
+
 ### App redirects unexpectedly to login
+
 - Ensure `.env.local` contains valid Supabase URL and publishable key
 - Ensure local Supabase stack is running
 - Confirm auth cookies are being set
 
 ### Email confirmation/reset not working locally
+
 - Check redirect URLs in `supabase/config.toml` and Supabase auth settings
 - Use local SMTP UI if running local Supabase
 
 ### Database state feels inconsistent
+
 - Reset local DB:
 
 ```bash
@@ -550,6 +606,7 @@ npm run infra:up
 This reapplies migrations and seed data.
 
 ## Conclusion
+
 This mini-LMS implementation is intentionally scoped to satisfy the assessment’s required deliverables with a clean full-stack baseline:
 
 - clear API boundaries
