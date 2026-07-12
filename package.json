@@ -9,7 +9,9 @@
     "format:check": "prettier --check .",
     "infra:up": "supabase start && supabase db reset --local",
     "infra:down": "supabase stop --all --no-backup",
-    "infra:reset": "npm run infra:down && npm run infra:up"
+    "infra:reset": "npm run infra:down && npm run infra:up",
+    "db:types": "supabase start -x vector && supabase gen types typescript --local > lib/supabase/database.types.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.1",
@@ -25,7 +27,8 @@
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.3.0"
+    "tailwind-merge": "^3.3.0",
+    "valibot": "^1.4.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
