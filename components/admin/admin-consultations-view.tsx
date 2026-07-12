@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ConsultationSummaryCard } from '@/components/consultations/consultation-summary-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { ConsultationRecord } from '@/lib/types/consultation';
+import type { ConsultationRecord } from '@/lib/validation/types';
 
 export const AdminConsultationsView = () => {
   const [consultations, setConsultations] = useState<ConsultationRecord[]>([]);

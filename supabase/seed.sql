@@ -1,14 +1,14 @@
 -- Local development seed data only.
 -- Test credentials:
--- - student@example.com / password123
--- - admin@example.com / password123
+-- - student@lms.com / password123
+-- - admin@lms.com / password123
 
 do $$
 begin
   if not exists (
     select 1
     from auth.users
-    where email = 'student@example.com'
+    where email = 'student@lms.com'
   ) then
     insert into auth.users (
       instance_id,
@@ -29,7 +29,7 @@ begin
       gen_random_uuid(),
       'authenticated',
       'authenticated',
-      'student@example.com',
+      'student@lms.com',
       crypt('password123', gen_salt('bf')),
       '',
       now(),
@@ -43,7 +43,7 @@ begin
   if not exists (
     select 1
     from auth.users
-    where email = 'admin@example.com'
+    where email = 'admin@lms.com'
   ) then
     insert into auth.users (
       instance_id,
@@ -64,7 +64,7 @@ begin
       gen_random_uuid(),
       'authenticated',
       'authenticated',
-      'admin@example.com',
+      'admin@lms.com',
       crypt('password123', gen_salt('bf')),
       '',
       now(),
@@ -89,7 +89,7 @@ where
     or email_change is null
     or email_change_token_new is null
   )
-  and email in ('student@example.com', 'admin@example.com');
+  and email in ('student@lms.com', 'admin@lms.com');
 
 insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)
 select
@@ -100,7 +100,7 @@ select
   now(),
   now()
 from auth.users as users
-where users.email in ('student@example.com', 'admin@example.com')
+where users.email in ('student@lms.com', 'admin@lms.com')
 on conflict (provider, provider_id) do nothing;
 
 update public.profiles
@@ -108,7 +108,7 @@ set role = 'admin'
 where id = (
   select id
   from auth.users
-  where email = 'admin@example.com'
+  where email = 'admin@lms.com'
 );
 
 insert into public.consultations (
@@ -150,7 +150,7 @@ from (
 cross join (
   select id
   from auth.users
-  where email = 'student@example.com'
+  where email = 'student@lms.com'
 ) as student
 where not exists (
   select 1

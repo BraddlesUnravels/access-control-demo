@@ -1,14 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ConsultationRecord } from '@/lib/types/consultation';
-
-export type CreateConsultationForm = {
-  firstName: string;
-  lastName: string;
-  reason: string;
-  scheduledFor: string;
-};
+import type { ConsultationRecord, CreateConsultationForm } from '@/lib/validation/types';
 
 const toDatetimeLocalValue = (isoString: string) => {
   const date = new Date(isoString);

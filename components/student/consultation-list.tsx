@@ -1,6 +1,6 @@
 'use client';
 
-import type { ConsultationRecord } from '@/lib/types/consultation';
+import type { ConsultationRecord } from '@/lib/validation/types';
 import { ConsultationItem } from './consultation-item';
 
 type ConsultationListProps = {

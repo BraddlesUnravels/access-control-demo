@@ -11,7 +11,7 @@ import { useState } from 'react';
 
 export function ForgotPasswordForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [email, setEmail] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -19,10 +19,9 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     e.preventDefault();
     const supabase = browserClient();
     setIsLoading(true);
-    setError(null);
+    setError(undefined);
 
     try {
-      // The url which will be included in the email. This URL needs to be configured in your redirect URLs in the Supabase dashboard at https://supabase.com/dashboard/project/_/auth/url-configuration
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/update-password`,
       });
@@ -31,8 +30,15 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
+      formReset();
       setIsLoading(false);
     }
+  };
+
+  const formReset = () => {
+    setEmail('');
+    setError(undefined);
+    setSuccess(false);
   };
 
   return (
@@ -53,7 +59,7 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Reset Your Password</CardTitle>
+            <CardTitle className="text-2xl">Reset Your LMS Password</CardTitle>
             <CardDescription>
               Type in your email and we&apos;ll send you a link to reset your password
             </CardDescription>
@@ -66,7 +72,7 @@ export function ForgotPasswordForm({ className, ...props }: React.ComponentProps
                   <Input
                     id="email"
                     type="email"
-                    placeholder="m@example.com"
+                    placeholder="example@lms.com"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

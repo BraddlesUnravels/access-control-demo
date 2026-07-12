@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ConsultationSummaryCard } from '@/components/consultations/consultation-summary-card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { ConsultationRecord } from '@/lib/types/consultation';
+import type { ConsultationRecord } from '@/lib/validation/types';
 
 type ConsultationItemProps = {
   actionInProgress: boolean;

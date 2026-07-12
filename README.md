@@ -113,12 +113,18 @@ Notes:
 npm install
 ```
 
-### 2) Start local Supabase and reset database
+### 2) Start local Supabase
 
-This applies migrations and seed data:
+Start the local Supabase stack:
 
 ```bash
 npm run infra:up
+```
+
+### 3) Reset database (applies migrations and seed data)
+
+```bash
+npm run infra:reset
 ```
 
 Script details:
@@ -126,11 +132,11 @@ Script details:
 - `supabase start -x vector`
 - `supabase db reset`
 
-### 3) Configure `.env.local`
+### 4) Configure `.env.local`
 
 Populate values from local Supabase output (`supabase status`) or your hosted project.
 
-### 4) Run the app
+### 5) Run the app
 
 ```bash
 npm run dev
@@ -138,7 +144,7 @@ npm run dev
 
 The app runs at `http://localhost:3000`.
 
-### 5) Optional quality checks
+### 6) Optional quality checks
 
 ```bash
 npm run typecheck
@@ -488,16 +494,17 @@ Error response shape includes:
 From `package.json`:
 
 - `npm run dev` - run Next.js dev server
-- `npm run dev:webpack` - run dev server with webpack mode
 - `npm run build` - production build
 - `npm run start` - serve production build
 - `npm run lint` - ESLint
 - `npm run typecheck` - TypeScript no emit
 - `npm run format` - Prettier write
 - `npm run format:check` - Prettier check
-- `npm run infra:up` - start Supabase local stack and reset DB
+- `npm run infra:up` - start Supabase local stack
+- `npm run infra:reset` - reset local DB and reapply migrations/seed
 - `npm run infra:down` - stop Supabase local stack
 - `npm run db:types` - generate Supabase database TS types
+- `npm run test:rls` - run SQL checks for RLS behavior in local Supabase
 
 ## Manual Verification Checklist
 
@@ -576,8 +583,6 @@ Result:
 ## Scalability and Maintainability Notes
 
 Current implementation is intentionally straightforward. It can scale further by adding:
-
-- RLS policies for DB-native row enforcement
 - pagination and filtering on consultation lists
 - stronger API test coverage and end-to-end tests
 - audit logs for status transitions
@@ -586,11 +591,10 @@ Current implementation is intentionally straightforward. It can scale further by
 ## Known Gaps / Next Improvements
 
 If more time were available, the first improvements would be:
-
-1. Add robust RLS policies for `profiles` and `consultations`
-2. Add automated tests (unit + route integration + e2e)
-3. Add optimistic UI and better loading/error recovery states
-4. Add API-level pagination/search for admin list
+1. Expand automated tests (unit + route integration + e2e)
+2. Add optimistic UI and better loading/error recovery states
+3. Add API-level pagination/search for admin list
+4. Add lightweight audit trails for consultation status transitions
 
 ## Repository Structure (Relevant Excerpts)
 
@@ -626,13 +630,17 @@ If more time were available, the first improvements would be:
 - Use local SMTP UI if running local Supabase
 
 ### Database state feels inconsistent
-
-- Reset local DB:
+- If the local stack is not running, start it:
 
 ```bash
 npm run infra:up
 ```
 
+- Then reset local DB:
+
+```bash
+npm run infra:reset
+```
 This reapplies migrations and seed data.
 
 ## Conclusion

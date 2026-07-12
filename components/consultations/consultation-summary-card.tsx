@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
-import type { ConsultationRecord } from '@/lib/types/consultation';
 import { cn } from '@/lib/utils';
+import type { ConsultationRecord } from '@/lib/validation/types';
 
 type ConsultationSummaryCardProps = {
   actions?: ReactNode;

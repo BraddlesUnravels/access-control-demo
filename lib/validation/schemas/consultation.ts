@@ -29,7 +29,3 @@ export const consultationUpdateInputSchema = v.pipe(
     'At least one field is required: scheduledFor or status',
   ),
 );
-
-export type ConsultationStatus = v.InferOutput<typeof consultationStatusSchema>;
-export type ConsultationCreateInput = v.InferOutput<typeof consultationCreateInputSchema>;
-export type ConsultationUpdateInput = v.InferOutput<typeof consultationUpdateInputSchema>;

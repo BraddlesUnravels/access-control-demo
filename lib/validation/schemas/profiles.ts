@@ -23,8 +23,3 @@ export const profileCreateInputSchema = v.object({
 export const profileUpdateInputSchema = v.object({
   role: v.optional(profileRoleSchema),
 });
-
-export type ProfileRole = v.InferOutput<typeof profileRoleSchema>;
-export type Profile = v.InferOutput<typeof profileSchema>;
-export type ProfileCreateInput = v.InferOutput<typeof profileCreateInputSchema>;
-export type ProfileUpdateInput = v.InferOutput<typeof profileUpdateInputSchema>;

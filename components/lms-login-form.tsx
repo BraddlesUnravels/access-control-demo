@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { browserClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,45 +17,40 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.SubmitEvent) => {
     e.preventDefault();
+    const supabase = browserClient();
     setIsLoading(true);
     setError(undefined);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      const responseContentType = response.headers.get('content-type') ?? '';
-      const isJsonResponse = responseContentType.includes('application/json');
-      const payload = isJsonResponse ? await response.json() : undefined;
-
-      if (!response.ok) {
-        if (payload && typeof payload === 'object' && 'error' in payload) {
-          throw new Error(String(payload.error));
-        }
-
-        throw new Error('Failed to login');
-      }
-
+      if (loginError) throw loginError;
       router.replace('/protected');
       router.refresh();
     } catch (loginError) {
-      const message = loginError instanceof Error ? loginError.message : 'Failed to login';
-      setError(message);
+      setError(loginError instanceof Error ? loginError.message : 'Failed to login');
     } finally {
+      formReset();
       setIsLoading(false);
     }
+  };
+
+  const formReset = () => {
+    setEmail('');
+    setPassword('');
+    setError(undefined);
   };
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>Enter your email below to login to your account</CardDescription>
+          <CardTitle className="text-2xl">LMS Login</CardTitle>
+          <CardDescription>Enter your LMS email below to login to your account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>
@@ -64,22 +60,14 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="example@lms.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <Link
-                    href="/auth/forgot-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-                  >
-                    Forgot your password?
-                  </Link>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -87,6 +75,12 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <Link
+                  href="/auth/forgot-password"
+                  className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                >
+                  Forgot your password?
+                </Link>
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
@@ -95,7 +89,10 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
             </div>
             <div className="mt-4 text-center text-sm">
               Don&apos;t have an account?{' '}
-              <Link href="/auth/sign-up" className="underline underline-offset-4">
+              <Link
+                href="/auth/sign-up"
+                className="ml-auto inline-block text-sm underline underline-offset-4"
+              >
                 Sign up
               </Link>
             </div>

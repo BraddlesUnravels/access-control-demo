@@ -11,33 +11,47 @@ import { useState } from 'react';
 
 export function UpdatePasswordForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [repeatPassword, setRepeatPassword] = useState('');
+  const [error, setError] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.SubmitEvent) => {
     e.preventDefault();
     const supabase = browserClient();
     setIsLoading(true);
-    setError(null);
+    setError(undefined);
+
+    if (password !== repeatPassword) {
+      setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
+
       router.push('/protected');
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
+      formReset();
       setIsLoading(false);
     }
+  };
+
+  const formReset = () => {
+    setPassword('');
+    setRepeatPassword('');
+    setError(undefined);
   };
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Reset Your Password</CardTitle>
+          <CardTitle className="text-2xl">Reset Your LMS Password</CardTitle>
           <CardDescription>Please enter your new password below.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -52,6 +66,15 @@ export function UpdatePasswordForm({ className, ...props }: React.ComponentProps
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                />
+                <Label htmlFor="repeatPassword">Repeat new password</Label>
+                <Input
+                  id="repeatPassword"
+                  type="password"
+                  placeholder="Repeat new password"
+                  required
+                  value={repeatPassword}
+                  onChange={(e) => setRepeatPassword(e.target.value)}
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}

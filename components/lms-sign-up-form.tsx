@@ -14,7 +14,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [repeatPassword, setRepeatPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
@@ -22,7 +22,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     e.preventDefault();
     const supabase = browserClient();
     setIsLoading(true);
-    setError(null);
+    setError(undefined);
 
     if (password !== repeatPassword) {
       setError('Passwords do not match');
@@ -43,16 +43,24 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
+      formReset();
       setIsLoading(false);
     }
+  };
+
+  const formReset = () => {
+    setEmail('');
+    setPassword('');
+    setRepeatPassword('');
+    setError(undefined);
   };
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+          <CardTitle className="text-2xl">LMS Sign up</CardTitle>
+          <CardDescription>Create a new LMS account</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
@@ -62,7 +70,7 @@ export function SignUpForm({ className, ...props }: React.ComponentPropsWithoutR
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="example@lms.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
