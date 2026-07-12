@@ -6,7 +6,8 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     <main className="min-h-screen flex flex-col items-center">
       <div className="flex-1 w-full flex flex-col gap-20 items-center">
         <nav className="sticky top-0 z-50 w-full flex justify-center border-b border-b-foreground/10 h-16 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="w-full max-w-5xl flex justify-end items-center p-3 px-5 text-sm">
+          <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
+            <div>Learning Management System (LMS)</div>
             <Suspense>
               <AuthButton />
             </Suspense>
