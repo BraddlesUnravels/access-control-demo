@@ -1,12 +1,15 @@
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { type NextResponse } from 'next/server';
 
 /**
  * Especially important if using Fluid compute: Don't put this client in a
  * global variable. Always create a new client within each function when using
  * it.
  */
-export async function serverClient() {
+type ResponseCookie = { name: string; value: string; options: CookieOptions };
+
+export const serverReadClient = async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -17,18 +20,35 @@ export async function serverClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have proxy refreshing
-            // user sessions.
-          }
+      },
+    },
+  );
+};
+
+export const serverResponseClient = async () => {
+  const cookieStore = await cookies();
+  const cookiesToSet: ResponseCookie[] = [];
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(nextCookiesToSet) {
+          nextCookiesToSet.forEach(({ name, value, options }) => {
+            cookiesToSet.push({ name, value, options });
+          });
         },
       },
     },
   );
-}
+  const applyServerCookies = (response: NextResponse) => {
+    cookiesToSet.forEach(({ name, value, options }) => {
+      response.cookies.set(name, value, options);
+    });
+  };
+
+  return { supabase, applyServerCookies };
+};

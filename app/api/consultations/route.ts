@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
 import { requireAuthContext } from '@/lib/server/auth';
-import { serverClient } from '@/lib/supabase/server';
+import { serverReadClient } from '@/lib/supabase/server';
 import { consultationCreateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { withApiHandler } from '@/lib/with-api-handler';
@@ -12,20 +12,19 @@ import { withApiHandler } from '@/lib/with-api-handler';
  */
 export const GET = withApiHandler(async () => {
   const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
-  const supabase = await serverClient();
+  const supabase = await serverReadClient();
   const { data, error } = await supabase
     .from('consultations')
     .select('*')
     .eq('student_user_id', userId)
     .order('scheduled_for', { ascending: true });
 
-  if (error) {
+  if (error)
     throw new AppError('Failed to load consultations', {
       status: 500,
       safeMessage: 'Failed to load consultations',
       meta: { userId },
     });
-  }
 
   return NextResponse.json({ data }, { status: 200 });
 });
@@ -48,7 +47,7 @@ export const POST = withApiHandler(async (request: Request) => {
   }
   const validation = validateWithSchema(consultationCreateInputSchema, payload);
 
-  if (!validation.success) {
+  if (!validation.success)
     return NextResponse.json(
       {
         error: validation.errors[0] ?? 'Consultation input is invalid',
@@ -57,10 +56,9 @@ export const POST = withApiHandler(async (request: Request) => {
       },
       { status: 400 },
     );
-  }
 
   const { firstName, lastName, reason, scheduledFor } = validation.data;
-  const supabase = await serverClient();
+  const supabase = await serverReadClient();
   const { data, error } = await supabase
     .from('consultations')
     .insert({
@@ -73,13 +71,12 @@ export const POST = withApiHandler(async (request: Request) => {
     .select('*')
     .single();
 
-  if (error) {
+  if (error)
     throw new AppError('Failed to create consultation', {
       status: 500,
       safeMessage: 'Failed to create consultation',
       meta: { userId },
     });
-  }
 
   return NextResponse.json({ data }, { status: 201 });
 });

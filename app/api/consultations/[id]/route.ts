@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
 import { requireAuthContext } from '@/lib/server/auth';
-import { serverClient } from '@/lib/supabase/server';
+import { serverReadClient } from '@/lib/supabase/server';
 import { consultationUpdateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { withApiHandler } from '@/lib/with-api-handler';
@@ -29,7 +29,7 @@ export const PATCH = withApiHandler(
     }
     const validation = validateWithSchema(consultationUpdateInputSchema, payload);
 
-    if (!validation.success) {
+    if (!validation.success)
       return NextResponse.json(
         {
           error: validation.errors[0] ?? 'Consultation input is invalid',
@@ -38,9 +38,8 @@ export const PATCH = withApiHandler(
         },
         { status: 400 },
       );
-    }
 
-    const supabase = await serverClient();
+    const supabase = await serverReadClient();
     const { data: existingConsultation, error: existingError } = await supabase
       .from('consultations')
       .select('*')
@@ -48,27 +47,24 @@ export const PATCH = withApiHandler(
       .eq('student_user_id', userId)
       .maybeSingle();
 
-    if (existingError) {
+    if (existingError)
       throw new AppError('Failed to read consultation', {
         status: 500,
         safeMessage: 'Failed to read consultation',
         meta: { id, userId },
       });
-    }
 
-    if (!existingConsultation) {
+    if (!existingConsultation)
       throw new AppError('Consultation was not found', {
         status: 404,
         safeMessage: 'Consultation was not found',
       });
-    }
 
-    if (existingConsultation.status === 'cancelled') {
+    if (existingConsultation.status === 'cancelled')
       throw new AppError('Cancelled consultations cannot be updated', {
         status: 400,
         safeMessage: 'Cancelled consultations cannot be updated',
       });
-    }
 
     const patch: ConsultationUpdatePatch = {};
     const { scheduledFor, status } = validation.data;
@@ -87,13 +83,12 @@ export const PATCH = withApiHandler(
       .select('*')
       .single();
 
-    if (error) {
+    if (error)
       throw new AppError('Failed to update consultation', {
         status: 500,
         safeMessage: 'Failed to update consultation',
         meta: { id, userId },
       });
-    }
 
     return NextResponse.json({ data }, { status: 200 });
   },
@@ -103,7 +98,7 @@ export const DELETE = withApiHandler(
   async (_request: Request, context: { params: Promise<{ id: string }> }) => {
     const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
     const { id } = await context.params;
-    const supabase = await serverClient();
+    const supabase = await serverReadClient();
     const { data: existingConsultation, error: existingError } = await supabase
       .from('consultations')
       .select('*')
@@ -111,24 +106,21 @@ export const DELETE = withApiHandler(
       .eq('student_user_id', userId)
       .maybeSingle();
 
-    if (existingError) {
+    if (existingError)
       throw new AppError('Failed to read consultation', {
         status: 500,
         safeMessage: 'Failed to read consultation',
         meta: { id, userId },
       });
-    }
 
-    if (!existingConsultation) {
+    if (!existingConsultation)
       throw new AppError('Consultation was not found', {
         status: 404,
         safeMessage: 'Consultation was not found',
       });
-    }
 
-    if (existingConsultation.status === 'cancelled') {
+    if (existingConsultation.status === 'cancelled')
       return NextResponse.json({ data: existingConsultation }, { status: 200 });
-    }
 
     const { data, error } = await supabase
       .from('consultations')
@@ -141,13 +133,12 @@ export const DELETE = withApiHandler(
       .select('*')
       .single();
 
-    if (error) {
+    if (error)
       throw new AppError('Failed to cancel consultation', {
         status: 500,
         safeMessage: 'Failed to cancel consultation',
         meta: { id, userId },
       });
-    }
 
     return NextResponse.json({ data }, { status: 200 });
   },

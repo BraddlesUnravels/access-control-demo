@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
 import { requireAuthContext } from '@/lib/server/auth';
-import { serverClient } from '@/lib/supabase/server';
+import { serverReadClient } from '@/lib/supabase/server';
 import { withApiHandler } from '@/lib/with-api-handler';
 
 export const GET = withApiHandler(async () => {
@@ -11,7 +11,7 @@ export const GET = withApiHandler(async () => {
     throw new AppError('Forbidden', { status: 403, safeMessage: 'Forbidden' });
   }
 
-  const supabase = await serverClient();
+  const supabase = await serverReadClient();
   const { data, error } = await supabase
     .from('consultations')
     .select('*')

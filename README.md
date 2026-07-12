@@ -530,6 +530,15 @@ The implementation intentionally uses explicit API route handlers for business o
 - they provide clear server boundaries for auth and authorization
 - they align with the assessment preference to favor APIs
 - they keep request/response contracts explicit and testable
+### Why API errors are handled at boundaries
+
+Route handlers use a shared API boundary wrapper (`withApiHandler`) for centralized error-to-response mapping.
+
+This keeps domain flow clean:
+
+- expected failures are expressed as thrown `AppError` values
+- route logic stays focused on validation, authorization, and persistence
+- logging and unexpected-error handling remain consistent at one boundary
 
 ### Why keep RBAC logic close to endpoints
 
@@ -542,6 +551,27 @@ Supabase `auth.users` is extended with a `profiles` table for app role managemen
 ### Why keep admin view read-only
 
 Read-only admin scope satisfies required deliverables while reducing accidental complexity and risk.
+
+### Why server Supabase clients were split by responsibility
+
+The server Supabase helper now uses two explicit variants:
+
+- `serverReadClient()` for read-only server contexts (server components and auth context reads)
+- `serverResponseClient()` for response-writing auth flows that must attach refreshed auth cookies to the outgoing `NextResponse`
+
+This was done to avoid broad swallow-catches around cookie writes and to make cookie-write intent explicit at call sites.
+
+## Recent Implementation Updates
+
+- Standardized API error handling in `POST /api/auth/login` to follow the same `withApiHandler` + `AppError` pattern used by consultations endpoints.
+- Replaced ad-hoc per-route Supabase cookie buffering in auth routes with shared `serverResponseClient()` + `applyServerCookies(response)`.
+- Introduced `serverReadClient()` and migrated read-oriented callers (`requireAuthContext`, consultation/admin API reads, and server auth button checks) to use it.
+
+Result:
+
+- cleaner separation of concerns between read contexts and response-cookie contexts
+- less duplicated cookie plumbing in auth routes
+- more consistent, auditable error behavior across API handlers
 
 ## Scalability and Maintainability Notes
 

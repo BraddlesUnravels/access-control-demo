@@ -1,7 +1,6 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { type EmailOtpType } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
+import { serverResponseClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,24 +9,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type') as EmailOtpType | null;
   const nextParam = searchParams.get('next');
   const next = nextParam?.startsWith('/') ? nextParam : '/protected';
-  const cookieStore = await cookies();
-  const cookiesToSet: { name: string; value: string; options: CookieOptions }[] = [];
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(nextCookiesToSet) {
-          nextCookiesToSet.forEach(({ name, value, options }) => {
-            cookiesToSet.push({ name, value, options });
-          });
-        },
-      },
-    },
-  );
+  const { supabase, applyServerCookies } = await serverResponseClient();
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -35,10 +17,7 @@ export async function GET(request: NextRequest) {
     if (error) return NextResponse.redirect(new URL('/auth/login', request.url));
 
     const response = NextResponse.redirect(new URL(next, request.url));
-
-    cookiesToSet.forEach(({ name, value, options }) => {
-      response.cookies.set(name, value, options);
-    });
+    applyServerCookies(response);
 
     return response;
   }
@@ -49,10 +28,7 @@ export async function GET(request: NextRequest) {
     if (error) return NextResponse.redirect(new URL('/auth/login', request.url));
 
     const response = NextResponse.redirect(new URL(next, request.url));
-
-    cookiesToSet.forEach(({ name, value, options }) => {
-      response.cookies.set(name, value, options);
-    });
+    applyServerCookies(response);
 
     return response;
   }

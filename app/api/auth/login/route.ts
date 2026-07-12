@@ -1,39 +1,26 @@
 import { NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { AppError } from '@/lib/errors';
+import { serverResponseClient } from '@/lib/supabase/server';
 import { loginInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
+import { withApiHandler } from '@/lib/with-api-handler';
 
-export const POST = async (request: Request) => {
-  const cookieStore = await cookies();
-  const cookiesToSet: { name: string; value: string; options: CookieOptions }[] = [];
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(nextCookiesToSet) {
-          nextCookiesToSet.forEach(({ name, value, options }) => {
-            cookiesToSet.push({ name, value, options });
-          });
-        },
-      },
-    },
-  );
+export const POST = withApiHandler(async (request: Request) => {
+  const { supabase, applyServerCookies } = await serverResponseClient();
   let payload: unknown;
 
   try {
     payload = await request.json();
   } catch {
-    return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+    throw new AppError('Request body must be valid JSON', {
+      status: 400,
+      safeMessage: 'Request body must be valid JSON',
+    });
   }
 
   const validation = validateWithSchema(loginInputSchema, payload);
 
-  if (!validation.success) {
+  if (!validation.success)
     return NextResponse.json(
       {
         error: validation.errors[0] ?? 'Login input is invalid',
@@ -42,18 +29,17 @@ export const POST = async (request: Request) => {
       },
       { status: 400 },
     );
-  }
 
   const { email, password } = validation.data;
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
-  }
-  const response = NextResponse.json({ data: { authenticated: true } }, { status: 200 });
+  if (error)
+    throw new AppError('Invalid email or password', {
+      status: 401,
+      safeMessage: 'Invalid email or password',
+    });
 
-  cookiesToSet.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, options);
-  });
+  const response = NextResponse.json({ data: { authenticated: true } }, { status: 200 });
+  applyServerCookies(response);
 
   return response;
-};
+});
