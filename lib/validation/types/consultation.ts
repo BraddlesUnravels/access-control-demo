@@ -6,8 +6,12 @@ import {
 } from '../schemas/consultation';
 
 export type ConsultationStatus = v.InferOutput<typeof consultationStatusSchema>;
-export type ConsultationCreateInput = v.InferOutput<typeof consultationCreateInputSchema>;
-export type ConsultationUpdateInput = v.InferOutput<typeof consultationUpdateInputSchema>;
+export type ConsultationCreateInput = v.InferOutput<
+  typeof consultationCreateInputSchema
+>;
+export type ConsultationUpdateInput = v.InferOutput<
+  typeof consultationUpdateInputSchema
+>;
 export type ConsultationRecord = {
   id: string;
   student_user_id: string;

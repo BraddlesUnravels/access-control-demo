@@ -9,8 +9,9 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: 'LMS Assessment',
-  description: 'A simple LMS assessment app built with Next.js, Supabase, and Tailwind CSS.',
+  title: 'Access Control Demo',
+  description:
+    'A small LMS demonstrating authentication, role-based access control, resource ownership, and PostgreSQL row-level security.',
 };
 
 const geistSans = Geist({

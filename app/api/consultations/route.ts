@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
-import { requireAuthContext } from '@/lib/server/auth';
-import { serverReadClient } from '@/lib/supabase/server';
+import { requireAuthContext, assertRole } from '@/lib/server/auth';
+import { serverRequestClient } from '@/lib/supabase/server';
 import { consultationCreateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { withApiHandler } from '@/lib/with-api-handler';
@@ -11,8 +11,13 @@ import { withApiHandler } from '@/lib/with-api-handler';
  * Retrieves all consultations for the authenticated user.
  */
 export const GET = withApiHandler(async () => {
-  const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
-  const supabase = await serverReadClient();
+  const { role, userId } = await requireAuthContext({
+    redirectOnUnauthenticated: false,
+  });
+
+  assertRole(role, 'student');
+
+  const supabase = await serverRequestClient();
   const { data, error } = await supabase
     .from('consultations')
     .select('*')
@@ -34,7 +39,12 @@ export const GET = withApiHandler(async () => {
  * Creates a new consultation for the authenticated user.
  */
 export const POST = withApiHandler(async (request: Request) => {
-  const { userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
+  const { role, userId } = await requireAuthContext({
+    redirectOnUnauthenticated: false,
+  });
+
+  assertRole(role, 'student');
+
   let payload: unknown;
 
   try {
@@ -58,7 +68,7 @@ export const POST = withApiHandler(async (request: Request) => {
     );
 
   const { firstName, lastName, reason, scheduledFor } = validation.data;
-  const supabase = await serverReadClient();
+  const supabase = await serverRequestClient();
   const { data, error } = await supabase
     .from('consultations')
     .insert({

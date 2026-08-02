@@ -31,14 +31,18 @@ export const ConsultationSummaryCard = ({
         </p>
         <p className="text-sm text-muted-foreground">{consultation.reason}</p>
         {showStudentUserId ? (
-          <p className="text-sm">Student user id: {consultation.student_user_id}</p>
+          <p className="text-sm">
+            Student user id: {consultation.student_user_id}
+          </p>
         ) : null}
         <p className="text-sm">
           Scheduled for {new Date(consultation.scheduled_for).toLocaleString()}
         </p>
         <div className="text-sm capitalize">
           Status:{' '}
-          <Badge variant={statusVariantByConsultationStatus[consultation.status]}>
+          <Badge
+            variant={statusVariantByConsultationStatus[consultation.status]}
+          >
             {consultation.status}
           </Badge>
         </div>

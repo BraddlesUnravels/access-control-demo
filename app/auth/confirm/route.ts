@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (error) return NextResponse.redirect(new URL('/auth/login', request.url));
+    if (error)
+      return NextResponse.redirect(new URL('/auth/login', request.url));
 
     const response = NextResponse.redirect(new URL(next, request.url));
     applyServerCookies(response);
@@ -25,7 +26,8 @@ export async function GET(request: NextRequest) {
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
 
-    if (error) return NextResponse.redirect(new URL('/auth/login', request.url));
+    if (error)
+      return NextResponse.redirect(new URL('/auth/login', request.url));
 
     const response = NextResponse.redirect(new URL(next, request.url));
     applyServerCookies(response);

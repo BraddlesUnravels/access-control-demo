@@ -3,14 +3,23 @@
 import { cn } from '@/lib/utils';
 import { browserClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<'div'>) {
+export function LoginForm({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<'div'>) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
@@ -34,7 +43,9 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
       router.replace('/protected');
       router.refresh();
     } catch (loginError) {
-      setError(loginError instanceof Error ? loginError.message : 'Failed to login');
+      setError(
+        loginError instanceof Error ? loginError.message : 'Failed to login',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +56,9 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">LMS Login</CardTitle>
-          <CardDescription>Enter your LMS email below to login to your account</CardDescription>
+          <CardDescription>
+            Enter your LMS email below to login to your account
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>

@@ -1,4 +1,6 @@
 {
+  "version": "1.0.0",
+  "description": "A small LMS demonstrating authentication, RBAC, resource ownership, and PostgreSQL row-level security.",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -13,7 +15,7 @@
     "infra:down": "supabase stop --all --no-backup",
     "infra:reset": "supabase db reset",
     "infra:env": "node scripts/generate-local-env.mjs",
-    "assessor:start": "npm install && npm run infra:up && npm run infra:reset && npm run infra:env && npm run dev",
+    "demo:start": "npm install && npm run infra:up && npm run infra:reset && npm run infra:env && npm run dev",
     "test:rls": "node scripts/run-rls-tests.mjs",
     "db:types": "supabase start -x vector && supabase gen types typescript --local > lib/supabase/database.types.ts",
     "typecheck": "tsc --noEmit"

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
-import { serverReadClient } from '@/lib/supabase/server';
-import type { ConsultationRecord, ConsultationUpdateInput } from '@/lib/validation/types';
+import { serverRequestClient } from '@/lib/supabase/server';
+import type {
+  ConsultationRecord,
+  ConsultationUpdateInput,
+} from '@/lib/validation/types';
 
 type ConsultationUpdatePatch = {
   scheduled_for?: string;
@@ -36,7 +39,7 @@ export const createValidationErrorResponse = (
 };
 
 export const getOwnedConsultationOrThrow = async (
-  supabase: Awaited<ReturnType<typeof serverReadClient>>,
+  supabase: Awaited<ReturnType<typeof serverRequestClient>>,
   id: string,
   userId: string,
 ): Promise<ConsultationRecord> => {
@@ -63,7 +66,9 @@ export const getOwnedConsultationOrThrow = async (
   return existingConsultation;
 };
 
-export const assertConsultationCanBeUpdated = (consultation: ConsultationRecord) => {
+export const assertConsultationCanBeUpdated = (
+  consultation: ConsultationRecord,
+) => {
   if (consultation.status === 'cancelled')
     throw new AppError('Cancelled consultations cannot be updated', {
       status: 400,

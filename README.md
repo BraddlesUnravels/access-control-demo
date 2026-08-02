@@ -1,226 +1,577 @@
-# Mini-LMS Technical Assessment
+# Access Control Demo
 
-Small full-stack LMS assessment built with Next.js App Router, TypeScript, Supabase, and PostgreSQL.
-The focus is practical: deliver all required flows, keep security explicit, and keep implementation simple enough to easily explain.
+A small full-stack learning management system demonstrating authentication, role-based access control, resource ownership, and PostgreSQL row-level security.
+
+The application is built with Next.js, TypeScript, Supabase, and PostgreSQL. The LMS domain is intentionally small so the authentication and authorization boundaries remain explicit and easy to review.
+
+## What this project demonstrates
+
+- Email and password authentication
+- Email confirmation and password recovery
+- Protected application routes
+- Role-based access control for students and administrators
+- Resource ownership checks for student consultations
+- Server-side authorization in Next.js route handlers
+- PostgreSQL row-level security
+- Read-only administrator access
+- Local authentication email testing with MailPit
+- Automated validation of database access policies
+
+## Authorization model
+
+The application has two roles:
+
+| Role          | Access                                                                             |
+| ------------- | ---------------------------------------------------------------------------------- |
+| Student       | View, create, reschedule, complete, and cancel their own consultations             |
+| Administrator | View consultations belonging to all students through a read-only dashboard and API |
+|               |
+
+Authorization is enforced at both the application and database layers.
+
+The user interface reflects the permissions available to each role, but it is not treated as a security boundary. Next.js route handlers and PostgreSQL row-level security independently enforce the access rules.
+
 ## Prerequisites
-- Node.js (LTS)
+
+- Node.js LTS
 - npm
 - Supabase CLI
-- Docker (for local Supabase)
+- Docker
 
-## 1) Assessor quick path (5-10 minutes)
+## Quick start
 
-### Run
+Start the complete local environment with:
 
 ```bash
-npm run assessor:start
+npm run demo:start
 ```
 
-This boots local Supabase, applies migrations/seed data, creates `.env.local`, and starts the app.
+This command:
 
-## IMPORTANT for assessors: email-based auth testing happens in MailPit
+1. Installs dependencies
+2. Starts the local Supabase services
+3. Applies database migrations and seed data
+4. Generates `.env.local`
+5. Starts the Next.js development server
 
-Sign-up confirmation and forgot-password emails are captured locally in MailPit (not sent to a real inbox).
+The application runs at:
+
+```text
+http://localhost:3000
+```
+
+## Demo accounts
+
+The local seed data creates the following users:
+
+| Role          | Email              | Password      |
+| ------------- | ------------------ | ------------- |
+| Student       | `student1@lms.com` | `password123` |
+| Student       | `student2@lms.com` | `password123` |
+| Administrator | `admin@lms.com`    | `password123` |
+
+These credentials are intended only for the local demonstration environment.
+
+## Suggested walkthrough
+
+### Student workflow
+
+1. Sign in as `student1@lms.com`.
+2. Confirm that only consultations belonging to Student 1 are displayed.
+3. Create a consultation.
+4. Mark the consultation as complete.
+5. Mark the consultation as incomplete.
+6. Reschedule the consultation.
+7. Cancel the consultation.
+8. Sign out.
+9. Sign in as `student2@lms.com`.
+10. Confirm that Student 1's consultations are not visible.
+
+### Administrator workflow
+
+1. Sign in as `admin@lms.com`.
+2. Open the administrator consultations page.
+3. Confirm that consultations belonging to both students are visible.
+4. Confirm that the administrator view is read-only.
+5. Confirm that no consultation mutation controls are available.
+
+### Authorization checks
+
+The main access-control boundaries are:
+
+- Unauthenticated API requests receive `401 Unauthorized`.
+- Students cannot access administrator endpoints.
+- Administrators cannot use student consultation endpoints.
+- Students can retrieve only their own consultations.
+- Students cannot update or cancel consultations belonging to another student.
+- Administrators can read all consultations but cannot create, update, or cancel them.
+
+## Local email testing
+
+Authentication emails are captured locally by MailPit rather than being delivered to a real inbox.
 
 Open MailPit at:
 
-- `http://localhost:54324/`
-
-Why this exists:
-
-- verifies the full email auth flow end-to-end
-- keeps testing local and deterministic
-- avoids dependency on external email delivery during assessment
-
-What to verify:
-
-1. Trigger sign-up from `/auth/sign-up`, then confirm via the email link in MailPit.
-2. Trigger forgot-password from `/auth/forgot-password`, then complete reset from the email link in MailPit.
-
-### Validate with seeded users
-
-- Student: `student1@lms.com` / `password123`
-- Student: `student2@lms.com` / `password123`
-- Admin: `admin@lms.com` / `password123`
-
-### Check required student flow
-
-1. Sign in as `student1@lms.com`
-2. Create a consultation
-3. Mark complete, then mark incomplete
-4. Reschedule
-5. Cancel
-
-### Check required admin flow
-
-1. Sign in as `admin@lms.com`
-2. Open admin consultations page
-3. Confirm list is read-only
-
-### Spot-check security
-
-- Student responses from `GET /api/consultations` only include their own rows
-- Non-admin gets `403` from `GET /api/admin/consultations`
-
-## 2) Deliverables status
-
-- Authentication (sign up, login, logout): Implemented
-- Student dashboard listing own consultations: Implemented
-- Consultation create form (first name, last name, reason, datetime): Implemented
-- Student actions (complete/incomplete, reschedule, cancel): Implemented
-- Admin all-consultations view (read-only): Implemented
-- Setup/assumptions/design/schema summary in README: Implemented
-
-## 3) Project structure at a glance
-
-- `app/auth/**`: auth screens + confirmation route
-- `app/protected/page.tsx`: role-aware dashboard entrypoint
-- `app/admin/page.tsx`: admin-only consultations screen
-- `app/api/consultations/route.ts`: student list/create
-- `app/api/consultations/[id]/route.ts`: student update/cancel
-- `app/api/admin/consultations/route.ts`: admin all-consultations list
-- `lib/server/auth.ts`: auth context + role resolution
-- `lib/supabase/*`: browser/server/proxy clients
-- `supabase/migrations/*.sql`: schema + grants + RLS
-- `supabase/seed.sql`: seeded users
-
-## 4) How the app is organized
-
-### Architecture
-
-- UI renders forms/lists/actions
-- Browser calls Next.js route handlers under `app/api/**`
-- Route handlers own:
-  - auth/session checks
-  - ownership/role authorization
-  - payload validation
-  - persistence
-
-### Why this shape
-
-- Keeps security checks at API boundaries
-- Keeps behavior explicit and easy to review
-- Matches assessment scope without extra layers
-
-## 5) Security and authorization model
-
-Security is enforced in two layers (defense in depth).
-
-### API-layer checks
-
-- `requireAuthContext()` enforces authenticated user context and resolves role
-- Student routes scope by both `id` and `student_user_id`
-- Admin route checks `role === 'admin'`
-
-### Database-layer checks (RLS)
-
-- `supabase/migrations/20260712120500_enable_rls_and_policies.sql` enables RLS for:
-  - `public.profiles`
-  - `public.consultations`
-- Policies enforce:
-  - students can only access their own consultations
-  - admins can view all consultations
-- `DELETE` is revoked for `authenticated`; cancellation is status-based
-
-### RLS validation
-
-- `supabase/tests/rls_checks.sql`
-- Run with:
-
-```bash
-npm run test:rls
+```text
+http://localhost:54324
 ```
 
-## 6) API summary
+### Sign-up confirmation
 
-### Student APIs
+1. Open `/auth/sign-up`.
+2. Register a new account.
+3. Open MailPit.
+4. Select the confirmation email.
+5. Follow the confirmation link.
 
-- `GET /api/consultations`
-  - Returns consultations for the authenticated student only
-- `POST /api/consultations`
-  - Creates consultation for the authenticated student
-  - Validates `firstName`, `lastName`, `reason`, `scheduledFor`
-- `PATCH /api/consultations/:id`
-  - Updates `scheduledFor` and/or `status` (`scheduled | completed`)
-  - Rejects updates to cancelled consultations
-- `DELETE /api/consultations/:id`
-  - Cancels consultation (sets status to `cancelled`)
-  - Idempotent behavior if already cancelled
+### Password recovery
 
-### Admin API
+1. Open `/auth/forgot-password`.
+2. Submit the account email address.
+3. Open MailPit.
+4. Select the password-reset email.
+5. Follow the reset link.
+6. Choose a new password.
 
-- `GET /api/admin/consultations`
-  - Admin-only, read-only list of all consultations
+MailPit keeps local authentication testing deterministic and avoids requiring an external email provider.
 
-## 7) Database summary
+## Architecture
 
-Main migration files:
+The application uses a deliberately small architecture:
 
-- `supabase/migrations/20260711094235_init_profiles_and_consultations.sql`
-- `supabase/migrations/20260712083000_add_authenticated_grants.sql`
-- `supabase/migrations/20260712120500_enable_rls_and_policies.sql`
+```text
+Browser UI
+    |
+    v
+Next.js route handlers
+    |
+    v
+Supabase client
+    |
+    v
+PostgreSQL with row-level security
+```
 
-Core domain model:
+### User interface
 
-- `public.profiles`
-  - user profile row keyed by auth user id
-  - stores role (`student | admin`)
-- `public.consultations`
-  - consultation owned by `student_user_id`
-  - status (`scheduled | completed | cancelled`)
-  - timestamps (`created_at`, `updated_at`, `completed_at`, `cancelled_at`)
+The user interface is responsible for:
 
-## 8) Local setup
+- Rendering authentication forms
+- Displaying role-appropriate dashboards
+- Submitting consultation actions
+- Presenting loading, success, and error states
 
-### Environment variables
+The interface hides actions that are unavailable to the current role, but authorization does not depend on those controls being hidden.
 
-Create `.env.local` with:
+### Route handlers
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+Next.js route handlers are responsible for:
 
-You can auto-generate local values with:
+- Verifying the authenticated session
+- Resolving the application role
+- Enforcing role requirements
+- Enforcing resource ownership
+- Validating request payloads
+- Performing database operations
+- Returning appropriate HTTP responses
+
+Keeping these checks at the API boundary makes authorization decisions explicit and easy to inspect.
+
+### Database
+
+PostgreSQL row-level security provides an additional authorization layer.
+
+The database policies enforce that:
+
+- Students can select only their own consultations.
+- Students can create consultations only for their own account.
+- Students can update only their own consultations.
+- Administrators can select consultations belonging to all students.
+- Administrators cannot insert, update, or delete consultations.
+- Authenticated users cannot physically delete consultation records.
+
+This provides defense in depth if an application endpoint is incorrectly configured or bypassed.
+
+## Authentication and authorization
+
+The project separates four related concerns.
+
+### Authentication
+
+Authentication determines who the current user is.
+
+Supabase Auth manages:
+
+- Account registration
+- Email confirmation
+- Sign-in sessions
+- Sign-out
+- Password recovery
+- Password updates
+
+### Role-based authorization
+
+Each authenticated user has an application profile with one of two roles:
+
+```text
+student
+admin
+```
+
+Route handlers check the resolved role before allowing access to role-specific operations.
+
+### Resource ownership
+
+Student operations are scoped using both the consultation identifier and the authenticated student's user ID.
+
+This prevents one authenticated student from accessing or modifying another student's consultation by supplying a different consultation ID.
+
+### Row-level security
+
+PostgreSQL row-level security repeats the important access restrictions at the database boundary.
+
+The overlap between API authorization and database authorization is intentional:
+
+- API checks provide clear application behaviour and HTTP responses.
+- Row-level security protects the underlying data independently of the application interface.
+
+## Consultation lifecycle
+
+Consultations use the following states:
+
+```text
+scheduled
+completed
+cancelled
+```
+
+Students can:
+
+- Create a scheduled consultation
+- Change its scheduled date
+- Mark it as completed
+- Return it to scheduled
+- Cancel it
+
+Cancellation is represented as a status transition rather than a physical database deletion.
+
+This preserves the record and retains cancellation metadata.
+
+## API summary
+
+### Student endpoints
+
+#### `GET /api/consultations`
+
+Returns consultations belonging to the authenticated student.
+
+Requirements:
+
+- The user must be authenticated.
+- The user must have the `student` role.
+
+#### `POST /api/consultations`
+
+Creates a consultation belonging to the authenticated student.
+
+The request validates:
+
+- `firstName`
+- `lastName`
+- `reason`
+- `scheduledFor`
+
+Requirements:
+
+- The user must be authenticated.
+- The user must have the `student` role.
+- The consultation owner must match the authenticated user.
+
+#### `PATCH /api/consultations/:id`
+
+Updates the scheduled date or status of an owned consultation.
+
+Supported actions include:
+
+- Rescheduling
+- Marking complete
+- Marking incomplete
+
+Requirements:
+
+- The user must be authenticated.
+- The user must have the `student` role.
+- The consultation must belong to the authenticated user.
+- Cancelled consultations cannot be modified.
+
+#### `DELETE /api/consultations/:id`
+
+Cancels an owned consultation by changing its status to `cancelled`.
+
+The database record is not physically deleted.
+
+Requirements:
+
+- The user must be authenticated.
+- The user must have the `student` role.
+- The consultation must belong to the authenticated user.
+
+The operation is idempotent when the consultation is already cancelled.
+
+### Administrator endpoint
+
+#### `GET /api/admin/consultations`
+
+Returns a read-only list of consultations belonging to all students.
+
+Requirements:
+
+- The user must be authenticated.
+- The user must have the `admin` role.
+
+## Database model
+
+### `public.profiles`
+
+Stores application-specific information associated with a Supabase Auth user.
+
+Important fields include:
+
+- User ID
+- Application role
+- Creation timestamp
+- Update timestamp
+
+The profile ID corresponds to the authenticated user's Supabase Auth ID.
+
+### `public.consultations`
+
+Stores consultations owned by students.
+
+Important fields include:
+
+- `student_user_id`
+- `first_name`
+- `last_name`
+- `reason`
+- `scheduled_for`
+- `status`
+- `created_at`
+- `updated_at`
+- `completed_at`
+- `cancelled_at`
+
+## Project structure
+
+```text
+app/
+├── admin/
+│   └── page.tsx
+├── api/
+│   ├── admin/
+│   │   └── consultations/
+│   │       └── route.ts
+│   └── consultations/
+│       ├── [id]/
+│       │   └── route.ts
+│       └── route.ts
+├── auth/
+│   ├── confirm/
+│   ├── error/
+│   ├── forgot-password/
+│   ├── login/
+│   ├── sign-up/
+│   └── update-password/
+└── protected/
+    └── page.tsx
+
+components/
+├── admin/
+├── student/
+└── ui/
+
+lib/
+├── server/
+│   └── auth.ts
+└── supabase/
+    ├── client.ts
+    ├── proxy.ts
+    └── server.ts
+
+supabase/
+├── migrations/
+├── tests/
+│   └── rls_checks.sql
+├── config.toml
+├── schema.sql
+└── seed.sql
+```
+
+Key responsibilities:
+
+- `app/auth/**`: authentication screens and callback routes
+- `app/protected/page.tsx`: role-aware dashboard entry point
+- `app/admin/page.tsx`: administrator-only dashboard
+- `app/api/consultations/route.ts`: student consultation list and creation
+- `app/api/consultations/[id]/route.ts`: student consultation updates and cancellation
+- `app/api/admin/consultations/route.ts`: administrator read-only consultation list
+- `lib/server/auth.ts`: authentication context and role authorization
+- `lib/supabase/**`: browser and server Supabase clients
+- `supabase/migrations/**`: executable database schema history
+- `supabase/tests/rls_checks.sql`: database authorization checks
+- `supabase/seed.sql`: local demonstration users and data
+
+## Manual local setup
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Start the local Supabase services:
+
+```bash
+npm run infra:up
+```
+
+Apply migrations and seed data:
+
+```bash
+npm run infra:reset
+```
+
+Generate the local environment configuration:
 
 ```bash
 npm run infra:env
 ```
 
-### Manual startup
+Start the Next.js development server:
 
 ```bash
-npm install
-npm run infra:up
-npm run infra:reset
 npm run dev
 ```
 
-App runs at `http://localhost:3000`.
+## Environment variables
 
-## 9) Useful scripts
+The application requires:
 
-- `npm run dev`: Next.js dev server
-- `npm run build`: production build
-- `npm run start`: production server
-- `npm run typecheck`: TypeScript check
-- `npm run lint`: lint
-- `npm run test`: unit tests (Vitest)
-- `npm run test:rls`: RLS SQL checks
-- `npm run infra:up`: start local Supabase
-- `npm run infra:reset`: reset DB with migrations + seed
-- `npm run infra:down`: stop local Supabase
-- `npm run assessor:start`: one-command assessor bootstrap
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+```
 
-## 10) Assumptions and tradeoffs
+Local values can be generated with:
 
-- Priority was correctness and security over UI polish
-- Admin scope is intentionally read-only (meets requirement with lower risk)
-- Route handlers are used for LMS domain behavior to keep boundaries explicit
-- Data model is intentionally small and scoped to required lifecycle states
+```bash
+npm run infra:env
+```
 
-## 11) If there were more time
+## Available scripts
 
-1. Expand automated route/integration/e2e coverage
-2. Improve UI loading/error recovery states
-3. Add admin pagination/filtering/search
-4. Add lightweight audit trail for consultation status transitions
-5. Containerise the Next.js application optimised for cloud hosting
+| Command                | Purpose                                                     |
+| ---------------------- | ----------------------------------------------------------- |
+| `npm run dev`          | Start the Next.js development server                        |
+| `npm run build`        | Create a production build                                   |
+| `npm run start`        | Start the production server                                 |
+| `npm run typecheck`    | Run the TypeScript compiler without emitting files          |
+| `npm run lint`         | Run ESLint                                                  |
+| `npm run format`       | Format the project with Prettier                            |
+| `npm run format:check` | Check formatting without modifying files                    |
+| `npm run test`         | Run unit tests with Vitest                                  |
+| `npm run test:watch`   | Run Vitest in watch mode                                    |
+| `npm run test:rls`     | Run PostgreSQL row-level security checks                    |
+| `npm run infra:up`     | Start local Supabase services                               |
+| `npm run infra:reset`  | Reset the local database and apply migrations and seed data |
+| `npm run infra:env`    | Generate local Supabase environment variables               |
+| `npm run infra:down`   | Stop local Supabase services                                |
+| `npm run demo:start`   | Prepare and start the complete local demonstration          |
+| `npm run db:types`     | Regenerate TypeScript types from the local database         |
+
+## Testing
+
+Run the application unit tests with:
+
+```bash
+npm test
+```
+
+Run the row-level security checks with:
+
+```bash
+npm run test:rls
+```
+
+Run the complete quality checks with:
+
+```bash
+npm run format:check
+npm run typecheck
+npm run lint
+npm test
+npm run test:rls
+npm run build
+```
+
+## Design decisions
+
+### Defense in depth
+
+Authorization is enforced in both Next.js route handlers and PostgreSQL row-level security policies.
+
+This duplication is intentional:
+
+- Route handlers provide clear application-level responses.
+- Database policies protect data if the application layer is bypassed or incorrectly configured.
+
+### Read-only administrator role
+
+Administrators can view all consultations but cannot modify them.
+
+This provides a clear demonstration of broad read access without granting unnecessary write permissions.
+
+### Ownership-based student access
+
+Students can manage consultations only when `student_user_id` matches their authenticated user ID.
+
+Queries also scope mutations by both the consultation ID and owner ID to prevent cross-user access.
+
+### Status-based cancellation
+
+Consultations are cancelled by updating their status instead of deleting the database row.
+
+This preserves historical data and associated timestamps.
+
+### Small application architecture
+
+The project intentionally avoids unnecessary service and repository layers.
+
+For the current scope, keeping authentication, authorization, validation, and persistence visible in the route handlers makes the behaviour easier to follow.
+
+Additional layers would become appropriate if the application introduced more complex domain workflows, transactions, external integrations, or multiple entry points.
+
+## Scope
+
+The project is intended as a focused example of authentication and authorization rather than a complete learning management system.
+
+The domain remains deliberately small so the important security behaviours are easy to demonstrate:
+
+- Who is authenticated
+- Which role they have
+- Which routes they may access
+- Which resources they own
+- Which rows the database permits them to read or modify
+
+## Potential extensions
+
+Possible future improvements include:
+
+1. Add end-to-end tests for complete authentication flows.
+2. Add route-level integration tests for unauthorized and forbidden requests.
+3. Add pagination, search, and filtering to the administrator dashboard.
+4. Add an audit log for consultation status changes.
+5. Add more granular permissions beyond the current student and administrator roles.
+6. Add account management and profile editing.
+7. Containerize the Next.js application for deployment.
+8. Add CI checks for unit tests, type checking, linting, builds, and RLS validation.

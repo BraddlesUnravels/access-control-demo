@@ -6,7 +6,12 @@ import {
   ConsultationRecord,
   CreateConsultationForm,
 } from './consultation';
-import { ProfileRole, ProfileCreateInput, ProfileUpdateInput, Profile } from './profiles';
+import {
+  ProfileRole,
+  ProfileCreateInput,
+  ProfileUpdateInput,
+  Profile,
+} from './profiles';
 
 export type {
   LoginInput,

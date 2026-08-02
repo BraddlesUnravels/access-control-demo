@@ -1,7 +1,16 @@
--- Migrations remain the source for execution history; this file is a readable schema snapshot.
+-- Migrations remain the source of execution history.
+-- This file is a readable snapshot of the final effective schema.
 
-create type public.app_role as enum ('student', 'admin');
-create type public.consultation_status as enum ('scheduled', 'completed', 'cancelled');
+create type public.app_role as enum (
+  'student',
+  'admin'
+);
+
+create type public.consultation_status as enum (
+  'scheduled',
+  'completed',
+  'cancelled'
+);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -38,14 +47,25 @@ create table public.consultations (
   updated_at timestamptz not null default timezone('utc', now()),
   completed_at timestamptz,
   cancelled_at timestamptz,
-  constraint consultations_first_name_not_blank check (char_length(trim(first_name)) > 0),
-  constraint consultations_last_name_not_blank check (char_length(trim(last_name)) > 0),
-  constraint consultations_reason_not_blank check (char_length(trim(reason)) > 0)
+
+  constraint consultations_first_name_not_blank
+    check (char_length(trim(first_name)) > 0),
+
+  constraint consultations_last_name_not_blank
+    check (char_length(trim(last_name)) > 0),
+
+  constraint consultations_reason_not_blank
+    check (char_length(trim(reason)) > 0)
 );
 
-create index consultations_student_user_id_idx on public.consultations (student_user_id);
-create index consultations_scheduled_for_idx on public.consultations (scheduled_for);
-create index consultations_status_idx on public.consultations (status);
+create index consultations_student_user_id_idx
+on public.consultations (student_user_id);
+
+create index consultations_scheduled_for_idx
+on public.consultations (scheduled_for);
+
+create index consultations_status_idx
+on public.consultations (status);
 
 create trigger consultations_set_updated_at
 before update on public.consultations
@@ -74,7 +94,9 @@ execute function public.handle_new_user();
 
 create schema if not exists private;
 
-create or replace function private.is_admin()
+create or replace function private.has_role(
+  required_role public.app_role
+)
 returns boolean
 language sql
 security definer
@@ -85,54 +107,106 @@ as $$
     select 1
     from public.profiles
     where id = (select auth.uid())
-      and role = 'admin'
+      and role = required_role
   );
 $$;
 
-grant usage on schema public to authenticated;
-grant usage on schema private to authenticated;
+-- Schema privileges
 
-grant select on table public.profiles to authenticated;
-grant select, insert, update on table public.consultations to authenticated;
-grant execute on function private.is_admin() to authenticated;
+grant usage
+on schema public
+to authenticated;
 
-revoke delete on table public.consultations from authenticated;
+grant usage
+on schema private
+to authenticated;
 
-revoke execute on function public.handle_new_user() from public;
-revoke execute on function public.handle_new_user() from anon;
-revoke execute on function public.handle_new_user() from authenticated;
+-- Table privileges
 
-alter table public.profiles enable row level security;
-alter table public.consultations enable row level security;
+grant select
+on table public.profiles
+to authenticated;
 
-drop policy if exists "profiles_select_own" on public.profiles;
+grant select, insert, update
+on table public.consultations
+to authenticated;
+
+-- Function privileges
+
+revoke execute
+on function public.handle_new_user()
+from public;
+
+revoke execute
+on function public.handle_new_user()
+from anon;
+
+revoke execute
+on function public.handle_new_user()
+from authenticated;
+
+revoke execute
+on function private.has_role(public.app_role)
+from public;
+
+revoke execute
+on function private.has_role(public.app_role)
+from anon;
+
+grant execute
+on function private.has_role(public.app_role)
+to authenticated;
+
+-- Physical deletion is intentionally unavailable to authenticated users.
+-- Consultation cancellation is represented by a status update.
+
+revoke delete
+on table public.consultations
+from authenticated;
+
+-- Row-level security
+
+alter table public.profiles
+enable row level security;
+
+alter table public.consultations
+enable row level security;
+
 create policy "profiles_select_own"
 on public.profiles
 for select
 to authenticated
-using ((select auth.uid()) = id);
+using (
+  (select auth.uid()) = id
+);
 
-drop policy if exists "consultations_select_own_or_admin" on public.consultations;
 create policy "consultations_select_own_or_admin"
 on public.consultations
 for select
 to authenticated
 using (
   (select auth.uid()) = student_user_id
-  or (select private.is_admin())
+  or (select private.has_role('admin'))
 );
 
-drop policy if exists "consultations_insert_own" on public.consultations;
 create policy "consultations_insert_own"
 on public.consultations
 for insert
 to authenticated
-with check ((select auth.uid()) = student_user_id);
+with check (
+  (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
+);
 
-drop policy if exists "consultations_update_own" on public.consultations;
 create policy "consultations_update_own"
 on public.consultations
 for update
 to authenticated
-using ((select auth.uid()) = student_user_id)
-with check ((select auth.uid()) = student_user_id);
+using (
+  (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
+)
+with check (
+  (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
+);

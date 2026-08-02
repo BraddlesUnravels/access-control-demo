@@ -1,6 +1,6 @@
-create schema if not exists private;
-
-create or replace function private.is_admin()
+create or replace function private.has_role(
+  required_role public.app_role
+)
 returns boolean
 language sql
 security definer
@@ -11,31 +11,24 @@ as $$
     select 1
     from public.profiles
     where id = (select auth.uid())
-      and role = 'admin'
+      and role = required_role
   );
 $$;
 
-grant usage
-on schema private
-to authenticated;
+revoke execute
+on function private.has_role(public.app_role)
+from public;
+
+revoke execute
+on function private.has_role(public.app_role)
+from anon;
 
 grant execute
-on function private.is_admin()
+on function private.has_role(public.app_role)
 to authenticated;
 
-alter table public.profiles
-enable row level security;
-
-alter table public.consultations
-enable row level security;
-
-create policy "profiles_select_own"
-on public.profiles
-for select
-to authenticated
-using (
-  (select auth.uid()) = id
-);
+drop policy "consultations_select_own_or_admin"
+on public.consultations;
 
 create policy "consultations_select_own_or_admin"
 on public.consultations
@@ -43,8 +36,11 @@ for select
 to authenticated
 using (
   (select auth.uid()) = student_user_id
-  or (select private.is_admin())
+  or (select private.has_role('admin'))
 );
+
+drop policy "consultations_insert_own"
+on public.consultations;
 
 create policy "consultations_insert_own"
 on public.consultations
@@ -52,7 +48,11 @@ for insert
 to authenticated
 with check (
   (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
 );
+
+drop policy "consultations_update_own"
+on public.consultations;
 
 create policy "consultations_update_own"
 on public.consultations
@@ -60,11 +60,11 @@ for update
 to authenticated
 using (
   (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
 )
 with check (
   (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
 );
 
-revoke delete
-on table public.consultations
-from authenticated;
+drop function private.is_admin();

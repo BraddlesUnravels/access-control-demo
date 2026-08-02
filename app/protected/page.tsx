@@ -12,7 +12,11 @@ const ProtectedContent = async () => {
 
 const ProtectedPage = () => {
   return (
-    <Suspense fallback={<p className="text-sm text-muted-foreground">Loading dashboard...</p>}>
+    <Suspense
+      fallback={
+        <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+      }
+    >
       <ProtectedContent />
     </Suspense>
   );
