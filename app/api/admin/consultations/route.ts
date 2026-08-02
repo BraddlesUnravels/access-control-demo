@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
 import { assertRole, requireAuthContext } from '@/lib/server/auth';
-import { serverReadClient } from '@/lib/supabase/server';
+import { serverRequestClient } from '@/lib/supabase/server';
 import { withApiHandler } from '@/lib/with-api-handler';
 
 export const GET = withApiHandler(async () => {
-  const { role } = await requireAuthContext({ redirectOnUnauthenticated: false });
+  const { role } = await requireAuthContext({
+    redirectOnUnauthenticated: false,
+  });
 
   assertRole(role, 'admin');
 
-  const supabase = await serverReadClient();
+  const supabase = await serverRequestClient();
   const { data, error } = await supabase
     .from('consultations')
     .select('*')

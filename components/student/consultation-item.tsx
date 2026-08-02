@@ -26,8 +26,11 @@ export const ConsultationItem = ({
   rescheduleValue,
 }: ConsultationItemProps) => {
   const actionDisabled =
-    consultation.status === 'cancelled' || consultation.status === 'completed' || actionInProgress;
-  const completedDisabled = consultation.status === 'cancelled' || actionInProgress;
+    consultation.status === 'cancelled' ||
+    consultation.status === 'completed' ||
+    actionInProgress;
+  const completedDisabled =
+    consultation.status === 'cancelled' || actionInProgress;
 
   return (
     <ConsultationSummaryCard
@@ -41,7 +44,9 @@ export const ConsultationItem = ({
               type="datetime-local"
               value={rescheduleValue}
               disabled={actionDisabled}
-              onChange={(event) => onRescheduleChange(consultation.id, event.target.value)}
+              onChange={(event) =>
+                onRescheduleChange(consultation.id, event.target.value)
+              }
             />
           </div>
           <Button
@@ -59,7 +64,9 @@ export const ConsultationItem = ({
               disabled={completedDisabled}
               onClick={() => void onToggleCompleted(consultation)}
             >
-              {consultation.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}
+              {consultation.status === 'completed'
+                ? 'Mark incomplete'
+                : 'Mark complete'}
             </Button>
             <Button
               type="button"

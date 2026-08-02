@@ -5,7 +5,11 @@ export class AppError extends Error {
 
   constructor(
     message: string,
-    opts?: { status?: number; safeMessage?: string; meta?: Record<string, unknown> },
+    opts?: {
+      status?: number;
+      safeMessage?: string;
+      meta?: Record<string, unknown>;
+    },
   ) {
     super(message);
     this.name = 'AppError';

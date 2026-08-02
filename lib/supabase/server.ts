@@ -9,7 +9,7 @@ import { type NextResponse } from 'next/server';
  */
 type ResponseCookie = { name: string; value: string; options: CookieOptions };
 
-export const serverReadClient = async () => {
+export const serverRequestClient = async () => {
   const cookieStore = await cookies();
 
   return createServerClient(

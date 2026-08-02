@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
 import { requireAuthContext, assertRole } from '@/lib/server/auth';
-import { serverReadClient } from '@/lib/supabase/server';
+import { serverRequestClient } from '@/lib/supabase/server';
 import { consultationUpdateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { withApiHandler } from '@/lib/with-api-handler';
@@ -23,40 +23,54 @@ type ConsultationRouteContext = {
  * PATCH /api/consultations/:id
  * Updates a consultation with the given ID for the authenticated user.
  */
-export const PATCH = withApiHandler(async (request: Request, context: ConsultationRouteContext) => {
-  const { role, userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
-
-  assertRole(role, 'student');
-
-  const { id } = await context.params;
-  const payload = await parseRequestJson(request);
-  const validation = validateWithSchema(consultationUpdateInputSchema, payload);
-
-  if (!validation.success)
-    return createValidationErrorResponse(validation.errors, validation.fieldErrors);
-
-  const supabase = await serverReadClient();
-  const consultation = await getOwnedConsultationOrThrow(supabase, id, userId);
-  assertConsultationCanBeUpdated(consultation);
-  const patch = buildConsultationUpdatePatch(validation.data);
-
-  const { data, error } = await supabase
-    .from('consultations')
-    .update(patch)
-    .eq('id', id)
-    .eq('student_user_id', userId)
-    .select('*')
-    .single();
-
-  if (error)
-    throw new AppError('Failed to update consultation', {
-      status: 500,
-      safeMessage: 'Failed to update consultation',
-      meta: { id, userId },
+export const PATCH = withApiHandler(
+  async (request: Request, context: ConsultationRouteContext) => {
+    const { role, userId } = await requireAuthContext({
+      redirectOnUnauthenticated: false,
     });
 
-  return NextResponse.json({ data }, { status: 200 });
-});
+    assertRole(role, 'student');
+
+    const { id } = await context.params;
+    const payload = await parseRequestJson(request);
+    const validation = validateWithSchema(
+      consultationUpdateInputSchema,
+      payload,
+    );
+
+    if (!validation.success)
+      return createValidationErrorResponse(
+        validation.errors,
+        validation.fieldErrors,
+      );
+
+    const supabase = await serverRequestClient();
+    const consultation = await getOwnedConsultationOrThrow(
+      supabase,
+      id,
+      userId,
+    );
+    assertConsultationCanBeUpdated(consultation);
+    const patch = buildConsultationUpdatePatch(validation.data);
+
+    const { data, error } = await supabase
+      .from('consultations')
+      .update(patch)
+      .eq('id', id)
+      .eq('student_user_id', userId)
+      .select('*')
+      .single();
+
+    if (error)
+      throw new AppError('Failed to update consultation', {
+        status: 500,
+        safeMessage: 'Failed to update consultation',
+        meta: { id, userId },
+      });
+
+    return NextResponse.json({ data }, { status: 200 });
+  },
+);
 
 /**
  * DELETE /api/consultations/:id
@@ -64,13 +78,19 @@ export const PATCH = withApiHandler(async (request: Request, context: Consultati
  */
 export const DELETE = withApiHandler(
   async (_request: Request, context: ConsultationRouteContext) => {
-    const { role, userId } = await requireAuthContext({ redirectOnUnauthenticated: false });
+    const { role, userId } = await requireAuthContext({
+      redirectOnUnauthenticated: false,
+    });
 
     assertRole(role, 'student');
 
     const { id } = await context.params;
-    const supabase = await serverReadClient();
-    const existingConsultation = await getOwnedConsultationOrThrow(supabase, id, userId);
+    const supabase = await serverRequestClient();
+    const existingConsultation = await getOwnedConsultationOrThrow(
+      supabase,
+      id,
+      userId,
+    );
 
     if (existingConsultation.status === 'cancelled')
       return NextResponse.json({ data: existingConsultation }, { status: 200 });

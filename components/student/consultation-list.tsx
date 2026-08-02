@@ -23,7 +23,9 @@ export const ConsultationList = ({
   onToggleCompleted,
 }: ConsultationListProps) => {
   if (consultations.length === 0) {
-    return <p className="text-sm text-muted-foreground">No consultations yet.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">No consultations yet.</p>
+    );
   }
 
   return (

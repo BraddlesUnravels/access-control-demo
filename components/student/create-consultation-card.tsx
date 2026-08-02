@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { CreateConsultationForm } from '@/lib/validation/types';
@@ -18,8 +24,11 @@ type CreateConsultationCardProps = {
   onCreateConsultation: (createForm: CreateConsultationForm) => Promise<void>;
 };
 
-export const CreateConsultationCard = ({ onCreateConsultation }: CreateConsultationCardProps) => {
-  const [createForm, setCreateForm] = useState<CreateConsultationForm>(DEFAULT_FORM);
+export const CreateConsultationCard = ({
+  onCreateConsultation,
+}: CreateConsultationCardProps) => {
+  const [createForm, setCreateForm] =
+    useState<CreateConsultationForm>(DEFAULT_FORM);
   const [submittingCreate, setSubmittingCreate] = useState(false);
 
   const handleCreateConsultation = async (event: React.SubmitEvent) => {
@@ -40,17 +49,25 @@ export const CreateConsultationCard = ({ onCreateConsultation }: CreateConsultat
     <Card>
       <CardHeader>
         <CardTitle>Create consultation</CardTitle>
-        <CardDescription>Fill in the required fields and choose a date and time.</CardDescription>
+        <CardDescription>
+          Fill in the required fields and choose a date and time.
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleCreateConsultation} className="grid gap-4 md:grid-cols-2">
+        <form
+          onSubmit={handleCreateConsultation}
+          className="grid gap-4 md:grid-cols-2"
+        >
           <div className="grid gap-2">
             <Label htmlFor="first-name">First name</Label>
             <Input
               id="first-name"
               value={createForm.firstName}
               onChange={(event) =>
-                setCreateForm((state) => ({ ...state, firstName: event.target.value }))
+                setCreateForm((state) => ({
+                  ...state,
+                  firstName: event.target.value,
+                }))
               }
               required
             />
@@ -61,7 +78,10 @@ export const CreateConsultationCard = ({ onCreateConsultation }: CreateConsultat
               id="last-name"
               value={createForm.lastName}
               onChange={(event) =>
-                setCreateForm((state) => ({ ...state, lastName: event.target.value }))
+                setCreateForm((state) => ({
+                  ...state,
+                  lastName: event.target.value,
+                }))
               }
               required
             />
@@ -72,7 +92,10 @@ export const CreateConsultationCard = ({ onCreateConsultation }: CreateConsultat
               id="reason"
               value={createForm.reason}
               onChange={(event) =>
-                setCreateForm((state) => ({ ...state, reason: event.target.value }))
+                setCreateForm((state) => ({
+                  ...state,
+                  reason: event.target.value,
+                }))
               }
               required
             />
@@ -84,7 +107,10 @@ export const CreateConsultationCard = ({ onCreateConsultation }: CreateConsultat
               type="datetime-local"
               value={createForm.scheduledFor}
               onChange={(event) =>
-                setCreateForm((state) => ({ ...state, scheduledFor: event.target.value }))
+                setCreateForm((state) => ({
+                  ...state,
+                  scheduledFor: event.target.value,
+                }))
               }
               required
             />

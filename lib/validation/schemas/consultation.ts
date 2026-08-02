@@ -10,7 +10,11 @@ const scheduledForSchema = v.pipe(
   v.check((value) => !Number.isNaN(Date.parse(value)), DATE_ERROR_MESSAGE),
 );
 
-export const consultationStatusSchema = v.picklist(['scheduled', 'completed', 'cancelled']);
+export const consultationStatusSchema = v.picklist([
+  'scheduled',
+  'completed',
+  'cancelled',
+]);
 
 export const consultationCreateInputSchema = v.object({
   firstName: requiredText('First name is required'),
@@ -25,7 +29,9 @@ export const consultationUpdateInputSchema = v.pipe(
     status: v.optional(v.picklist(['scheduled', 'completed'])),
   }),
   v.check(
-    (value) => typeof value.scheduledFor !== 'undefined' || typeof value.status !== 'undefined',
+    (value) =>
+      typeof value.scheduledFor !== 'undefined' ||
+      typeof value.status !== 'undefined',
     'At least one field is required: scheduledFor or status',
   ),
 );

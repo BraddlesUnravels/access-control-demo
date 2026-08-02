@@ -1,6 +1,9 @@
 import * as v from 'valibot';
 
-const profileIdSchema = v.pipe(v.string(), v.uuid('Profile id must be a valid UUID'));
+const profileIdSchema = v.pipe(
+  v.string(),
+  v.uuid('Profile id must be a valid UUID'),
+);
 const isoDateSchema = v.pipe(
   v.string(),
   v.isoTimestamp('Timestamp must be a valid ISO-8601 datetime'),

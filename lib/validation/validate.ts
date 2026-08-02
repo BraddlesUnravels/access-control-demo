@@ -13,7 +13,8 @@ type ValidationFailure = {
   fieldErrors: FieldErrors;
 };
 
-export type ValidationResult<TOutput> = ValidationSuccess<TOutput> | ValidationFailure;
+export type ValidationResult<TOutput> =
+  ValidationSuccess<TOutput> | ValidationFailure;
 
 export const validateWithSchema = <
   TSchema extends v.BaseSchema<unknown, unknown, v.BaseIssue<unknown>>,
@@ -31,15 +32,20 @@ export const validateWithSchema = <
   }
 
   const flattenedIssues = v.flatten(result.issues);
-  const errors = [...(flattenedIssues.root ?? []), ...(flattenedIssues.other ?? [])];
+  const errors = [
+    ...(flattenedIssues.root ?? []),
+    ...(flattenedIssues.other ?? []),
+  ];
   const fieldErrors = Object.fromEntries(
-    Object.entries(flattenedIssues.nested ?? {}).flatMap(([field, messages]) => {
-      if (!messages || messages.length === 0) {
-        return [];
-      }
+    Object.entries(flattenedIssues.nested ?? {}).flatMap(
+      ([field, messages]) => {
+        if (!messages || messages.length === 0) {
+          return [];
+        }
 
-      return [[field, [...messages]]];
-    }),
+        return [[field, [...messages]]];
+      },
+    ),
   ) as FieldErrors;
 
   return {

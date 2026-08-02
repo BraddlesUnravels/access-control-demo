@@ -45,7 +45,8 @@ describe('app/auth/confirm/route', () => {
   });
 
   it('should exchange code and redirect to next path on success', async () => {
-    const { applyServerCookies, exchangeCodeForSession } = setupServerResponseClientMock();
+    const { applyServerCookies, exchangeCodeForSession } =
+      setupServerResponseClientMock();
     const request = buildRequest('?code=valid-code&next=/admin');
 
     const response = await GET(request);
@@ -57,15 +58,20 @@ describe('app/auth/confirm/route', () => {
   });
 
   it('should redirect to login when code exchange fails', async () => {
-    const { applyServerCookies, exchangeCodeForSession } = setupServerResponseClientMock();
-    exchangeCodeForSession.mockResolvedValue({ error: { message: 'invalid code' } });
+    const { applyServerCookies, exchangeCodeForSession } =
+      setupServerResponseClientMock();
+    exchangeCodeForSession.mockResolvedValue({
+      error: { message: 'invalid code' },
+    });
 
     const request = buildRequest('?code=invalid-code&next=/protected');
     const response = await GET(request);
 
     expect(applyServerCookies).not.toHaveBeenCalled();
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toBe('http://localhost/auth/login');
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/login',
+    );
   });
 
   it('should verify otp and redirect to protected on success', async () => {
@@ -74,14 +80,18 @@ describe('app/auth/confirm/route', () => {
 
     const response = await GET(request);
 
-    expect(verifyOtp).toHaveBeenCalledWith({ token_hash: 'hash123', type: 'recovery' });
+    expect(verifyOtp).toHaveBeenCalledWith({
+      token_hash: 'hash123',
+      type: 'recovery',
+    });
     expect(applyServerCookies).toHaveBeenCalledOnce();
     expect(response.status).toBe(307);
     expect(response.headers.get('location')).toBe('http://localhost/protected');
   });
 
   it('should redirect to login when query params are missing', async () => {
-    const { applyServerCookies, exchangeCodeForSession, verifyOtp } = setupServerResponseClientMock();
+    const { applyServerCookies, exchangeCodeForSession, verifyOtp } =
+      setupServerResponseClientMock();
     const request = buildRequest();
 
     const response = await GET(request);
@@ -90,6 +100,8 @@ describe('app/auth/confirm/route', () => {
     expect(verifyOtp).not.toHaveBeenCalled();
     expect(applyServerCookies).not.toHaveBeenCalled();
     expect(response.status).toBe(307);
-    expect(response.headers.get('location')).toBe('http://localhost/auth/login');
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/login',
+    );
   });
 });
