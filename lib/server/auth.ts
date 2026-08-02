@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { AppError } from '@/lib/errors';
 import { serverReadClient } from '@/lib/supabase/server';
 
 export type AppRole = 'student' | 'admin';
@@ -6,6 +7,25 @@ export type AppRole = 'student' | 'admin';
 export type AuthContext = {
   userId: string;
   role: AppRole;
+};
+
+/**
+ * Verifies that the authenticated user has the role required by an API route.
+ *
+ * This function handles authorization, not authentication. Authentication and
+ * profile resolution are performed separately by requireAuthContext().
+ */
+export const assertRole = (actualRole: AppRole, requiredRole: AppRole): void => {
+  if (actualRole !== requiredRole) {
+    throw new AppError('User does not have the required role', {
+      status: 403,
+      safeMessage: 'Forbidden',
+      meta: {
+        actualRole,
+        requiredRole,
+      },
+    });
+  }
 };
 
 export const requireAuthContext = async (
@@ -31,6 +51,6 @@ export const requireAuthContext = async (
 
   return {
     userId: data.user.id,
-    role: profile.role as AppRole,
+    role: profile.role,
   };
 };

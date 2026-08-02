@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const RLS_SQL_PATH = 'supabase/tests/rls_checks.sql';
-const SUPABASE_DB_CONTAINER = process.env.SUPABASE_DB_CONTAINER ?? 'supabase_db_contour';
+const SUPABASE_DB_CONTAINER =
+  process.env.SUPABASE_DB_CONTAINER ?? 'supabase_db_access-control-demo';
 
 const runRlsChecks = () => {
   const sql = readFileSync(RLS_SQL_PATH, 'utf-8');

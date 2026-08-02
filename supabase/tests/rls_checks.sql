@@ -1,5 +1,5 @@
 begin;
-\echo 'RLS CHECK 1/4: Verifying required policies exist'
+\echo 'RLS CHECK 1/5: Verifying required policies exist'
 do $$
 declare
   expected_policies text[] := array[
@@ -30,7 +30,7 @@ begin
 end
 $$;
 
-\echo 'RLS CHECK 2/4: Verifying RLS is enabled on target tables'
+\echo 'RLS CHECK 2/5: Verifying RLS is enabled on target tables'
 do $$
 begin
   if not exists (
@@ -59,7 +59,7 @@ begin
 end
 $$;
 
-\echo 'RLS CHECK 3/4: Verifying authenticated role lacks DELETE on consultations'
+\echo 'RLS CHECK 3/5: Verifying authenticated role lacks DELETE on consultations'
 do $$
 begin
   if has_table_privilege('authenticated', 'public.consultations', 'DELETE') then
@@ -70,7 +70,7 @@ begin
 end
 $$;
 
-\echo 'RLS CHECK 4/4: Verifying student/admin visibility behavior'
+\echo 'RLS CHECK 4/5: Verifying student/admin visibility behavior'
 do $$
 declare
   student_id uuid;
@@ -133,6 +133,96 @@ begin
     raise exception 'Admin should see admin probe row. visible_count=%', admin_probe_visible;
   end if;
   raise notice 'PASS: admin can see admin-owned probe row';
+end
+$$;
+
+reset role;
+
+\echo 'RLS CHECK 5/5: Verifying administrator write access is denied'
+
+do $$
+declare
+  admin_id uuid;
+  student_id uuid;
+  student_consultation_id uuid;
+  updated_rows integer;
+begin
+  select id
+  into admin_id
+  from auth.users
+  where email = 'admin@lms.com';
+
+  select id
+  into student_id
+  from auth.users
+  where email = 'student1@lms.com';
+
+  if admin_id is null then
+    raise exception 'Seeded administrator user not found';
+  end if;
+
+  if student_id is null then
+    raise exception 'Seeded student user not found';
+  end if;
+
+  select id
+  into student_consultation_id
+  from public.consultations
+  where student_user_id = student_id
+  order by created_at
+  limit 1;
+
+  if student_consultation_id is null then
+    raise exception 'Seeded student consultation was not found';
+  end if;
+
+  execute 'set local role authenticated';
+
+  perform set_config(
+    'request.jwt.claim.sub',
+    admin_id::text,
+    true
+  );
+
+  begin
+    insert into public.consultations (
+      student_user_id,
+      first_name,
+      last_name,
+      reason,
+      scheduled_for,
+      status
+    )
+    values (
+      admin_id,
+      'Admin',
+      'Write Probe',
+      'Administrator insert should be rejected',
+      timezone('utc', now()) + interval '1 day',
+      'scheduled'
+    );
+
+    raise exception
+      'Administrator should not be allowed to create consultations';
+  exception
+    when insufficient_privilege then
+      raise notice
+        'PASS: administrator cannot create consultations';
+  end;
+
+  update public.consultations
+  set reason = 'Administrator update should not succeed'
+  where id = student_consultation_id;
+
+  get diagnostics updated_rows = row_count;
+
+  if updated_rows <> 0 then
+    raise exception
+      'Administrator should not be allowed to update consultations';
+  end if;
+
+  raise notice
+    'PASS: administrator cannot update consultations';
 end
 $$;
 

@@ -74,7 +74,9 @@ execute function public.handle_new_user();
 
 create schema if not exists private;
 
-create or replace function private.is_admin()
+create or replace function private.has_role(
+  required_role public.app_role
+)
 returns boolean
 language sql
 security definer
@@ -85,54 +87,60 @@ as $$
     select 1
     from public.profiles
     where id = (select auth.uid())
-      and role = 'admin'
+      and role = required_role
   );
 $$;
 
-grant usage on schema public to authenticated;
-grant usage on schema private to authenticated;
+revoke execute
+on function private.has_role(public.app_role)
+from public;
 
-grant select on table public.profiles to authenticated;
-grant select, insert, update on table public.consultations to authenticated;
-grant execute on function private.is_admin() to authenticated;
+revoke execute
+on function private.has_role(public.app_role)
+from anon;
 
-revoke delete on table public.consultations from authenticated;
+grant execute
+on function private.has_role(public.app_role)
+to authenticated;
 
-revoke execute on function public.handle_new_user() from public;
-revoke execute on function public.handle_new_user() from anon;
-revoke execute on function public.handle_new_user() from authenticated;
+drop policy if exists "consultations_select_own_or_admin"
+on public.consultations;
 
-alter table public.profiles enable row level security;
-alter table public.consultations enable row level security;
-
-drop policy if exists "profiles_select_own" on public.profiles;
-create policy "profiles_select_own"
-on public.profiles
-for select
-to authenticated
-using ((select auth.uid()) = id);
-
-drop policy if exists "consultations_select_own_or_admin" on public.consultations;
 create policy "consultations_select_own_or_admin"
 on public.consultations
 for select
 to authenticated
 using (
   (select auth.uid()) = student_user_id
-  or (select private.is_admin())
+  or (select private.has_role('admin'))
 );
 
-drop policy if exists "consultations_insert_own" on public.consultations;
+drop policy if exists "consultations_insert_own"
+on public.consultations;
+
 create policy "consultations_insert_own"
 on public.consultations
 for insert
 to authenticated
-with check ((select auth.uid()) = student_user_id);
+with check (
+  (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
+);
 
-drop policy if exists "consultations_update_own" on public.consultations;
+drop policy if exists "consultations_update_own"
+on public.consultations;
+
 create policy "consultations_update_own"
 on public.consultations
 for update
 to authenticated
-using ((select auth.uid()) = student_user_id)
-with check ((select auth.uid()) = student_user_id);
+using (
+  (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
+)
+with check (
+  (select auth.uid()) = student_user_id
+  and (select private.has_role('student'))
+);
+
+drop function if exists private.is_admin();

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { redirect } from 'next/navigation';
-import { requireAuthContext } from '@/lib/server/auth';
+import { AppError } from '@/lib/errors';
+import { requireAuthContext, assertRole } from '@/lib/server/auth';
 import { serverReadClient } from '@/lib/supabase/server';
 
 vi.mock('next/navigation', () => ({
@@ -78,5 +79,33 @@ describe('lib/server/auth', () => {
     await expect(requireAuthContext({ redirectOnUnauthenticated: false })).rejects.toThrow(
       'User profile was not found',
     );
+  });
+});
+
+describe('assertRole', () => {
+  it('allows a user with the required role', () => {
+    expect(() => {
+      assertRole('student', 'student');
+    }).not.toThrow();
+  });
+
+  it('rejects a user with a different role', () => {
+    let thrownError: unknown;
+
+    try {
+      assertRole('admin', 'student');
+    } catch (error) {
+      thrownError = error;
+    }
+
+    expect(thrownError).toBeInstanceOf(AppError);
+    expect(thrownError).toMatchObject({
+      status: 403,
+      safeMessage: 'Forbidden',
+      meta: {
+        actualRole: 'admin',
+        requiredRole: 'student',
+      },
+    });
   });
 });

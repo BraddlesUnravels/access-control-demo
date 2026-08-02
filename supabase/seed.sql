@@ -177,7 +177,7 @@ from (
     (
       'Sam',
       'Student',
-      'Discuss interview preparation',
+      'Discuss course progression',
       timezone('utc', now()) - interval '1 day',
       'completed'::public.consultation_status,
       timezone('utc', now()) - interval '20 hours'
@@ -226,7 +226,7 @@ from (
     (
       'Brad',
       'Student',
-      'Discuss interview preparation',
+      'Discuss course progression',
       timezone('utc', now()) - interval '1 day',
       'completed'::public.consultation_status,
       timezone('utc', now()) - interval '20 hours'
