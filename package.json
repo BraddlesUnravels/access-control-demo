@@ -3,7 +3,7 @@
   "description": "A small LMS demonstrating authentication, RBAC, resource ownership, and PostgreSQL row-level security.",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
