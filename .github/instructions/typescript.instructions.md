@@ -61,12 +61,7 @@ Do not create generic abstractions solely because two functions have superficial
 
 Prefer `undefined` for optional values within application code.
 
-Handle `null` values at the database boundary, input should take undefined and be handled by the database. Do not pollute application code with `null` values.
-
-If it is required database function handle this in the databse layer:
-
-- Supabase-generated database types
-- PostgreSQL nullable columns
+At Supabase/database boundaries, preserve `null` when it represents SQL `NULL`. For example, clearing `completed_at` requires writing `null`; `undefined` may omit the field instead of updating it.
 
 Do not hide database nullability with unsafe assertions.
 
