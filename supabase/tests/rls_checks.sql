@@ -362,6 +362,168 @@ begin
 end
 $$;
 
-\echo 'RLS CHECK RESULT: ALL 6 CHECKS PASSED (transaction rolled back)'
+reset role;
+
+\echo 'RLS CHECK 7/8: Verifying access invite tables are not readable by app roles'
+
+do $$
+declare
+  invite_id uuid := gen_random_uuid();
+  anon_visible integer;
+  authenticated_visible integer;
+begin
+  insert into public.access_invites (
+    id,
+    code_hash,
+    label
+  )
+  values (
+    invite_id,
+    'rls-probe-code-hash',
+    'RLS probe invite'
+  );
+
+  execute 'set local role anon';
+
+  select count(*)
+  into anon_visible
+  from public.access_invites
+  where id = invite_id;
+
+  if anon_visible <> 0 then
+    raise exception
+      'anon should not read access_invites. visible_count=%',
+      anon_visible;
+  end if;
+
+  execute 'set local role authenticated';
+
+  select count(*)
+  into authenticated_visible
+  from public.access_invites
+  where id = invite_id;
+
+  if authenticated_visible <> 0 then
+    raise exception
+      'authenticated should not read access_invites. visible_count=%',
+      authenticated_visible;
+  end if;
+
+  raise notice
+    'PASS: anon and authenticated cannot read access invite rows';
+end
+$$;
+
+reset role;
+
+\echo 'RLS CHECK 8/8: Verifying redeem_access_invite success, expiry, and re-use'
+
+do $$
+declare
+  active_invite_id uuid := gen_random_uuid();
+  expired_invite_id uuid := gen_random_uuid();
+  first_reason text;
+  second_reason text;
+  expired_reason text;
+  first_visit_id uuid;
+  second_visit_id uuid;
+  visit_count integer;
+  use_count_value integer;
+begin
+  insert into public.access_invites (
+    id,
+    code_hash,
+    label
+  )
+  values (
+    active_invite_id,
+    'active-redeem-hash',
+    'Active redeem invite'
+  );
+
+  insert into public.access_invites (
+    id,
+    code_hash,
+    label,
+    expires_at
+  )
+  values (
+    expired_invite_id,
+    'expired-redeem-hash',
+    'Expired redeem invite',
+    timezone('utc', now()) - interval '1 hour'
+  );
+
+  execute 'set local role anon';
+
+  select reason, visit_id
+  into first_reason, first_visit_id
+  from public.redeem_access_invite('active-redeem-hash', 'rls-agent');
+
+  if first_reason is distinct from 'ok' then
+    raise exception
+      'Active invite redeem should succeed. reason=%',
+      first_reason;
+  end if;
+
+  if first_visit_id is null then
+    raise exception 'Active invite redeem should return a visit id';
+  end if;
+
+  select reason, visit_id
+  into second_reason, second_visit_id
+  from public.redeem_access_invite('active-redeem-hash', 'rls-agent-2');
+
+  if second_reason is distinct from 'ok' then
+    raise exception
+      'Active invite should be reusable. reason=%',
+      second_reason;
+  end if;
+
+  if second_visit_id is null or second_visit_id = first_visit_id then
+    raise exception
+      'Reusable redeem should create a distinct visit id';
+  end if;
+
+  select reason
+  into expired_reason
+  from public.redeem_access_invite('expired-redeem-hash', 'rls-agent');
+
+  if expired_reason is distinct from 'expired' then
+    raise exception
+      'Expired invite should return expired. reason=%',
+      expired_reason;
+  end if;
+
+  reset role;
+
+  select count(*)
+  into visit_count
+  from public.access_visits
+  where invite_id = active_invite_id;
+
+  if visit_count <> 2 then
+    raise exception
+      'Expected two visits for reusable invite. visit_count=%',
+      visit_count;
+  end if;
+
+  select use_count
+  into use_count_value
+  from public.access_invites
+  where id = active_invite_id;
+
+  if use_count_value <> 2 then
+    raise exception
+      'Expected use_count=2 after two redeems. use_count=%',
+      use_count_value;
+  end if;
+
+  raise notice
+    'PASS: redeem_access_invite allows reuse and rejects expired codes';
+end
+$$;
+
+\echo 'RLS CHECK RESULT: ALL 8 CHECKS PASSED (transaction rolled back)'
 
 rollback;

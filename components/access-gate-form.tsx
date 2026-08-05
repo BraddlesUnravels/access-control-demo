@@ -1,0 +1,135 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import {
+  ACCESS_GATE_CONTACT_EMAIL,
+  ACCESS_GATE_REQUEST_TOKENS_URL,
+} from '@/lib/access-gate/constants';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+
+type AccessGateFormProps = {
+  initialCode?: string;
+  nextPath?: string;
+  className?: string;
+};
+
+export function AccessGateForm({
+  initialCode = '',
+  nextPath = '/auth/login',
+  className,
+}: AccessGateFormProps) {
+  const router = useRouter();
+  const [code, setCode] = useState(initialCode);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const [showRequestHelp, setShowRequestHelp] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError(undefined);
+    setShowRequestHelp(false);
+
+    try {
+      const response = await fetch('/api/access/unlock', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      const body = (await response.json()) as {
+        error?: string;
+        reason?: string;
+      };
+
+      if (!response.ok) {
+        setError(body.error ?? 'Unable to verify invite code');
+        setShowRequestHelp(
+          body.reason === 'expired' ||
+            body.reason === 'revoked' ||
+            body.reason === 'invalid' ||
+            response.status >= 400,
+        );
+        return;
+      }
+
+      router.replace(nextPath.startsWith('/') ? nextPath : '/auth/login');
+      router.refresh();
+    } catch {
+      setError('Unable to verify invite code');
+      setShowRequestHelp(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className={cn('flex flex-col gap-6', className)}>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Enter invite code</CardTitle>
+          <CardDescription>
+            Use the access code from the resume link to open this demo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <div className="flex flex-col gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor="code">Invite code</Label>
+                <Input
+                  id="code"
+                  name="code"
+                  autoComplete="one-time-code"
+                  required
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                  placeholder="ACD-XXXX-XXXX"
+                />
+              </div>
+              {error && <p className="text-sm text-red-500">{error}</p>}
+              {showRequestHelp && (
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p>
+                    Need a new code? Contact{' '}
+                    <a
+                      className="underline underline-offset-4"
+                      href={`mailto:${ACCESS_GATE_CONTACT_EMAIL}`}
+                    >
+                      {ACCESS_GATE_CONTACT_EMAIL}
+                    </a>
+                    .
+                  </p>
+                  <p>
+                    <a
+                      className="underline underline-offset-4"
+                      href={ACCESS_GATE_REQUEST_TOKENS_URL}
+                    >
+                      Request more tokens
+                    </a>
+                  </p>
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Checking code...' : 'Continue'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

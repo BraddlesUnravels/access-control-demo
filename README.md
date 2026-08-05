@@ -6,6 +6,7 @@ The application is built with Next.js, TypeScript, Supabase, and PostgreSQL. The
 
 ## What this project demonstrates
 
+- Resume invite access gate for recruiter demos
 - Email and password authentication
 - Email confirmation and password recovery
 - Protected application routes
@@ -60,6 +61,39 @@ The application runs at:
 http://localhost:3000
 ```
 
+Local development disables the outer invite gate by default (`ACCESS_GATE_DISABLED=true` from `npm run infra:env`) so the seeded LMS login flow stays easy to use.
+
+To exercise the invite gate locally, set `ACCESS_GATE_DISABLED=false` in `.env.local` and use one of the seeded invite codes below.
+
+## Resume invite access gate
+
+Deployed demos sit behind an outer invite gate so weak demo passwords are not openly reachable.
+
+Flow:
+
+1. A visitor opens `/access` (optionally with `?code=`).
+2. They enter only the invite code.
+3. The server verifies the code, logs a visit, and sets a 7-day httpOnly cookie.
+4. Existing LMS login and role demos continue unchanged.
+
+Identification comes from the invite `label` you set when minting a code, not from a visitor-entered name. Codes are multi-use until expiry or revoke, so a lost cookie or another device only requires entering the same code again.
+
+Mint a code:
+
+```bash
+npm run invite:create -- --label "Acme recruiter" --expires 2026-12-31
+```
+
+Required env for minting and production gate enforcement:
+
+```text
+ACCESS_GATE_SECRET
+SUPABASE_SERVICE_ROLE_KEY
+ACCESS_GATE_DISABLED=false
+```
+
+Expired or invalid codes show the operator contact details from app constants and a request-more-tokens link.
+
 ## Demo accounts
 
 The local seed data creates the following users:
@@ -71,6 +105,24 @@ The local seed data creates the following users:
 | Administrator | `admin@lms.com`    | `password123` |
 
 These credentials are intended only for the local demonstration environment.
+
+## Demo access invite codes
+
+Local seed data also creates invite hashes for `ACCESS_GATE_SECRET=local-access-gate-secret` (the value written by `npm run infra:env`):
+
+| Code            | Label                | Notes                                  |
+| --------------- | -------------------- | -------------------------------------- |
+| `ACD-DEV1-TEST` | Local developer      | Valid, no expiry                       |
+| `ACD-DEV2-TEST` | Local recruiter demo | Valid, expires one year after seed     |
+| `ACD-EXPIRED1`  | Expired local invite | Already expired; useful for failure UX |
+
+Example unlock path:
+
+```text
+http://localhost:3000/access?code=ACD-DEV1-TEST
+```
+
+Plaintext codes are documented only for local development. The database stores code hashes, never the codes themselves.
 
 ## Suggested walkthrough
 
@@ -460,6 +512,14 @@ The application requires:
 ```text
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ACCESS_GATE_SECRET
+```
+
+For minting invites and production gate operation, also set:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+ACCESS_GATE_DISABLED=false
 ```
 
 Local values can be generated with:
@@ -468,26 +528,35 @@ Local values can be generated with:
 npm run infra:env
 ```
 
+That local generator sets `ACCESS_GATE_DISABLED=true` and a local `ACCESS_GATE_SECRET`.
+
+After schema migrations, regenerate database types with:
+
+```bash
+npm run db:types
+```
+
 ## Available scripts
 
-| Command                | Purpose                                                     |
-| ---------------------- | ----------------------------------------------------------- |
-| `npm run dev`          | Start the Next.js development server                        |
-| `npm run build`        | Create a production build                                   |
-| `npm run start`        | Start the production server                                 |
-| `npm run typecheck`    | Run the TypeScript compiler without emitting files          |
-| `npm run lint`         | Run ESLint                                                  |
-| `npm run format`       | Format the project with Prettier                            |
-| `npm run format:check` | Check formatting without modifying files                    |
-| `npm run test`         | Run unit tests with Vitest                                  |
-| `npm run test:watch`   | Run Vitest in watch mode                                    |
-| `npm run test:rls`     | Run PostgreSQL row-level security checks                    |
-| `npm run infra:up`     | Start local Supabase services                               |
-| `npm run infra:reset`  | Reset the local database and apply migrations and seed data |
-| `npm run infra:env`    | Generate local Supabase environment variables               |
-| `npm run infra:down`   | Stop local Supabase services                                |
-| `npm run demo:start`   | Prepare and start the complete local demonstration          |
-| `npm run db:types`     | Regenerate TypeScript types from the local database         |
+| Command                 | Purpose                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| `npm run dev`           | Start the Next.js development server                        |
+| `npm run build`         | Create a production build                                   |
+| `npm run start`         | Start the production server                                 |
+| `npm run typecheck`     | Run the TypeScript compiler without emitting files          |
+| `npm run lint`          | Run ESLint                                                  |
+| `npm run format`        | Format the project with Prettier                            |
+| `npm run format:check`  | Check formatting without modifying files                    |
+| `npm run test`          | Run unit tests with Vitest                                  |
+| `npm run test:watch`    | Run Vitest in watch mode                                    |
+| `npm run test:rls`      | Run PostgreSQL row-level security checks                    |
+| `npm run infra:up`      | Start local Supabase services                               |
+| `npm run infra:reset`   | Reset the local database and apply migrations and seed data |
+| `npm run infra:env`     | Generate local Supabase environment variables               |
+| `npm run infra:down`    | Stop local Supabase services                                |
+| `npm run invite:create` | Mint a labeled resume invite code                           |
+| `npm run demo:start`    | Prepare and start the complete local demonstration          |
+| `npm run db:types`      | Regenerate TypeScript types from the local database         |
 
 ## Testing
 

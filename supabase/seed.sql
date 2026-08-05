@@ -3,6 +3,12 @@
 -- - student1@lms.com / password123
 -- - student2@lms.com / password123
 -- - admin@lms.com / password123
+--
+-- Access invite codes (valid only when ACCESS_GATE_SECRET=local-access-gate-secret):
+-- - ACD-DEV1-TEST  -> Local developer
+-- - ACD-DEV2-TEST  -> Local recruiter demo
+-- - ACD-EXPIRED1   -> Expired invite (for gate failure UX)
+-- Plaintext codes are never stored. Hashes use sha256(`${secret}:${normalizedCode}`).
 
 do $$
 begin
@@ -244,3 +250,31 @@ where not exists (
     and existing.reason = consultations.reason
     and existing.status = consultations.status
 );
+
+-- Local invite gate codes for ACCESS_GATE_SECRET=local-access-gate-secret.
+insert into public.access_invites (
+  code_hash,
+  label,
+  expires_at,
+  revoked_at
+)
+values
+  (
+    '65ea63f9ce3bc3e60910c69740addc70b6a81d98eb7c02beddb828761cbf2378',
+    'Local developer',
+    null,
+    null
+  ),
+  (
+    '91007ea6f3076bfd1eb37d92966426fb065a26b1d23aa8d06e97a3b077167a96',
+    'Local recruiter demo',
+    timezone('utc', now()) + interval '365 days',
+    null
+  ),
+  (
+    'ee7bf803f86371e9604258ebb1eff5b1b553fbaa13b9a6f65dc4840324622c44',
+    'Expired local invite',
+    timezone('utc', now()) - interval '1 day',
+    null
+  )
+on conflict (code_hash) do nothing;
