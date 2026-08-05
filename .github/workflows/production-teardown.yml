@@ -179,23 +179,45 @@ jobs:
             exit 0
           fi
 
-          if az containerapp show \
-            --name "${AZURE_CONTAINER_APP}" \
-            --resource-group "${AZURE_RESOURCE_GROUP}" \
-            --output none \
-            2>/dev/null; then
-            echo "Container App still exists after teardown." >&2
-            exit 1
-          fi
+          # Azure delete calls can return before ARM finishes removing the
+          # resource. Poll until the resource is absent, not merely deleting.
+          readonly verify_timeout_seconds=900
+          readonly verify_poll_seconds=15
+          readonly verify_deadline=$((SECONDS + verify_timeout_seconds))
 
-          if az containerapp env show \
-            --name "${AZURE_CONTAINER_ENVIRONMENT}" \
-            --resource-group "${AZURE_RESOURCE_GROUP}" \
-            --output none \
-            2>/dev/null; then
-            echo "Container Apps environment still exists after teardown." >&2
-            exit 1
-          fi
+          wait_until_absent() {
+            local description="$1"
+            shift
+
+            while true; do
+              if ! "$@" >/dev/null 2>&1; then
+                echo "${description} is absent."
+                return 0
+              fi
+
+              if (( SECONDS >= verify_deadline )); then
+                echo "${description} still exists after teardown." >&2
+                return 1
+              fi
+
+              echo "${description} still present. Waiting ${verify_poll_seconds}s for Azure deletion to finish..."
+              sleep "${verify_poll_seconds}"
+            done
+          }
+
+          wait_until_absent \
+            "Container App ${AZURE_CONTAINER_APP}" \
+            az containerapp show \
+              --name "${AZURE_CONTAINER_APP}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --output none
+
+          wait_until_absent \
+            "Container Apps environment ${AZURE_CONTAINER_ENVIRONMENT}" \
+            az containerapp env show \
+              --name "${AZURE_CONTAINER_ENVIRONMENT}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --output none
 
       - name: Publish teardown summary
         shell: bash
