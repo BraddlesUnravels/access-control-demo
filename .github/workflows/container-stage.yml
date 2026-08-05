@@ -1,0 +1,63 @@
+name: Container Stage
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - synchronize
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-stage-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  container-stage:
+    name: Container integration
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'stage')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SUPABASE_CLI_VERSION: '2.110.0'
+      SUPABASE_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start disposable Supabase stack
+        run: npx --yes supabase@${SUPABASE_CLI_VERSION} start -x vector
+
+      - name: Reapply migrations and seed data
+        run: npx --yes supabase@${SUPABASE_CLI_VERSION} db reset
+
+      - name: Validate row-level security
+        run: npm run test:rls
+
+      - name: Build and test application container
+        run: node scripts/run-container-tests.mjs
+
+      - name: Show diagnostics after failure
+        if: failure()
+        run: |
+          docker ps --all
+          npx --yes supabase@${SUPABASE_CLI_VERSION} status || true
+
+      - name: Stop disposable Supabase stack
+        if: always()
+        run: npx --yes supabase@${SUPABASE_CLI_VERSION} stop --no-backup
