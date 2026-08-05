@@ -1,0 +1,225 @@
+name: Production Teardown
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type teardown to delete the production Azure Container App resources
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  teardown:
+    name: Tear down Azure deployment
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    environment:
+      name: production
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      AZURE_CORE_ONLY_SHOW_ERRORS: '0'
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_CONTAINER_ENVIRONMENT: ${{ vars.AZURE_CONTAINER_ENVIRONMENT }}
+      AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP }}
+
+    steps:
+      - name: Confirm teardown intent
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${CONFIRM}" != 'teardown' ]]; then
+            echo "Refusing to run. Set confirm to teardown." >&2
+            exit 1
+          fi
+
+      - name: Validate production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_values=(
+            AZURE_CLIENT_ID
+            AZURE_TENANT_ID
+            AZURE_SUBSCRIPTION_ID
+            AZURE_RESOURCE_GROUP
+            AZURE_CONTAINER_ENVIRONMENT
+            AZURE_CONTAINER_APP
+          )
+
+          for value_name in "${required_values[@]}"; do
+            if [[ -z "${!value_name:-}" ]]; then
+              echo "Missing production environment value: ${value_name}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Sign in to Azure
+        uses: azure/login@v3
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Inventory resources before teardown
+        id: inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          resource_group_exists='false'
+          container_app_exists='false'
+          container_environment_exists='false'
+          application_url=''
+
+          if az group show \
+            --name "${AZURE_RESOURCE_GROUP}" \
+            --output none \
+            2>/dev/null; then
+            resource_group_exists='true'
+          fi
+
+          if [[ "${resource_group_exists}" == 'true' ]]; then
+            if az containerapp show \
+              --name "${AZURE_CONTAINER_APP}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --output none \
+              2>/dev/null; then
+              container_app_exists='true'
+
+              application_fqdn="$(
+                az containerapp show \
+                  --name "${AZURE_CONTAINER_APP}" \
+                  --resource-group "${AZURE_RESOURCE_GROUP}" \
+                  --query properties.configuration.ingress.fqdn \
+                  --output tsv
+              )"
+
+              if [[ -n "${application_fqdn}" && "${application_fqdn}" != 'None' ]]; then
+                application_url="https://${application_fqdn}"
+              fi
+            fi
+
+            if az containerapp env show \
+              --name "${AZURE_CONTAINER_ENVIRONMENT}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --output none \
+              2>/dev/null; then
+              container_environment_exists='true'
+            fi
+          fi
+
+          {
+            echo "resource_group_exists=${resource_group_exists}"
+            echo "container_app_exists=${container_app_exists}"
+            echo "container_environment_exists=${container_environment_exists}"
+            echo "application_url=${application_url}"
+          } >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "## Production teardown inventory"
+            echo
+            echo "- Resource group \`${AZURE_RESOURCE_GROUP}\`: ${resource_group_exists}"
+            echo "- Container App \`${AZURE_CONTAINER_APP}\`: ${container_app_exists}"
+            echo "- Container Apps environment \`${AZURE_CONTAINER_ENVIRONMENT}\`: ${container_environment_exists}"
+
+            if [[ -n "${application_url}" ]]; then
+              echo "- Application URL: ${application_url}"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Delete Azure Container App
+        if: steps.inventory.outputs.container_app_exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az containerapp delete \
+            --name "${AZURE_CONTAINER_APP}" \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --yes
+
+      - name: Delete Azure Container Apps environment
+        if: steps.inventory.outputs.container_environment_exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az containerapp env delete \
+            --name "${AZURE_CONTAINER_ENVIRONMENT}" \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --yes
+
+      - name: Verify teardown
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ steps.inventory.outputs.resource_group_exists }}" != 'true' ]]; then
+            echo "Resource group was already absent. Nothing else to verify."
+            exit 0
+          fi
+
+          if az containerapp show \
+            --name "${AZURE_CONTAINER_APP}" \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --output none \
+            2>/dev/null; then
+            echo "Container App still exists after teardown." >&2
+            exit 1
+          fi
+
+          if az containerapp env show \
+            --name "${AZURE_CONTAINER_ENVIRONMENT}" \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --output none \
+            2>/dev/null; then
+            echo "Container Apps environment still exists after teardown." >&2
+            exit 1
+          fi
+
+      - name: Publish teardown summary
+        shell: bash
+        env:
+          APPLICATION_URL: ${{ steps.inventory.outputs.application_url }}
+          CONTAINER_APP_EXISTED: ${{ steps.inventory.outputs.container_app_exists }}
+          CONTAINER_ENVIRONMENT_EXISTED: ${{ steps.inventory.outputs.container_environment_exists }}
+          RESOURCE_GROUP_EXISTED: ${{ steps.inventory.outputs.resource_group_exists }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## Production teardown result"
+            echo
+            echo "- Resource group retained: \`${AZURE_RESOURCE_GROUP}\`"
+            echo "- Managed identity and OIDC bootstrap retained for redeploy"
+            echo "- Container App deleted: \`${AZURE_CONTAINER_APP}\` (existed before run: ${CONTAINER_APP_EXISTED})"
+            echo "- Container Apps environment deleted: \`${AZURE_CONTAINER_ENVIRONMENT}\` (existed before run: ${CONTAINER_ENVIRONMENT_EXISTED})"
+            echo "- Resource group existed before run: ${RESOURCE_GROUP_EXISTED}"
+
+            if [[ -n "${APPLICATION_URL}" ]]; then
+              echo "- Previous application URL: ${APPLICATION_URL}"
+            fi
+
+            echo
+            echo "Supabase, GHCR images, and GitHub environment secrets or variables are not modified."
+          } >> "${GITHUB_STEP_SUMMARY}"
