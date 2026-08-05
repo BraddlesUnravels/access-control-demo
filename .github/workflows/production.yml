@@ -2,8 +2,8 @@ name: Production Deployment
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +29,7 @@ jobs:
       id-token: write
 
     env:
-      AZURE_CORE_ONLY_SHOW_ERRORS: '1'
+      AZURE_CORE_ONLY_SHOW_ERRORS: '0'
 
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
