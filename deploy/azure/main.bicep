@@ -31,8 +31,15 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2026-01-01'
   tags: commonTags
   properties: {
     appLogsConfiguration: {
-      destination: 'none'
+      destination: null
+      logAnalyticsConfiguration: null
     }
+    workloadProfiles: [
+      {
+        name: 'Consumption'
+        workloadProfileType: 'Consumption'
+      }
+    ]
   }
 }
 
