@@ -14,13 +14,17 @@ for variable_name in "${required_variables[@]}"; do
   fi
 done
 
+REPOSITORY_OWNER="${REPOSITORY_SLUG%%/*}"
+REPOSITORY_OWNER_ID="${103235805}"
+REPOSITORY_ID="${1298659298}"
+REPOSITORY_NAME="access-control-demo"
 AZURE_LOCATION="${AZURE_LOCATION:-australiaeast}"
 AZURE_IDENTITY_NAME="${AZURE_IDENTITY_NAME:-github-access-control-demo-production}"
 DEPLOYMENT_ENVIRONMENT="${DEPLOYMENT_ENVIRONMENT:-production}"
 FEDERATED_CREDENTIAL_NAME="github-${DEPLOYMENT_ENVIRONMENT}"
 OIDC_ISSUER="https://token.actions.githubusercontent.com"
 OIDC_AUDIENCE="api://AzureADTokenExchange"
-OIDC_SUBJECT="repo:${REPOSITORY_SLUG}:environment:${DEPLOYMENT_ENVIRONMENT}"
+OIDC_SUBJECT="repo:${REPOSITORY_OWNER}@${REPOSITORY_OWNER_ID}/${REPOSITORY_NAME}@${REPOSITORY_ID}:environment:${DEPLOYMENT_ENVIRONMENT}"
 
 az account set --subscription "${AZURE_SUBSCRIPTION_ID}"
 az provider register --namespace Microsoft.App --wait
