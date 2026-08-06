@@ -240,23 +240,27 @@ jobs:
               fi
 
               revision_replica_count="$(
-                az containerapp replica count \
+                az containerapp replica list \
                   --name "${AZURE_CONTAINER_APP}" \
                   --resource-group "${AZURE_RESOURCE_GROUP}" \
                   --revision "${revision}" \
+                  --query 'length(@)' \
                   --output tsv \
                   2>/dev/null \
                   || printf '0'
               )"
 
-              if [[ "${revision_replica_count}" =~ ^[0-9]+$ ]]; then
-                running_replica_count="$(
-                  (
-                    running_replica_count
-                    + revision_replica_count
-                  )
-                )"
+              if [[ ! "${revision_replica_count}" =~ ^[0-9]+$ ]]; then
+                echo "Unable to determine replica count for ${revision}; treating it as zero."
+                revision_replica_count=0
               fi
+
+              running_replica_count=$(
+                (
+                  running_replica_count
+                  + revision_replica_count
+                )
+              )
             done <<< "${DEACTIVATED_REVISIONS}"
 
             if [[ "${active_revision_count}" == '0' ]] &&
@@ -292,7 +296,6 @@ jobs:
 
             sleep "${verify_poll_seconds}"
           done
-
       - name: Publish offline summary
         if: always()
         shell: bash
