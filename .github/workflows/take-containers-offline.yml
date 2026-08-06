@@ -1,0 +1,333 @@
+name: Take Production Container Offline
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type offline to stop all production Container App revisions
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  offline:
+    name: Take production application offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    environment:
+      name: production
+
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      AZURE_CORE_ONLY_SHOW_ERRORS: '0'
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      AZURE_CONTAINER_ENVIRONMENT: ${{ vars.AZURE_CONTAINER_ENVIRONMENT }}
+      AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP }}
+
+    steps:
+      - name: Confirm offline intent
+        shell: bash
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${CONFIRM}" != 'offline' ]]; then
+            echo "Refusing to run. Set confirm to offline." >&2
+            exit 1
+          fi
+
+      - name: Validate production configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_values=(
+            AZURE_CLIENT_ID
+            AZURE_TENANT_ID
+            AZURE_SUBSCRIPTION_ID
+            AZURE_RESOURCE_GROUP
+            AZURE_CONTAINER_APP
+          )
+
+          for value_name in "${required_values[@]}"; do
+            if [[ -z "${!value_name:-}" ]]; then
+              echo "Missing production environment value: ${value_name}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Sign in to Azure
+        uses: azure/login@v3
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Inventory production application
+        id: inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          resource_group_exists='false'
+          container_app_exists='false'
+          container_environment_exists='unknown'
+          application_url=''
+          active_revision_count='0'
+
+          if az group show \
+            --name "${AZURE_RESOURCE_GROUP}" \
+            --output none \
+            2>/dev/null; then
+            resource_group_exists='true'
+          fi
+
+          if [[ "${resource_group_exists}" == 'true' ]]; then
+            if az containerapp show \
+              --name "${AZURE_CONTAINER_APP}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --output none \
+              2>/dev/null; then
+              container_app_exists='true'
+
+              application_fqdn="$(
+                az containerapp show \
+                  --name "${AZURE_CONTAINER_APP}" \
+                  --resource-group "${AZURE_RESOURCE_GROUP}" \
+                  --query properties.configuration.ingress.fqdn \
+                  --output tsv
+              )"
+
+              if [[ -n "${application_fqdn}" && "${application_fqdn}" != 'None' ]]; then
+                application_url="https://${application_fqdn}"
+              fi
+
+              active_revision_count="$(
+                az containerapp revision list \
+                  --name "${AZURE_CONTAINER_APP}" \
+                  --resource-group "${AZURE_RESOURCE_GROUP}" \
+                  --query 'length([?properties.active == `true`])' \
+                  --output tsv
+              )"
+            fi
+
+            if [[ -n "${AZURE_CONTAINER_ENVIRONMENT:-}" ]]; then
+              container_environment_exists='false'
+
+              if az containerapp env show \
+                --name "${AZURE_CONTAINER_ENVIRONMENT}" \
+                --resource-group "${AZURE_RESOURCE_GROUP}" \
+                --output none \
+                2>/dev/null; then
+                container_environment_exists='true'
+              fi
+            fi
+          fi
+
+          {
+            echo "resource_group_exists=${resource_group_exists}"
+            echo "container_app_exists=${container_app_exists}"
+            echo "container_environment_exists=${container_environment_exists}"
+            echo "application_url=${application_url}"
+            echo "active_revision_count=${active_revision_count}"
+          } >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "## Production offline inventory"
+            echo
+            echo "- Resource group \`${AZURE_RESOURCE_GROUP}\`: ${resource_group_exists}"
+            echo "- Container App \`${AZURE_CONTAINER_APP}\`: ${container_app_exists}"
+            echo "- Active revisions: ${active_revision_count}"
+
+            if [[ -n "${AZURE_CONTAINER_ENVIRONMENT:-}" ]]; then
+              echo "- Container Apps environment \`${AZURE_CONTAINER_ENVIRONMENT}\`: ${container_environment_exists}"
+            fi
+
+            if [[ -n "${application_url}" ]]; then
+              echo "- Application URL: ${application_url}"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Deactivate active revisions
+        id: deactivate
+        if: steps.inventory.outputs.container_app_exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          active_revision_output="$(
+            az containerapp revision list \
+              --name "${AZURE_CONTAINER_APP}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --query '[?properties.active == `true`].name' \
+              --output tsv
+          )"
+
+          active_revisions=()
+
+          if [[ -n "${active_revision_output}" ]]; then
+            mapfile -t active_revisions <<< "${active_revision_output}"
+          fi
+
+          {
+            echo "count=${#active_revisions[@]}"
+            echo 'revisions<<EOF'
+
+            if (( ${#active_revisions[@]} > 0 )); then
+              printf '%s\n' "${active_revisions[@]}"
+            fi
+
+            echo 'EOF'
+          } >> "${GITHUB_OUTPUT}"
+
+          if (( ${#active_revisions[@]} == 0 )); then
+            echo "Container App already has no active revisions."
+            exit 0
+          fi
+
+          for revision in "${active_revisions[@]}"; do
+            echo "Deactivating revision ${revision}..."
+
+            az containerapp revision deactivate \
+              --name "${AZURE_CONTAINER_APP}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --revision "${revision}" \
+              --output none
+          done
+
+      - name: Verify application is offline
+        if: steps.inventory.outputs.container_app_exists == 'true'
+        shell: bash
+        env:
+          DEACTIVATED_REVISIONS: ${{ steps.deactivate.outputs.revisions }}
+        run: |
+          set -euo pipefail
+
+          readonly verify_timeout_seconds=900
+          readonly verify_poll_seconds=15
+          readonly verify_deadline=$((SECONDS + verify_timeout_seconds))
+
+          while true; do
+            active_revision_count="$(
+              az containerapp revision list \
+                --name "${AZURE_CONTAINER_APP}" \
+                --resource-group "${AZURE_RESOURCE_GROUP}" \
+                --query 'length([?properties.active == `true`])' \
+                --output tsv
+            )"
+
+            running_replica_count=0
+
+            while IFS= read -r revision; do
+              if [[ -z "${revision}" ]]; then
+                continue
+              fi
+
+              revision_replica_count="$(
+                az containerapp replica count \
+                  --name "${AZURE_CONTAINER_APP}" \
+                  --resource-group "${AZURE_RESOURCE_GROUP}" \
+                  --revision "${revision}" \
+                  --output tsv \
+                  2>/dev/null \
+                  || printf '0'
+              )"
+
+              if [[ "${revision_replica_count}" =~ ^[0-9]+$ ]]; then
+                running_replica_count="$(
+                  (
+                    running_replica_count
+                    + revision_replica_count
+                  )
+                )"
+              fi
+            done <<< "${DEACTIVATED_REVISIONS}"
+
+            if [[ "${active_revision_count}" == '0' ]] &&
+              [[ "${running_replica_count}" == '0' ]]; then
+              echo "Container App has no active revisions or running replicas."
+              exit 0
+            fi
+
+            if (( SECONDS >= verify_deadline )); then
+              echo "Container App did not reach the expected offline state." >&2
+              echo "Active revisions: ${active_revision_count}" >&2
+              echo "Running replicas: ${running_replica_count}" >&2
+
+              az containerapp revision list \
+                --name "${AZURE_CONTAINER_APP}" \
+                --resource-group "${AZURE_RESOURCE_GROUP}" \
+                --query '[].{
+                  name:name,
+                  active:properties.active,
+                  replicas:properties.replicas,
+                  health:properties.healthState
+                }' \
+                --output table \
+                || true
+
+              exit 1
+            fi
+
+            echo "Shutdown still in progress."
+            echo "Active revisions: ${active_revision_count}"
+            echo "Running replicas: ${running_replica_count}"
+            echo "Checking again in ${verify_poll_seconds}s..."
+
+            sleep "${verify_poll_seconds}"
+          done
+
+      - name: Publish offline summary
+        if: always()
+        shell: bash
+        env:
+          APPLICATION_URL: ${{ steps.inventory.outputs.application_url }}
+          CONTAINER_APP_EXISTS: ${{ steps.inventory.outputs.container_app_exists }}
+          CONTAINER_ENVIRONMENT_EXISTS: ${{ steps.inventory.outputs.container_environment_exists }}
+          RESOURCE_GROUP_EXISTS: ${{ steps.inventory.outputs.resource_group_exists }}
+          PREVIOUS_ACTIVE_REVISION_COUNT: ${{ steps.inventory.outputs.active_revision_count }}
+          DEACTIVATED_REVISION_COUNT: ${{ steps.deactivate.outputs.count }}
+        run: |
+          set -euo pipefail
+
+          deactivated_revision_count="${DEACTIVATED_REVISION_COUNT:-0}"
+          previous_active_revision_count="${PREVIOUS_ACTIVE_REVISION_COUNT:-0}"
+
+          {
+            echo "## Production offline result"
+            echo
+            echo "- Resource group retained: \`${AZURE_RESOURCE_GROUP}\`"
+            echo "- Container App retained: \`${AZURE_CONTAINER_APP}\`"
+            echo "- Container App existed before run: ${CONTAINER_APP_EXISTS}"
+            echo "- Container Apps environment retained: \`${AZURE_CONTAINER_ENVIRONMENT:-not configured}\`"
+            echo "- Container Apps environment existed before run: ${CONTAINER_ENVIRONMENT_EXISTS}"
+            echo "- Active revisions before run: ${previous_active_revision_count}"
+            echo "- Revisions deactivated by this run: ${deactivated_revision_count}"
+            echo "- Container App configuration, secrets, identity, and revisions retained"
+            echo "- No Azure resources were deleted"
+
+            if [[ -n "${APPLICATION_URL}" ]]; then
+              echo "- Retained application URL: ${APPLICATION_URL}"
+            fi
+
+            echo
+            echo "The application remains offline until a revision is activated or a deployment creates and activates a new revision."
+            echo
+            echo "Supabase, GHCR images, managed identity, OIDC configuration, and GitHub environment settings are not modified."
+          } >> "${GITHUB_STEP_SUMMARY}"
