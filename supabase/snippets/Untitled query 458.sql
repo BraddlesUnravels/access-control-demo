@@ -1,7 +1,8 @@
 -- Optional: consultations + profile role in one view
-select
+    select
 *
-from public.consultations;
+    from public.access_invites
+    order by label;
 
 -- select
 -- *

@@ -1,58 +1,22 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { ACCESS_GATE_COOKIE_NAME } from '@/lib/access-gate/constants';
-import { verifyAccessGateCookieValue } from '@/lib/access-gate/cookie';
-import {
-  isAccessGateDisabled,
-  tryGetAccessGateSecret,
-} from '@/lib/access-gate/env';
-import { isAccessGatePublicPath } from '@/lib/access-gate/paths';
+import { ACCESS_GATE_DEFAULT_DESTINATION } from '@/lib/access-gate/constants';
 
-const hasValidAccessGateCookie = (request: NextRequest): boolean => {
-  if (isAccessGateDisabled()) {
-    return true;
-  }
+const copyResponseCookies = (
+  source: NextResponse,
+  target: NextResponse,
+): NextResponse => {
+  source.cookies.getAll().forEach((cookie) => {
+    target.cookies.set(cookie);
+  });
 
-  const secret = tryGetAccessGateSecret();
-
-  if (!secret) {
-    return false;
-  }
-
-  const cookieValue = request.cookies.get(ACCESS_GATE_COOKIE_NAME)?.value;
-
-  if (!cookieValue) {
-    return false;
-  }
-
-  return Boolean(verifyAccessGateCookieValue(cookieValue, secret));
+  return target;
 };
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
-
-  const pathname = request.nextUrl.pathname;
-
-  if (!isAccessGatePublicPath(pathname) && !hasValidAccessGateCookie(request)) {
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
-        { error: 'Access invite is required.' },
-        { status: 401 },
-      );
-    }
-
-    const url = request.nextUrl.clone();
-    url.pathname = '/access';
-    url.search = '';
-
-    if (pathname !== '/' && pathname !== '/access') {
-      url.searchParams.set('next', pathname);
-    }
-
-    return NextResponse.redirect(url);
-  }
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
@@ -87,19 +51,21 @@ export async function updateSession(request: NextRequest) {
   // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
+  const pathname = request.nextUrl.pathname.trim().toLowerCase();
 
   if (
-    pathname !== '/' &&
     !user &&
-    !pathname.startsWith('/api') &&
-    !pathname.startsWith('/login') &&
-    !pathname.startsWith('/auth') &&
-    !pathname.startsWith('/access')
+    !pathname.startsWith('/api/') &&
+    !pathname.startsWith('/auth/')
   ) {
     // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone();
-    url.pathname = '/auth/login';
-    return NextResponse.redirect(url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = ACCESS_GATE_DEFAULT_DESTINATION;
+    redirectUrl.search = '';
+    return copyResponseCookies(
+      supabaseResponse,
+      NextResponse.redirect(redirectUrl),
+    );
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.

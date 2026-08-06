@@ -3,17 +3,18 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import {
-  ACCESS_GATE_CONTACT_EMAIL,
-  ACCESS_GATE_REQUEST_TOKENS_URL,
-} from '@/lib/access-gate/constants';
-import { Button } from '@/components/ui/button';
-import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  ACCESS_GATE_CONTACT_EMAIL,
+  ACCESS_GATE_REQUEST_TOKENS_URL,
+} from '@/lib/access-gate/constants';
+import { getSafeAccessGateDestination } from '@/lib/access-gate/paths';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,20 @@ type AccessGateFormProps = {
   initialCode?: string;
   nextPath?: string;
   className?: string;
+};
+
+type AccessUnlockErrorBody = {
+  error?: unknown;
+};
+
+const readAccessUnlockError = async (
+  response: Response,
+): Promise<AccessUnlockErrorBody> => {
+  try {
+    return (await response.json()) as AccessUnlockErrorBody;
+  } catch {
+    return {};
+  }
 };
 
 export function AccessGateForm({
@@ -50,24 +65,19 @@ export function AccessGateForm({
         body: JSON.stringify({ code }),
       });
 
-      const body = (await response.json()) as {
-        error?: string;
-        reason?: string;
-      };
-
       if (!response.ok) {
-        setError(body.error ?? 'Unable to verify invite code');
-        setShowRequestHelp(
-          body.reason === 'expired' ||
-            body.reason === 'revoked' ||
-            body.reason === 'invalid' ||
-            response.status >= 400,
+        const body = await readAccessUnlockError(response);
+
+        setError(
+          typeof body.error === 'string'
+            ? body.error
+            : 'Unable to verify invite code',
         );
+        setShowRequestHelp(true);
         return;
       }
 
-      router.replace(nextPath.startsWith('/') ? nextPath : '/auth/login');
-      router.refresh();
+      router.replace(getSafeAccessGateDestination(nextPath));
     } catch {
       setError('Unable to verify invite code');
       setShowRequestHelp(true);
@@ -82,7 +92,8 @@ export function AccessGateForm({
         <CardHeader>
           <CardTitle className="text-2xl">Enter invite code</CardTitle>
           <CardDescription>
-            Use the access code from the resume link to open this demo.
+            Use the access code from the Bradley Laskey's resume. Or click the
+            link on to open this demo.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -105,15 +116,6 @@ export function AccessGateForm({
                 <div className="space-y-1 text-sm text-muted-foreground">
                   <p>
                     Need a new code? Contact{' '}
-                    <a
-                      className="underline underline-offset-4"
-                      href={`mailto:${ACCESS_GATE_CONTACT_EMAIL}`}
-                    >
-                      {ACCESS_GATE_CONTACT_EMAIL}
-                    </a>
-                    .
-                  </p>
-                  <p>
                     <a
                       className="underline underline-offset-4"
                       href={ACCESS_GATE_REQUEST_TOKENS_URL}

@@ -1,15 +1,15 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import {
-  ACCESS_GATE_COOKIE_MAX_AGE_SECONDS,
-  ACCESS_GATE_COOKIE_NAME,
-} from '@/lib/access-gate/constants';
+import { ACCESS_GATE_COOKIE_NAME } from '@/lib/access-gate/constants';
+
+const ACCESS_GATE_COOKIE_VERSION = 1;
 
 export type AccessGateCookiePayload = {
-  visitId: string;
+  version: typeof ACCESS_GATE_COOKIE_VERSION;
   inviteId: string;
-  label: string;
   exp: number;
 };
+
+type AccessGateCookieInput = Pick<AccessGateCookiePayload, 'inviteId'>;
 
 const toBase64Url = (value: string): string => {
   return Buffer.from(value, 'utf8').toString('base64url');
@@ -26,24 +26,49 @@ const signPayload = (encodedPayload: string, secret: string): string => {
 };
 
 const signaturesMatch = (left: string, right: string): boolean => {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
+  let leftBuffer: Buffer;
+  let rightBuffer: Buffer;
 
-  if (leftBuffer.length !== rightBuffer.length) {
+  // If either value is not valid base64url, return false
+  try {
+    leftBuffer = Buffer.from(left, 'base64url');
+    rightBuffer = Buffer.from(right, 'base64url');
+  } catch {
     return false;
   }
 
   return timingSafeEqual(leftBuffer, rightBuffer);
 };
 
+const isAccessGateCookiePayload = (
+  value: unknown,
+): value is AccessGateCookiePayload => {
+  if (!value && typeof value !== 'object') return false;
+
+  const payload = value as Partial<AccessGateCookiePayload>;
+
+  return (
+    payload.version === ACCESS_GATE_COOKIE_VERSION &&
+    typeof payload.inviteId === 'string' &&
+    payload.inviteId.length > 0 &&
+    typeof payload.exp === 'number' &&
+    Number.isSafeInteger(payload.exp)
+  );
+};
+
 export const createAccessGateCookieValue = (
-  payload: Omit<AccessGateCookiePayload, 'exp'>,
+  payload: AccessGateCookieInput,
   secret: string,
-  nowMs: number = Date.now(),
+  expiresAtMs: number,
 ): string => {
+  if (!Number.isFinite(expiresAtMs)) {
+    throw new Error('Access gate cookie expiry must be a valid timestamp.');
+  }
+
   const fullPayload: AccessGateCookiePayload = {
-    ...payload,
-    exp: Math.floor(nowMs / 1000) + ACCESS_GATE_COOKIE_MAX_AGE_SECONDS,
+    version: ACCESS_GATE_COOKIE_VERSION,
+    inviteId: payload.inviteId,
+    exp: Math.floor(expiresAtMs / 1000),
   };
   const encodedPayload = toBase64Url(JSON.stringify(fullPayload));
   const signature = signPayload(encodedPayload, secret);
@@ -56,19 +81,17 @@ export const verifyAccessGateCookieValue = (
   secret: string,
   nowMs: number = Date.now(),
 ): AccessGateCookiePayload | undefined => {
-  const separatorIndex = cookieValue.lastIndexOf('.');
+  const parts = cookieValue.split('.');
 
-  if (separatorIndex <= 0 || separatorIndex === cookieValue.length - 1) {
-    return undefined;
-  }
+  if (parts.length !== 2) return undefined;
 
-  const encodedPayload = cookieValue.slice(0, separatorIndex);
-  const signature = cookieValue.slice(separatorIndex + 1);
+  const [encodedPayload, signature] = parts;
+
+  if (!encodedPayload || !signature) return undefined;
+
   const expectedSignature = signPayload(encodedPayload, secret);
 
-  if (!signaturesMatch(signature, expectedSignature)) {
-    return undefined;
-  }
+  if (!signaturesMatch(signature, expectedSignature)) return undefined;
 
   let parsed: unknown;
 
@@ -78,33 +101,23 @@ export const verifyAccessGateCookieValue = (
     return undefined;
   }
 
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    typeof (parsed as AccessGateCookiePayload).visitId !== 'string' ||
-    typeof (parsed as AccessGateCookiePayload).inviteId !== 'string' ||
-    typeof (parsed as AccessGateCookiePayload).label !== 'string' ||
-    typeof (parsed as AccessGateCookiePayload).exp !== 'number'
-  ) {
-    return undefined;
-  }
+  if (!isAccessGateCookiePayload(parsed)) return undefined;
 
-  const payload = parsed as AccessGateCookiePayload;
+  if (parsed.exp * 1000 <= nowMs) return undefined;
 
-  if (payload.exp * 1000 <= nowMs) {
-    return undefined;
-  }
-
-  return payload;
+  return parsed;
 };
 
-export const getAccessGateCookieOptions = (isSecure: boolean) => {
+export const getAccessGateCookieOptions = (
+  isSecure: boolean,
+  expiresAtMs: number,
+) => {
   return {
     name: ACCESS_GATE_COOKIE_NAME,
     httpOnly: true,
     sameSite: 'lax' as const,
     secure: isSecure,
     path: '/',
-    maxAge: ACCESS_GATE_COOKIE_MAX_AGE_SECONDS,
+    expires: new Date(expiresAtMs),
   };
 };

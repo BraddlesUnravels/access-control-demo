@@ -4,10 +4,10 @@
 -- - student2@lms.com / password123
 -- - admin@lms.com / password123
 --
--- Access invite codes (valid only when ACCESS_GATE_SECRET=local-access-gate-secret):
+-- Access invite codes (valid only when ACCESS_GATE_CODE_SECRET=replace-with-a-long-random-secret):
 -- - ACD-DEV1-TEST  -> Local developer
 -- - ACD-DEV2-TEST  -> Local recruiter demo
--- - ACD-EXPIRED1   -> Expired invite (for gate failure UX)
+-- - ACD-EXP1-TEST   -> Expired invite (for gate failure UX)
 -- Plaintext codes are never stored. Hashes use sha256(`${secret}:${normalizedCode}`).
 
 do $$
@@ -251,30 +251,65 @@ where not exists (
     and existing.status = consultations.status
 );
 
--- Local invite gate codes for ACCESS_GATE_SECRET=local-access-gate-secret.
+-- Local invite gate codes for:
+-- ACCESS_GATE_CODE_SECRET=local-access-gate-secret-that-meets-length-requirements
+--
+-- Test codes:
+-- - ACD-DEV1-TEST -> Local developer
+-- - ACD-DEV2-TEST -> Local recruiter demo
+-- - ACD-EXP1-TEST -> Expired invite (for gate failure UX)
+--
+-- Valid unused invites have no expiry until their first successful redemption.
+-- The expired invite represents a completed 14-day access window that expired
+
+with seeded_invites (
+  code_hash,
+  label,
+  access_duration_days,
+  first_accessed_at,
+  expires_at,
+  revoked_at
+) as (
+  values
+    (
+      '7ddb0b8ed9c019afa6210be5f501e38e85db6e031e026b3c8a7a6b6fdca7bafa',
+      'Local developer',
+      14,
+      null::timestamptz,
+      null::timestamptz,
+      null::timestamptz
+    ),
+    (
+      '23895648c8925754b5863412f1c4bc100d89b3b1501c2b35863ce4029712a700',
+      'Local recruiter demo',
+      14,
+      null::timestamptz,
+      null::timestamptz,
+      null::timestamptz
+    ),
+    (
+      '3b5e12b20639a4a40d03169e838ab0ff617ee3243ae227540973d2c7d34bba07',
+      'Expired local invite',
+      14,
+      now() - interval '15 days',
+      now() - interval '1 day',
+      null::timestamptz
+    )
+)
 insert into public.access_invites (
   code_hash,
   label,
+  access_duration_days,
+  first_accessed_at,
   expires_at,
   revoked_at
 )
-values
-  (
-    '65ea63f9ce3bc3e60910c69740addc70b6a81d98eb7c02beddb828761cbf2378',
-    'Local developer',
-    null,
-    null
-  ),
-  (
-    '91007ea6f3076bfd1eb37d92966426fb065a26b1d23aa8d06e97a3b077167a96',
-    'Local recruiter demo',
-    timezone('utc', now()) + interval '365 days',
-    null
-  ),
-  (
-    'ee7bf803f86371e9604258ebb1eff5b1b553fbaa13b9a6f65dc4840324622c44',
-    'Expired local invite',
-    timezone('utc', now()) - interval '1 day',
-    null
-  )
+select
+  code_hash,
+  label,
+  access_duration_days,
+  first_accessed_at,
+  expires_at,
+  revoked_at
+from seeded_invites
 on conflict (code_hash) do nothing;

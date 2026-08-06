@@ -1,4 +1,4 @@
-import { LoginForm } from '@/components/lms-login-form';
+import { LoginForm } from '@/components/ui/forms/lms-login-form';
 
 export default function Page() {
   return (

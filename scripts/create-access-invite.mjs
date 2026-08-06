@@ -122,7 +122,7 @@ const main = async () => {
 
   const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL');
   const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
-  const accessGateSecret = requireEnv('ACCESS_GATE_SECRET');
+  const accessGateSecret = requireEnv('ACCESS_GATE_CODE_SECRET');
   const code = generateInviteCode();
   const codeHash = hashInviteCode(code, accessGateSecret);
   const supabase = createClient(supabaseUrl, serviceRoleKey, {

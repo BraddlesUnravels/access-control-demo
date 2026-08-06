@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
-import { AccessGateForm } from '@/components/access-gate-form';
+import { AccessGateForm } from '@/components/ui/forms/access-gate-form';
+import { getSafeAccessGateDestination } from '@/lib/access-gate/paths';
 
 type AccessPageSearchParams = Promise<{
   code?: string;
@@ -16,10 +17,7 @@ const AccessPageContent = async ({
   searchParams: AccessPageSearchParams;
 }) => {
   const params = await searchParams;
-  const nextPath =
-    typeof params.next === 'string' && params.next.startsWith('/')
-      ? params.next
-      : '/auth/login';
+  const nextPath = getSafeAccessGateDestination(params.next);
 
   return <AccessGateForm initialCode={params.code ?? ''} nextPath={nextPath} />;
 };

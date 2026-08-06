@@ -1,7 +1,43 @@
-import { ACCESS_GATE_PUBLIC_PATH_PREFIXES } from '@/lib/access-gate/constants';
+import {
+  ACCESS_GATE_DEFAULT_DESTINATION,
+  ACCESS_GATE_ENTRY_PATH,
+  ACCESS_GATE_PUBLIC_PATH_PREFIXES,
+} from '@/lib/access-gate/constants';
+
+const INTERNAL_ORIGIN = 'http://access-gate.internal';
 
 export const isAccessGatePublicPath = (pathname: string): boolean => {
+  // 1. Normalise to lowercase for safety
+  const cleanPath = pathname.trim().toLowerCase();
+  if (cleanPath === ACCESS_GATE_ENTRY_PATH) return true;
+
   return ACCESS_GATE_PUBLIC_PATH_PREFIXES.some((prefix) => {
-    return pathname === prefix || pathname.startsWith(`${prefix}/`);
+    return cleanPath === prefix || cleanPath.startsWith(`${prefix}/`);
   });
+};
+
+export const getSafeAccessGateDestination = (
+  value: string | null | undefined,
+): string => {
+  if (!value || !value.startsWith('/') || value.startsWith('//'))
+    return ACCESS_GATE_DEFAULT_DESTINATION;
+
+  let destination: URL;
+
+  try {
+    destination = new URL(value, INTERNAL_ORIGIN);
+  } catch {
+    return ACCESS_GATE_DEFAULT_DESTINATION;
+  }
+
+  if (
+    destination.origin !== INTERNAL_ORIGIN ||
+    destination.pathname === ACCESS_GATE_ENTRY_PATH ||
+    destination.pathname === '/api' ||
+    destination.pathname.startsWith('/api/')
+  ) {
+    return ACCESS_GATE_DEFAULT_DESTINATION;
+  }
+
+  return `${destination.pathname}${destination.search}${destination.hash}`;
 };

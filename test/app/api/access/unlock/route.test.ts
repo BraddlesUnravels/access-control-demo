@@ -23,7 +23,7 @@ const setupRpcMock = (rpcResult: {
 describe('app/api/access/unlock/route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.ACCESS_GATE_SECRET = 'test-access-gate-secret';
+    process.env.ACCESS_GATE_CODE_SECRET = 'test-access-gate-secret';
   });
 
   const emptyContext = { params: Promise.resolve({}) };
