@@ -91,12 +91,12 @@ jobs:
           container_environment_exists='false'
           application_url=''
 
-          if az group show \
-            --name "${AZURE_RESOURCE_GROUP}" \
-            --output none \
-            2>/dev/null; then
-            resource_group_exists='true'
-          fi
+          resource_group_exists="$(
+            az group exists \
+              --name "${AZURE_RESOURCE_GROUP}" \
+              --output tsv
+          )"
+
 
           if [[ "${resource_group_exists}" == 'true' ]]; then
             if az containerapp show \
