@@ -36,6 +36,7 @@ const signaturesMatch = (left: string, right: string): boolean => {
   } catch {
     return false;
   }
+  if (leftBuffer.length !== rightBuffer.length) return false;
 
   return timingSafeEqual(leftBuffer, rightBuffer);
 };

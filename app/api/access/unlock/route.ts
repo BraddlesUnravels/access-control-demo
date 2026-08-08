@@ -85,11 +85,9 @@ export const POST = withApiHandler(async (request: Request) => {
   );
 
   const supabase = await serverRequestClient();
-  const userAgent = request.headers.get('user-agent') ?? undefined;
 
   const { data, error } = await supabase.rpc('redeem_access_invite', {
     p_code_hash: codeHash,
-    p_user_agent: userAgent,
   });
 
   if (error)

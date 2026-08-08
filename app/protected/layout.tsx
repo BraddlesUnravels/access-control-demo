@@ -1,4 +1,4 @@
-import { AuthButton } from '@/components/auth-button';
+import { AuthButton } from '@/components/ui/auth-button';
 import { Suspense } from 'react';
 
 export default function ProtectedLayout({

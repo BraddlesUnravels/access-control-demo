@@ -108,7 +108,7 @@ export function AccessGateForm({
                   required
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
-                  placeholder="ACD-XXXX-XXXX"
+                  placeholder="ACD-XXXX-XXXX-XXXX"
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}

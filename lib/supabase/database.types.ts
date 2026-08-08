@@ -75,19 +75,16 @@ export type Database = {
           id: string
           invite_id: string
           used_at: string
-          user_agent: string | null
         }
         Insert: {
           id?: string
           invite_id: string
           used_at?: string
-          user_agent?: string | null
         }
         Update: {
           id?: string
           invite_id?: string
           used_at?: string
-          user_agent?: string | null
         }
         Relationships: [
           {
@@ -176,7 +173,7 @@ export type Database = {
     }
     Functions: {
       redeem_access_invite: {
-        Args: { p_code_hash: string; p_user_agent?: string }
+        Args: { p_code_hash: string }
         Returns: {
           access_expires_at: string
           invite_id: string
