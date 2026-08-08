@@ -1,101 +1,154 @@
+import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   createAccessGateCookieValue,
+  getAccessGateCookieOptions,
   verifyAccessGateCookieValue,
 } from '@/lib/access-gate/cookie';
-import { hashInviteCode, normalizeInviteCode } from '@/lib/access-gate/hash';
-import { isAccessGatePublicPath } from '@/lib/access-gate/paths';
 
-describe('lib/access-gate/hash', () => {
-  describe('normalizeInviteCode', () => {
-    it('should trim, uppercase, and remove spaces', () => {
-      expect(normalizeInviteCode('  acd-ab12 cd34  ')).toBe('ACD-AB12CD34');
-    });
-  });
+const SECRET = 'test-access-gate-cookie-secret-that-is-long-enough';
+const NOW_MS = Date.parse('2026-08-08T00:00:00.000Z');
+const EXPIRES_AT_MS = Date.parse('2026-08-22T00:00:00.000Z');
 
-  describe('hashInviteCode', () => {
-    it('should hash normalized codes consistently', () => {
-      const secret = 'test-secret';
+const createSignedRawPayload = (rawPayload: string): string => {
+  const encodedPayload = Buffer.from(rawPayload, 'utf8').toString('base64url');
+  const signature = createHmac('sha256', SECRET)
+    .update(encodedPayload)
+    .digest('base64url');
 
-      expect(hashInviteCode('acd-ab12-cd34', secret)).toBe(
-        hashInviteCode('ACD-AB12-CD34', secret),
-      );
-      expect(hashInviteCode('ACD-AB12-CD34', secret)).not.toBe(
-        hashInviteCode('ACD-AB12-CD35', secret),
-      );
-    });
-  });
-});
+  return `${encodedPayload}.${signature}`;
+};
 
 describe('lib/access-gate/cookie', () => {
-  const secret = 'cookie-secret';
-  const nowMs = Date.parse('2026-08-05T12:00:00.000Z');
-
-  it('should round-trip a signed access gate cookie', () => {
+  it('should round-trip the minimal signed payload with the supplied absolute expiry', () => {
     const value = createAccessGateCookieValue(
-      {
-        visitId: 'visit-1',
-        inviteId: 'invite-1',
-        label: 'Acme recruiter',
-      },
-      secret,
-      nowMs,
+      { inviteId: 'invite-1' },
+      SECRET,
+      EXPIRES_AT_MS,
     );
 
-    expect(verifyAccessGateCookieValue(value, secret, nowMs)).toEqual({
-      visitId: 'visit-1',
+    expect(verifyAccessGateCookieValue(value, SECRET, NOW_MS)).toEqual({
+      version: 1,
       inviteId: 'invite-1',
-      label: 'Acme recruiter',
-      exp: Math.floor(nowMs / 1000) + 60 * 60 * 24 * 7,
+      exp: Math.floor(EXPIRES_AT_MS / 1000),
     });
   });
 
-  it('should reject tampered signatures', () => {
+  it('should reject a cookie signed with a different secret', () => {
     const value = createAccessGateCookieValue(
-      {
-        visitId: 'visit-1',
-        inviteId: 'invite-1',
-        label: 'Acme recruiter',
-      },
-      secret,
-      nowMs,
+      { inviteId: 'invite-1' },
+      SECRET,
+      EXPIRES_AT_MS,
     );
 
     expect(
-      verifyAccessGateCookieValue(`${value}tampered`, secret, nowMs),
+      verifyAccessGateCookieValue(
+        value,
+        'different-cookie-secret-that-is-also-long-enough',
+        NOW_MS,
+      ),
     ).toBeUndefined();
   });
 
-  it('should reject expired cookies', () => {
+  it('should reject a tampered signature', () => {
     const value = createAccessGateCookieValue(
-      {
-        visitId: 'visit-1',
-        inviteId: 'invite-1',
-        label: 'Acme recruiter',
-      },
-      secret,
-      nowMs,
+      { inviteId: 'invite-1' },
+      SECRET,
+      EXPIRES_AT_MS,
     );
-    const eightDaysLater = nowMs + 1000 * 60 * 60 * 24 * 8;
+    const [payload, signature] = value.split('.');
+    const replacement = signature?.startsWith('A') ? 'B' : 'A';
+    const tamperedSignature = `${replacement}${signature?.slice(1) ?? ''}`;
 
     expect(
-      verifyAccessGateCookieValue(value, secret, eightDaysLater),
+      verifyAccessGateCookieValue(
+        `${payload}.${tamperedSignature}`,
+        SECRET,
+        NOW_MS,
+      ),
     ).toBeUndefined();
   });
-});
 
-describe('lib/access-gate/paths', () => {
-  describe('isAccessGatePublicPath', () => {
-    it('should allow access and health routes', () => {
-      expect(isAccessGatePublicPath('/access')).toBe(true);
-      expect(isAccessGatePublicPath('/api/access/unlock')).toBe(true);
-      expect(isAccessGatePublicPath('/api/health')).toBe(true);
-    });
+  it('should reject a different-length signature without throwing', () => {
+    const value = createAccessGateCookieValue(
+      { inviteId: 'invite-1' },
+      SECRET,
+      EXPIRES_AT_MS,
+    );
+    const [payload] = value.split('.');
+    const malformedCookie = `${payload}.a`;
 
-    it('should deny protected application routes', () => {
-      expect(isAccessGatePublicPath('/auth/login')).toBe(false);
-      expect(isAccessGatePublicPath('/protected')).toBe(false);
-      expect(isAccessGatePublicPath('/api/consultations')).toBe(false);
+    expect(() =>
+      verifyAccessGateCookieValue(malformedCookie, SECRET, NOW_MS),
+    ).not.toThrow();
+
+    expect(
+      verifyAccessGateCookieValue(malformedCookie, SECRET, NOW_MS),
+    ).toBeUndefined();
+  });
+
+  it('should reject malformed cookie structure', () => {
+    expect(
+      verifyAccessGateCookieValue('not-a-cookie', SECRET, NOW_MS),
+    ).toBeUndefined();
+
+    expect(
+      verifyAccessGateCookieValue('one.two.three', SECRET, NOW_MS),
+    ).toBeUndefined();
+  });
+
+  it('should reject signed invalid JSON without throwing', () => {
+    const value = createSignedRawPayload('{invalid-json');
+
+    expect(() =>
+      verifyAccessGateCookieValue(value, SECRET, NOW_MS),
+    ).not.toThrow();
+
+    expect(verifyAccessGateCookieValue(value, SECRET, NOW_MS)).toBeUndefined();
+  });
+
+  it('should reject a signed payload with an invalid shape without throwing', () => {
+    const value = createSignedRawPayload('null');
+
+    expect(() =>
+      verifyAccessGateCookieValue(value, SECRET, NOW_MS),
+    ).not.toThrow();
+
+    expect(verifyAccessGateCookieValue(value, SECRET, NOW_MS)).toBeUndefined();
+  });
+
+  it('should reject the cookie at its absolute expiry', () => {
+    const value = createAccessGateCookieValue(
+      { inviteId: 'invite-1' },
+      SECRET,
+      EXPIRES_AT_MS,
+    );
+
+    expect(
+      verifyAccessGateCookieValue(value, SECRET, EXPIRES_AT_MS - 1),
+    ).toBeDefined();
+
+    expect(
+      verifyAccessGateCookieValue(value, SECRET, EXPIRES_AT_MS),
+    ).toBeUndefined();
+  });
+
+  it('should reject a non-finite expiry when creating a cookie', () => {
+    expect(() =>
+      createAccessGateCookieValue({ inviteId: 'invite-1' }, SECRET, Number.NaN),
+    ).toThrow('Access gate cookie expiry must be a valid timestamp.');
+  });
+
+  it('should create secure browser-cookie options with the same absolute expiry', () => {
+    const options = getAccessGateCookieOptions(true, EXPIRES_AT_MS);
+
+    expect(options).toEqual({
+      name: 'access_gate',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: true,
+      path: '/',
+      expires: new Date(EXPIRES_AT_MS),
     });
   });
 });

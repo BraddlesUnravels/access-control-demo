@@ -44,7 +44,7 @@ const signaturesMatch = (left: string, right: string): boolean => {
 const isAccessGateCookiePayload = (
   value: unknown,
 ): value is AccessGateCookiePayload => {
-  if (!value && typeof value !== 'object') return false;
+  if (typeof value !== 'object' || value === null) return false;
 
   const payload = value as Partial<AccessGateCookiePayload>;
 

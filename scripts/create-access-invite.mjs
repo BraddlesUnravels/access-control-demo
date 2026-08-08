@@ -99,7 +99,7 @@ const printUsage = () => {
       'Options:',
       '  --label <label>  Human-readable identifier for the invite.',
       '  --days <days>    Access duration from first successful redemption.',
-      '                   Must be an integer between 1 and 365.',
+      '                   Must be an integer between 1 and 30.',
       '                   If omitted, the database default is used.',
       '  --help, -h       Show this help message.',
       '',
@@ -151,7 +151,6 @@ const generateInviteCode = () => {
 
 const requireEnv = (name) => {
   const value = process.env[name];
-  console.log(`Environment variable ${name}: ${value ? value : 'not set'}`);
   if (!value) {
     throw new Error(`Environment variable ${name} is required.`);
   }

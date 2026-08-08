@@ -38,10 +38,22 @@ const gateHelpPayload = {
   requestTokensUrl: ACCESS_GATE_REQUEST_TOKENS_URL,
 };
 
+const isRedeemAccessInviteReason = (
+  value: unknown,
+): value is RedeemAccessInviteReason => {
+  return (
+    value === 'ok' ||
+    value === 'invalid' ||
+    value === 'expired' ||
+    value === 'revoked'
+  );
+};
+
 const getAccessExpiryMs = (expiresAt: string | null): number | undefined => {
   if (!expiresAt) return;
 
   const expiresAtDateMs = Date.parse(expiresAt);
+
   if (!Number.isFinite(expiresAtDateMs) || expiresAtDateMs <= Date.now())
     return;
 
@@ -94,15 +106,41 @@ export const POST = withApiHandler(async (request: Request) => {
     throw new AppError('Failed to redeem access invite', {
       status: 500,
       safeMessage: 'Unable to verify invite code',
-      meta: { code: error.code, message: error.message },
+      meta: {
+        code: error.code,
+        message: error.message,
+      },
     });
 
   const redeemRows = data as RedeemAccessInviteRow[] | null;
-  const redeemResult = redeemRows?.[0];
-  const reason = redeemResult?.reason ?? 'invalid';
+
+  if (!Array.isArray(redeemRows) || redeemRows.length !== 1) {
+    throw new AppError(
+      'Access invite redeem returned an invalid result count',
+      {
+        status: 500,
+        safeMessage: 'Unable to verify invite code',
+        meta: {
+          resultCount: Array.isArray(redeemRows) ? redeemRows.length : null,
+        },
+      },
+    );
+  }
+
+  const [redeemResult] = redeemRows;
+
+  if (!redeemResult || !isRedeemAccessInviteReason(redeemResult.reason)) {
+    throw new AppError('Access invite redeem returned an invalid result', {
+      status: 500,
+      safeMessage: 'Unable to verify invite code',
+    });
+  }
+
+  const { reason } = redeemResult;
 
   if (reason !== 'ok') {
     const status = reason === 'expired' || reason === 'revoked' ? 403 : 401;
+
     const message =
       reason === 'expired'
         ? 'This invite code has expired.'
@@ -123,12 +161,10 @@ export const POST = withApiHandler(async (request: Request) => {
     );
   }
 
-  const expiresAtMs = getAccessExpiryMs(
-    redeemResult?.access_expires_at ?? null,
-  );
+  const expiresAtMs = getAccessExpiryMs(redeemResult.access_expires_at);
 
   if (
-    !redeemResult?.invite_id ||
+    !redeemResult.invite_id ||
     !redeemResult.visit_id ||
     !redeemResult.label ||
     !expiresAtMs
@@ -148,6 +184,7 @@ export const POST = withApiHandler(async (request: Request) => {
   );
 
   const cookieOptions = getAccessGateCookieOptions(isAzureEnv(), expiresAtMs);
+
   const response = NextResponse.json(
     {
       data: {
@@ -160,6 +197,7 @@ export const POST = withApiHandler(async (request: Request) => {
       headers: NO_STORE_HEADERS,
     },
   );
+
   response.cookies.set({
     name: cookieOptions.name,
     value: cookieValue,

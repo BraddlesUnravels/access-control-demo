@@ -9,10 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  ACCESS_GATE_CONTACT_EMAIL,
-  ACCESS_GATE_REQUEST_TOKENS_URL,
-} from '@/lib/access-gate/constants';
+import { ACCESS_GATE_REQUEST_TOKENS_URL } from '@/lib/access-gate/constants';
 import { getSafeAccessGateDestination } from '@/lib/access-gate/paths';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,8 +89,8 @@ export function AccessGateForm({
         <CardHeader>
           <CardTitle className="text-2xl">Enter invite code</CardTitle>
           <CardDescription>
-            Use the access code from the Bradley Laskey's resume. Or click the
-            link on to open this demo.
+            Use the access code from the Bradley Laskey&apos;s resume. Or click
+            the link on to open this demo.
           </CardDescription>
         </CardHeader>
         <CardContent>
