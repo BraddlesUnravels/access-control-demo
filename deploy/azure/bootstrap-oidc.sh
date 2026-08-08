@@ -18,17 +18,26 @@ REPOSITORY_OWNER="${REPOSITORY_SLUG%%/*}"
 REPOSITORY_OWNER_ID="${103235805}"
 REPOSITORY_ID="${1298659298}"
 REPOSITORY_NAME="access-control-demo"
+
 AZURE_LOCATION="${AZURE_LOCATION:-australiaeast}"
 AZURE_IDENTITY_NAME="${AZURE_IDENTITY_NAME:-github-access-control-demo-production}"
 DEPLOYMENT_ENVIRONMENT="${DEPLOYMENT_ENVIRONMENT:-production}"
+
 FEDERATED_CREDENTIAL_NAME="github-${DEPLOYMENT_ENVIRONMENT}"
 OIDC_ISSUER="https://token.actions.githubusercontent.com"
 OIDC_AUDIENCE="api://AzureADTokenExchange"
 OIDC_SUBJECT="repo:${REPOSITORY_OWNER}@${REPOSITORY_OWNER_ID}/${REPOSITORY_NAME}@${REPOSITORY_ID}:environment:${DEPLOYMENT_ENVIRONMENT}"
 
-az account set --subscription "${AZURE_SUBSCRIPTION_ID}"
-az provider register --namespace Microsoft.App --wait
-az provider register --namespace Microsoft.ManagedIdentity --wait
+az account set \
+  --subscription "${AZURE_SUBSCRIPTION_ID}"
+
+az provider register \
+  --namespace Microsoft.App \
+  --wait
+
+az provider register \
+  --namespace Microsoft.ManagedIdentity \
+  --wait
 
 az group create \
   --name "${AZURE_RESOURCE_GROUP}" \
@@ -117,17 +126,55 @@ else
 fi
 
 cat <<OUTPUT
+
 Azure OIDC bootstrap completed.
 
-Add these variables to the GitHub production environment:
+Configure the GitHub "${DEPLOYMENT_ENVIRONMENT}" environment with the following values.
+
+GitHub environment SECRETS
+--------------------------
 AZURE_CLIENT_ID=${client_id}
 AZURE_TENANT_ID=${tenant_id}
 AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
+
+ACCESS_GATE_CODE_SECRET=<production access-gate code secret>
+ACCESS_GATE_COOKIE_SECRET=<production access-gate cookie secret>
+
+
+GitHub environment VARIABLES
+----------------------------
 AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP}
 AZURE_LOCATION=${AZURE_LOCATION}
 AZURE_CONTAINER_ENVIRONMENT=acae-access-control-demo
 AZURE_CONTAINER_APP=aca-access-control-demo
 
-The federated subject is:
+NEXT_PUBLIC_SUPABASE_URL=<hosted Supabase project URL>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<hosted Supabase publishable key>
+
+
+Access-gate requirements
+------------------------
+- ACCESS_GATE_CODE_SECRET must be at least 32 characters.
+- ACCESS_GATE_COOKIE_SECRET must be at least 32 characters.
+- The two access-gate secrets must be different.
+- ACCESS_GATE_CODE_SECRET must exactly match the production secret used
+  when running scripts/create-access-invite.mjs against hosted Supabase.
+- ACCESS_GATE_COOKIE_SECRET is used only by the deployed application to
+  sign access-gate cookies.
+- Do not store SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in the
+  deployed application's GitHub production environment unless another
+  trusted operator workflow specifically requires them.
+
+
+Federated credential
+--------------------
+Identity:
+${AZURE_IDENTITY_NAME}
+
+Credential:
+${FEDERATED_CREDENTIAL_NAME}
+
+Subject:
 ${OIDC_SUBJECT}
+
 OUTPUT

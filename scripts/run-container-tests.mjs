@@ -5,12 +5,37 @@ const imageName = process.env.CONTAINER_IMAGE ?? 'access-control-demo:stage';
 const containerName = process.env.CONTAINER_NAME ?? 'access-control-demo-stage';
 const hostPort = process.env.CONTAINER_PORT ?? '3100';
 const supabaseCliVersion = process.env.SUPABASE_CLI_VERSION ?? '2.110.0';
+const accessGateDisabled = process.env.ACCESS_GATE_DISABLED ?? 'false';
+const accessGateCodeSecret = process.env.ACCESS_GATE_CODE_SECRET;
+const accessGateCookieSecret = process.env.ACCESS_GATE_COOKIE_SECRET;
 const sourceRepository = [
   process.env.GITHUB_SERVER_URL,
   process.env.GITHUB_REPOSITORY,
 ]
   .filter(Boolean)
   .join('/');
+
+const MINIMUM_SECRET_LENGTH = 32;
+
+const requireStageSecret = (name, value) => {
+  if (!value || value.length < MINIMUM_SECRET_LENGTH) {
+    throw new Error(
+      `${name} must be at least ${MINIMUM_SECRET_LENGTH} characters for container-stage testing.`,
+    );
+  }
+
+  return value;
+};
+
+const stageCodeSecret = requireStageSecret(
+  'ACCESS_GATE_CODE_SECRET',
+  accessGateCodeSecret,
+);
+
+const stageCookieSecret = requireStageSecret(
+  'ACCESS_GATE_COOKIE_SECRET',
+  accessGateCookieSecret,
+);
 
 const run = (command, args, { capture = false, ...options } = {}) => {
   return execFileSync(command, args, {
@@ -54,6 +79,7 @@ const getContainerNetwork = (container) => {
     ['inspect', '--format', '{{json .NetworkSettings.Networks}}', container],
     { capture: true },
   );
+
   const networks = Object.keys(JSON.parse(networkJson));
 
   if (networks.length === 0) {
@@ -89,8 +115,9 @@ const waitForHealth = async (url) => {
   throw new Error(`Application did not become healthy at ${url}.`);
 };
 
-const assertStatus = async (url, expectedStatus) => {
+const assertStatus = async (url, expectedStatus, init = {}) => {
   const response = await fetch(url, {
+    ...init,
     redirect: 'manual',
     signal: AbortSignal.timeout(5_000),
   });
@@ -172,6 +199,12 @@ const main = async () => {
       `NEXT_PUBLIC_SUPABASE_URL=${internalSupabaseUrl}`,
       '--env',
       `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${publishableKey}`,
+      '--env',
+      `ACCESS_GATE_DISABLED=${accessGateDisabled}`,
+      '--env',
+      `ACCESS_GATE_CODE_SECRET=${stageCodeSecret}`,
+      '--env',
+      `ACCESS_GATE_COOKIE_SECRET=${stageCookieSecret}`,
       imageName,
     ]);
 
@@ -205,8 +238,19 @@ const main = async () => {
       ].join('\n'),
     ]);
 
-    await assertStatus(`${applicationUrl}/auth/login`, 200);
+    await assertStatus(`${applicationUrl}/`, 200);
+    await assertStatus(`${applicationUrl}/auth/login`, 307);
     await assertStatus(`${applicationUrl}/api/consultations`, 401);
+
+    await assertStatus(`${applicationUrl}/api/access/unlock`, 401, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code: 'ACD-STAGE-SMOKE',
+      }),
+    });
 
     process.stdout.write(
       [
@@ -215,8 +259,10 @@ const main = async () => {
         '- production Next.js image built successfully',
         '- application container passed its health check',
         '- application container reached the Supabase Auth container',
-        '- login route rendered successfully',
-        '- protected API rejected an unauthenticated request',
+        '- access-gate entry route rendered successfully',
+        '- gated login route redirected to the invite screen',
+        '- protected API rejected a request without invite access',
+        '- access-gate unlock route reached the local redemption RPC',
         '',
       ].join('\n'),
     );
