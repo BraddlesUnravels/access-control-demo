@@ -1,7 +1,12 @@
+import { handleAccessGateRequest } from '@/lib/access-gate/proxy';
 import { updateSession } from '@/lib/supabase/proxy';
 import { type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
+  const accessGateResponse = handleAccessGateRequest(request);
+
+  if (accessGateResponse) return accessGateResponse;
+
   return await updateSession(request);
 }
 
@@ -15,6 +20,6 @@ export const config = {
      * - favicon.ico
      * - common image assets
      */
-    '/((?!api/health|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api/health(?:/|$)|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

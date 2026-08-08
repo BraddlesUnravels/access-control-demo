@@ -34,6 +34,68 @@ export type Database = {
   };
   public: {
     Tables: {
+      access_invites: {
+        Row: {
+          access_duration_days: number;
+          code_hash: string;
+          created_at: string;
+          expires_at: string | null;
+          first_accessed_at: string | null;
+          id: string;
+          label: string;
+          revoked_at: string | null;
+          use_count: number;
+        };
+        Insert: {
+          access_duration_days?: number;
+          code_hash: string;
+          created_at?: string;
+          expires_at?: string | null;
+          first_accessed_at?: string | null;
+          id?: string;
+          label: string;
+          revoked_at?: string | null;
+          use_count?: number;
+        };
+        Update: {
+          access_duration_days?: number;
+          code_hash?: string;
+          created_at?: string;
+          expires_at?: string | null;
+          first_accessed_at?: string | null;
+          id?: string;
+          label?: string;
+          revoked_at?: string | null;
+          use_count?: number;
+        };
+        Relationships: [];
+      };
+      access_visits: {
+        Row: {
+          id: string;
+          invite_id: string;
+          used_at: string;
+        };
+        Insert: {
+          id?: string;
+          invite_id: string;
+          used_at?: string;
+        };
+        Update: {
+          id?: string;
+          invite_id?: string;
+          used_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'access_visits_invite_id_fkey';
+            columns: ['invite_id'];
+            isOneToOne: false;
+            referencedRelation: 'access_invites';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       consultations: {
         Row: {
           cancelled_at: string | null;
@@ -110,7 +172,16 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      redeem_access_invite: {
+        Args: { p_code_hash: string };
+        Returns: {
+          access_expires_at: string;
+          invite_id: string;
+          label: string;
+          reason: string;
+          visit_id: string;
+        }[];
+      };
     };
     Enums: {
       app_role: 'student' | 'admin';

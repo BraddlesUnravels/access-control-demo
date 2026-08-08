@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { Geist } from 'next/font/google';
+import { firaSans } from './theme/font';
 import { ThemeProvider } from 'next-themes';
-import './globals.css';
+import './theme/globals.css';
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -14,20 +14,14 @@ export const metadata: Metadata = {
     'A small LMS demonstrating authentication, role-based access control, resource ownership, and PostgreSQL row-level security.',
 };
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  display: 'swap',
-  subsets: ['latin'],
-});
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
+    <html lang="en" className={firaSans.variable} suppressHydrationWarning>
+      <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

@@ -27,6 +27,10 @@ jobs:
       SUPABASE_CLI_VERSION: '2.110.0'
       SUPABASE_TELEMETRY_DISABLED: '1'
 
+      ACCESS_GATE_DISABLED: 'false'
+      ACCESS_GATE_CODE_SECRET: 'container-stage-code-secret-that-meets-length-requirements'
+      ACCESS_GATE_COOKIE_SECRET: 'container-stage-cookie-secret-that-meets-length-requirements'
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -46,8 +50,8 @@ jobs:
       - name: Reapply migrations and seed data
         run: npx --yes supabase@${SUPABASE_CLI_VERSION} db reset
 
-      - name: Validate row-level security
-        run: npm run test:rls
+      - name: Validate database security and access gate
+        run: npm run test:db
 
       - name: Build and test application container
         run: node scripts/run-container-tests.mjs

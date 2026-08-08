@@ -1,3 +1,4 @@
+import { accessUnlockInputSchema } from './access';
 import {
   consultationStatusSchema,
   consultationCreateInputSchema,
@@ -12,6 +13,7 @@ import {
 } from './profiles';
 
 export {
+  accessUnlockInputSchema,
   consultationStatusSchema,
   consultationCreateInputSchema,
   consultationUpdateInputSchema,

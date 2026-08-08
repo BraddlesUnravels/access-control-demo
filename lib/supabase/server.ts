@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { type NextResponse } from 'next/server';
+import { type Database } from '@/lib/supabase/database.types';
 
 /**
  * Especially important if using Fluid compute: Don't put this client in a
@@ -12,7 +13,7 @@ type ResponseCookie = { name: string; value: string; options: CookieOptions };
 export const serverRequestClient = async () => {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
@@ -28,7 +29,7 @@ export const serverRequestClient = async () => {
 export const serverResponseClient = async () => {
   const cookieStore = await cookies();
   const cookiesToSet: ResponseCookie[] = [];
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {

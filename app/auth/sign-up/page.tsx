@@ -1,4 +1,4 @@
-import { SignUpForm } from '@/components/lms-sign-up-form';
+import { SignUpForm } from '@/components/ui/forms/lms-sign-up-form';
 
 export default function Page() {
   return (

@@ -13,6 +13,8 @@ const eslintConfig = [
     'dist/**',
     'coverage/**',
     '.turbo/**',
+    'node_modules/**',
+    '**/.temp',
   ]),
 ];
 

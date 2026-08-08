@@ -19,6 +19,14 @@ param supabaseUrl string
 @description('Supabase publishable key. RLS remains the security boundary.')
 param supabasePublishableKey string
 
+@secure()
+@description('Server-only HMAC secret used to hash access invite codes.')
+param accessGateCodeSecret string
+
+@secure()
+@description('Server-only HMAC secret used to sign access-gate cookies.')
+param accessGateCookieSecret string
+
 var commonTags = {
   application: 'access-control-demo'
   environment: 'production'
@@ -63,6 +71,14 @@ resource containerApp 'Microsoft.App/containerApps@2026-01-01' = {
           name: 'supabase-publishable-key'
           value: supabasePublishableKey
         }
+        {
+          name: 'access-gate-code-secret'
+          value: accessGateCodeSecret
+        }
+        {
+          name: 'access-gate-cookie-secret'
+          value: accessGateCookieSecret
+        }
       ]
     }
     template: {
@@ -95,6 +111,18 @@ resource containerApp 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'
               secretRef: 'supabase-publishable-key'
+            }
+            {
+              name: 'ACCESS_GATE_DISABLED'
+              value: 'false'
+            }
+            {
+              name: 'ACCESS_GATE_CODE_SECRET'
+              secretRef: 'access-gate-code-secret'
+            }
+            {
+              name: 'ACCESS_GATE_COOKIE_SECRET'
+              secretRef: 'access-gate-cookie-secret'
             }
           ]
           resources: {

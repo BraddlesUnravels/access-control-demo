@@ -43,6 +43,7 @@ const main = () => {
   const statusEnv = parseStatusEnv(rawStatusOutput);
   const apiUrl = statusEnv.API_URL;
   const publishableKey = statusEnv.PUBLISHABLE_KEY ?? statusEnv.ANON_KEY;
+  const serviceRoleKey = statusEnv.SERVICE_ROLE_KEY ?? statusEnv.SECRET_KEY;
 
   if (!apiUrl || !publishableKey) {
     throw new Error(
@@ -55,8 +56,16 @@ const main = () => {
     '# Re-run `npm run infra:env` after restarting local Supabase if values change.',
     `NEXT_PUBLIC_SUPABASE_URL=${apiUrl}`,
     `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${publishableKey}`,
+    serviceRoleKey ? `SUPABASE_SERVICE_ROLE_KEY=${serviceRoleKey}` : undefined,
+    'ACCESS_GATE_DISABLED=false',
+    'ACCESS_GATE_CODE_SECRET=local-access-gate-secret-that-meets-length-requirements',
+    'ACCESS_GATE_COOKIE_SECRET=replace-with-safe-secret-that-meets-length-requirements',
     '',
-  ].join('\n');
+    '# SMPT Email',
+    'EMAIL_PASSWORD=replace-with-email-serve-key',
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   writeFileSync('.env.local', envFileContent, 'utf-8');
   process.stdout.write('Created .env.local from local Supabase status.\n');
@@ -80,7 +89,6 @@ const main = () => {
       '  Password: password123',
       '',
       '============================================================',
-      '',
     ].join('\n'),
   );
 };

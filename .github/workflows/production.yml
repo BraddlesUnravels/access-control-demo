@@ -43,6 +43,11 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
 
+      ACCESS_GATE_CODE_SECRET: ${{ secrets.ACCESS_GATE_CODE_SECRET }}
+      ACCESS_GATE_COOKIE_SECRET: ${{ secrets.ACCESS_GATE_COOKIE_SECRET }}
+
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -62,6 +67,9 @@ jobs:
             AZURE_CONTAINER_APP
             NEXT_PUBLIC_SUPABASE_URL
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+            ACCESS_GATE_CODE_SECRET
+            ACCESS_GATE_COOKIE_SECRET
+            EMAIL_PASSWORD
           )
 
           for value_name in "${required_values[@]}"; do
@@ -70,6 +78,21 @@ jobs:
               exit 1
             fi
           done
+
+          if (( ${#ACCESS_GATE_CODE_SECRET} < 32 )); then
+            echo "ACCESS_GATE_CODE_SECRET must be at least 32 characters." >&2
+            exit 1
+          fi
+
+          if (( ${#ACCESS_GATE_COOKIE_SECRET} < 32 )); then
+            echo "ACCESS_GATE_COOKIE_SECRET must be at least 32 characters." >&2
+            exit 1
+          fi
+
+          if [[ "${ACCESS_GATE_CODE_SECRET}" == "${ACCESS_GATE_COOKIE_SECRET}" ]]; then
+            echo "ACCESS_GATE_CODE_SECRET and ACCESS_GATE_COOKIE_SECRET must be different values." >&2
+            exit 1
+          fi
 
       - name: Resolve image names
         id: image
@@ -123,6 +146,7 @@ jobs:
           assert_status() {
             local expected_status="$1"
             local url="$2"
+            shift 2
             local actual_status
 
             actual_status="$(
@@ -130,6 +154,7 @@ jobs:
                 --silent \
                 --output /dev/null \
                 --write-out '%{http_code}' \
+                "$@" \
                 "${url}"
             )"
 
@@ -151,6 +176,9 @@ jobs:
             --publish 3200:3000 \
             --env "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" \
             --env "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            --env "ACCESS_GATE_DISABLED=false" \
+            --env "ACCESS_GATE_CODE_SECRET=${ACCESS_GATE_CODE_SECRET}" \
+            --env "ACCESS_GATE_COOKIE_SECRET=${ACCESS_GATE_COOKIE_SECRET}" \
             "${{ steps.image.outputs.sha }}"
 
           healthy=false
@@ -175,8 +203,16 @@ jobs:
             exit 1
           fi
 
-          assert_status 200 "http://127.0.0.1:3200/auth/login"
+          assert_status 200 "http://127.0.0.1:3200/"
+          assert_status 307 "http://127.0.0.1:3200/auth/login"
           assert_status 401 "http://127.0.0.1:3200/api/consultations"
+
+          assert_status \
+            401 \
+            "http://127.0.0.1:3200/api/access/unlock" \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{"code":"ACD-PRODUCTION-SMOKE"}'
 
       - name: Push production image
         shell: bash
@@ -229,6 +265,8 @@ jobs:
                 image="${{ steps.image.outputs.sha }}" \
                 supabaseUrl="${NEXT_PUBLIC_SUPABASE_URL}" \
                 supabasePublishableKey="${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+                accessGateCodeSecret="${ACCESS_GATE_CODE_SECRET}" \
+                accessGateCookieSecret="${ACCESS_GATE_COOKIE_SECRET}" \
               --query properties.outputs.applicationUrl.value \
               --output tsv
           )"
@@ -256,7 +294,9 @@ jobs:
               --query "{
                 minReplicas: properties.template.scale.minReplicas,
                 maxReplicas: properties.template.scale.maxReplicas,
-                image: properties.template.containers[0].image
+                image: properties.template.containers[0].image,
+                env: properties.template.containers[0].env,
+                secretNames: properties.configuration.secrets[].name
               }" \
               --output json
           )"
@@ -267,7 +307,12 @@ jobs:
               '
                 .minReplicas == 1 and
                 .maxReplicas == 1 and
-                .image == $expected_image
+                .image == $expected_image and
+                (.env | any(.name == "ACCESS_GATE_DISABLED" and .value == "false")) and
+                (.env | any(.name == "ACCESS_GATE_CODE_SECRET" and .secretRef == "access-gate-code-secret")) and
+                (.env | any(.name == "ACCESS_GATE_COOKIE_SECRET" and .secretRef == "access-gate-cookie-secret")) and
+                (.secretNames | index("access-gate-code-secret") != null) and
+                (.secretNames | index("access-gate-cookie-secret") != null)
               ' \
               >/dev/null
 
@@ -281,6 +326,7 @@ jobs:
           assert_status() {
             local expected_status="$1"
             local url="$2"
+            shift 2
             local actual_status
 
             actual_status="$(
@@ -288,6 +334,7 @@ jobs:
                 --silent \
                 --output /dev/null \
                 --write-out '%{http_code}' \
+                "$@" \
                 "${url}"
             )"
 
@@ -320,8 +367,16 @@ jobs:
             exit 1
           fi
 
-          assert_status 200 "${APPLICATION_URL}/auth/login"
+          assert_status 200 "${APPLICATION_URL}/"
+          assert_status 307 "${APPLICATION_URL}/auth/login"
           assert_status 401 "${APPLICATION_URL}/api/consultations"
+
+          assert_status \
+            401 \
+            "${APPLICATION_URL}/api/access/unlock" \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{"code":"ACD-PRODUCTION-SMOKE"}'
 
       - name: Publish deployment summary
         shell: bash

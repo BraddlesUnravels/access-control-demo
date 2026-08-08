@@ -362,6 +362,8 @@ begin
 end
 $$;
 
+reset role;
+
 \echo 'RLS CHECK RESULT: ALL 6 CHECKS PASSED (transaction rolled back)'
 
 rollback;
