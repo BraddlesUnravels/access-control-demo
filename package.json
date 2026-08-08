@@ -17,7 +17,7 @@
     "infra:env": "node scripts/generate-local-env.mjs",
     "invite:create": "node scripts/create-access-invite.mjs",
     "demo:start": "npm install && npm run infra:up && npm run infra:reset && npm run infra:env && npm run dev",
-    "test:rls": "node scripts/run-rls-tests.mjs",
+    "test:db": "node scripts/run-rls-tests.mjs",
     "db:types": "supabase start -x vector && supabase gen types typescript --local > lib/supabase/database.types.ts",
     "typecheck": "tsc --noEmit"
   },
