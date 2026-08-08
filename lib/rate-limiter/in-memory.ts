@@ -23,18 +23,31 @@ export const createInMemoryRateLimiter = (
   const windowMs = options.windowMs ?? LIMIT_WINDOW_MS;
   const maxTrackedClients = options.maxTrackedClients ?? MAX_CLIENTS_TRACKED;
 
-  const pruneExpiredEntries = (nowMs: number) => {
-    for (const [key, entry] of entries) {
-      if (entry.resetAtMs <= nowMs) entries.delete(key);
-    }
+  let nextPruneAtMs = Number.POSITIVE_INFINITY;
+
+  const trackNextExpiry = (resetAtMs: number) => {
+    nextPruneAtMs = Math.min(nextPruneAtMs, resetAtMs);
   };
 
-  const resolveClientKey = (clientId: string, nowMs: number): string => {
+  const pruneExpiredEntries = (nowMs: number) => {
+    if (nowMs < nextPruneAtMs) return;
+
+    let nextExpiryMs = Number.POSITIVE_INFINITY;
+
+    for (const [key, entry] of entries) {
+      if (entry.resetAtMs <= nowMs) {
+        entries.delete(key);
+        continue;
+      }
+
+      nextExpiryMs = Math.min(nextExpiryMs, entry.resetAtMs);
+    }
+
+    nextPruneAtMs = nextExpiryMs;
+  };
+
+  const resolveClientKey = (clientId: string): string => {
     if (entries.has(clientId)) return clientId;
-
-    if (entries.size < maxTrackedClients) return clientId;
-
-    pruneExpiredEntries(nowMs);
 
     return entries.size < maxTrackedClients ? clientId : OVERFLOW_CLIENT_KEY;
   };
@@ -43,13 +56,17 @@ export const createInMemoryRateLimiter = (
     clientId: string,
     nowMs: number = Date.now(),
   ): RateLimitResult => {
-    const clientKey = resolveClientKey(clientId, nowMs);
+    pruneExpiredEntries(nowMs);
+
+    const clientKey = resolveClientKey(clientId);
     const entry = entries.get(clientKey);
 
     if (!entry || entry.resetAtMs <= nowMs) {
       const resetAtMs = nowMs + windowMs;
 
       entries.set(clientKey, { requestCount: 1, resetAtMs });
+
+      trackNextExpiry(resetAtMs);
 
       return {
         allowed: true,

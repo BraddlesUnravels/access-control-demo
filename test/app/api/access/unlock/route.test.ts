@@ -6,9 +6,9 @@ import {
   ACCESS_GATE_REQUEST_TOKENS_URL,
 } from '@/lib/access-gate/constants';
 import { verifyAccessGateCookieValue } from '@/lib/access-gate/cookie';
-import { serverRequestClient } from '@/lib/supabase/server';
 import { getClientIdentifier } from '@/lib/rate-limiter/client';
 import { consumeRateLimit } from '@/lib/rate-limiter/in-memory';
+import { serverRequestClient } from '@/lib/supabase/server';
 
 vi.mock('@/lib/rate-limiter/client', () => ({
   getClientIdentifier: vi.fn(),
@@ -76,16 +76,45 @@ describe('app/api/access/unlock/route', () => {
     });
 
     vi.stubEnv('ACCESS_GATE_CODE_SECRET', CODE_SECRET);
-
     vi.stubEnv('ACCESS_GATE_COOKIE_SECRET', COOKIE_SECRET);
-
     vi.stubEnv('CONTAINER_APP_NAME', '');
-
     vi.stubEnv('CONTAINER_APP_ENV_DNS_SUFFIX', '');
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  it('should return 429 before parsing the request or calling Supabase when the rate limit is exceeded', async () => {
+    const request = buildRequest('{invalid-json');
+
+    vi.mocked(getClientIdentifier).mockReturnValue('203.0.113.10');
+
+    vi.mocked(consumeRateLimit).mockReturnValue({
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: 37,
+    });
+
+    const response = await POST(request, EMPTY_CONTEXT);
+
+    expect(getClientIdentifier).toHaveBeenCalledTimes(1);
+    expect(getClientIdentifier).toHaveBeenCalledWith(request);
+
+    expect(consumeRateLimit).toHaveBeenCalledTimes(1);
+    expect(consumeRateLimit).toHaveBeenCalledWith('203.0.113.10');
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('retry-after')).toBe('37');
+
+    await expect(response.json()).resolves.toEqual({
+      error: 'Too many requests. Please try again later.',
+      contactEmail: ACCESS_GATE_CONTACT_EMAIL,
+      requestTokensUrl: ACCESS_GATE_REQUEST_TOKENS_URL,
+    });
+
+    expect(serverRequestClient).not.toHaveBeenCalled();
   });
 
   it('should reject malformed JSON with 400 without calling Supabase', async () => {
@@ -107,7 +136,6 @@ describe('app/api/access/unlock/route', () => {
     );
 
     expect(response.status).toBe(400);
-
     expect(response.headers.get('cache-control')).toBe('no-store');
 
     await expect(response.json()).resolves.toMatchObject({
@@ -188,7 +216,6 @@ describe('app/api/access/unlock/route', () => {
     );
 
     expect(response.status).toBe(401);
-
     expect(response.headers.get('cache-control')).toBe('no-store');
 
     await expect(response.json()).resolves.toEqual({
@@ -308,6 +335,36 @@ describe('app/api/access/unlock/route', () => {
     });
   });
 
+  it('should reject an unsupported RPC reason as an internal contract failure', async () => {
+    setupRpcMock({
+      data: [
+        {
+          invite_id: null,
+          visit_id: null,
+          label: null,
+          access_expires_at: null,
+          reason: 'unexpected-reason',
+        },
+      ],
+      error: null,
+    });
+
+    const response = await POST(
+      buildRequest(
+        JSON.stringify({
+          code: 'ACD-TEST-CODE',
+        }),
+      ),
+      EMPTY_CONTEXT,
+    );
+
+    expect(response.status).toBe(500);
+
+    await expect(response.json()).resolves.toEqual({
+      error: 'Unable to verify invite code',
+    });
+  });
+
   it('should reject an incomplete successful RPC result without setting a cookie', async () => {
     setupRpcMock({
       data: [
@@ -332,7 +389,37 @@ describe('app/api/access/unlock/route', () => {
     );
 
     expect(response.status).toBe(500);
+    expect(response.cookies.get(ACCESS_GATE_COOKIE_NAME)).toBeUndefined();
 
+    await expect(response.json()).resolves.toEqual({
+      error: 'Unable to verify invite code',
+    });
+  });
+
+  it('should reject a successful RPC result whose access expiry has already passed', async () => {
+    setupRpcMock({
+      data: [
+        {
+          invite_id: 'invite-1',
+          visit_id: 'visit-1',
+          label: 'Acme recruiter',
+          access_expires_at: '2020-01-01T00:00:00.000Z',
+          reason: 'ok',
+        },
+      ],
+      error: null,
+    });
+
+    const response = await POST(
+      buildRequest(
+        JSON.stringify({
+          code: 'ACD-TEST-CODE',
+        }),
+      ),
+      EMPTY_CONTEXT,
+    );
+
+    expect(response.status).toBe(500);
     expect(response.cookies.get(ACCESS_GATE_COOKIE_NAME)).toBeUndefined();
 
     await expect(response.json()).resolves.toEqual({
@@ -364,7 +451,6 @@ describe('app/api/access/unlock/route', () => {
     );
 
     expect(response.status).toBe(200);
-
     expect(response.headers.get('cache-control')).toBe('no-store');
 
     await expect(response.json()).resolves.toEqual({
@@ -377,7 +463,6 @@ describe('app/api/access/unlock/route', () => {
     const cookie = response.cookies.get(ACCESS_GATE_COOKIE_NAME);
 
     expect(cookie?.value).toBeTruthy();
-
     expect((cookie?.expires as Date)?.toISOString()).toBe(EXPIRES_AT);
 
     expect(
