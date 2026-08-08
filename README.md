@@ -9,6 +9,7 @@ The application is built with Next.js, TypeScript, Supabase, PostgreSQL, Docker,
 - An outer invite-based access gate for hosted portfolio and recruiter demos
 - Signed, expiring access-gate cookies
 - HMAC-based invite-code storage without retaining plaintext codes
+- Server-side rate limiting on invite redemption to reduce automated brute-force attempts
 - Email and password authentication with Supabase Auth
 - Email confirmation and password recovery
 - Protected application routes
@@ -129,13 +130,14 @@ The hosted demo sits behind an outer invite gate so the intentionally simple dem
 ### Flow
 
 1. A visitor opens `/`, optionally with a `?code=` query parameter.
-2. The visitor submits an invite code.
-3. The server normalizes the code and creates an HMAC-SHA256 digest using `ACCESS_GATE_CODE_SECRET`.
-4. `POST /api/access/unlock` calls the PostgreSQL `redeem_access_invite` function.
-5. The database validates the invite and atomically establishes its access window on the first successful redemption.
-6. A successful redemption creates an `access_visits` record.
-7. The server issues a signed `httpOnly` access-gate cookie using the database-controlled absolute expiry.
-8. Subsequent requests with a valid access-gate cookie proceed to the normal Supabase authentication layer.
+2. The visitor submits an invite code to `POST /api/access/unlock`.
+3. The server applies a per-client rate limit before parsing or validating the request.
+4. If the request is allowed, the server normalizes the code and creates an HMAC-SHA256 digest using `ACCESS_GATE_CODE_SECRET`.
+5. The server calls the PostgreSQL `redeem_access_invite` function.
+6. The database validates the invite and atomically establishes its access window on the first successful redemption.
+7. A successful redemption creates an `access_visits` record.
+8. The server issues a signed `httpOnly` access-gate cookie using the database-controlled absolute expiry.
+9. Subsequent requests with a valid access-gate cookie proceed to the normal Supabase authentication layer.
 
 The root route is the gate entry point:
 
@@ -213,6 +215,26 @@ HMAC-SHA256(normalized invite code, ACCESS_GATE_CODE_SECRET)
 and the resulting digest is stored in `access_invites.code_hash`.
 
 The code secret used to mint an invite must therefore exactly match the code secret used by the deployed application.
+
+### Invite redemption rate limiting
+
+`POST /api/access/unlock` uses an in-memory fixed-window rate limiter to reduce automated invite-code guessing and abusive request volume.
+
+The current policy allows up to five redemption attempts per client within a 60-second window. Requests above the limit receive:
+
+```text
+429 Too Many Requests
+```
+
+with a `Retry-After` header indicating when the client may retry.
+
+Rate limiting is applied before request-body parsing, validation, invite hashing, or Supabase access so blocked requests do not perform unnecessary application or database work.
+
+In Azure Container Apps, the limiter identifies clients using the rightmost address supplied through `X-Forwarded-For`. Forwarding headers are not trusted outside the Azure environment.
+
+Limiter state is process-local and bounded in memory. The production deployment intentionally runs a single active application replica, so this is appropriate for the current portfolio workload.
+
+The limiter resets when the application process restarts and would not provide a shared limit across multiple replicas. A horizontally scaled production deployment would require shared rate-limit state, such as Redis or PostgreSQL, or an upstream rate-limiting layer.
 
 ### Access cookie
 
@@ -415,6 +437,17 @@ AccessGateForm
 POST /api/access/unlock
       |
       v
+Client identification
+      |
+      v
+In-memory rate limiter
+      |
+      +--> Limit exceeded --> 429 Too Many Requests
+      |
+      v
+Request validation
+      |
+      v
 HMAC invite-code digest
       |
       v
@@ -455,6 +488,7 @@ The interface hides actions unavailable to the current role, but authorization d
 
 Next.js route handlers are responsible for:
 
+- Applying rate limits to public invite-redemption attempts
 - Redeeming access invites
 - Verifying authenticated sessions
 - Resolving application roles
@@ -574,7 +608,10 @@ Possible application outcomes include:
 - `400` for malformed or invalid request input;
 - `401` when no invite matches the submitted code;
 - `403` for an expired or revoked invite;
+- `429` when the client exceeds the invite-redemption rate limit;
 - `500` when the invite-verification infrastructure or RPC contract fails.
+
+Rate-limited responses include a `Retry-After` header and do not proceed to request parsing or Supabase invite redemption.
 
 A successful response sets the signed `access_gate` cookie.
 
@@ -726,7 +763,9 @@ app/
 ├── api/
 │   ├── access/
 │   │   └── unlock/
-│   │       └── route.ts
+│   │       ├── helpers.ts
+│   │       ├── route.ts
+│   │       └── types.ts
 │   ├── admin/
 │   │   └── consultations/
 │   ├── consultations/
@@ -751,6 +790,10 @@ lib/
 │   ├── hash.ts
 │   ├── paths.ts
 │   └── proxy.ts
+├── rate-limiter/
+│   ├── client.ts
+│   ├── in-memory.ts
+│   └── types.ts
 ├── server/
 │   └── auth.ts
 └── supabase/
@@ -797,8 +840,9 @@ proxy.ts
 Key responsibilities:
 
 - `app/page.tsx`: public invite-gate entry screen
-- `app/api/access/unlock/route.ts`: invite validation and access-cookie issuance
+- `app/api/access/unlock/**`: rate-limited invite validation, response construction, and access-cookie issuance
 - `lib/access-gate/**`: invite hashing, cookie signing, safe redirects, environment validation, and proxy gate logic
+- `lib/rate-limiter/**`: trusted client identification and bounded in-memory fixed-window rate limiting
 - `proxy.ts`: access-gate and Supabase session orchestration
 - `app/auth/**`: authentication screens and callback routes
 - `app/protected/page.tsx`: role-aware dashboard entry point
@@ -979,7 +1023,9 @@ The Vitest suite covers:
 - safe access-gate redirects;
 - local versus Azure access-gate configuration;
 - proxy gate behavior;
-- access-unlock API outcomes;
+- rate-limit client identification and trusted Azure forwarding behavior;
+- fixed-window rate-limit enforcement, expiry, client isolation, and bounded overflow behavior;
+- access-unlock API outcomes, including rate-limited requests;
 - Supabase proxy cookie/session handling;
 - root Proxy orchestration;
 - invite-creation tooling.
@@ -1094,16 +1140,28 @@ This keeps Next.js Proxy lightweight and avoids a database lookup on every asset
 
 The trade-off is that database revocation does not immediately invalidate an already-issued cookie.
 
+### Process-local rate limiting
+
+Invite redemption uses a bounded in-memory fixed-window rate limiter to reduce automated code guessing without introducing additional infrastructure for the portfolio workload.
+
+The limiter is scoped specifically to the public invite-redemption endpoint and executes before request parsing or database access.
+
+The Azure deployment currently runs one active application replica, so process-local state provides a single effective rate-limit boundary for the deployed application.
+
+This is an intentional scope trade-off. The limiter resets on process restart and would not coordinate state across multiple replicas. If the application were horizontally scaled, the rate limit would move to shared storage or an upstream rate-limiting layer.
+
 ### Minimal visitor data
 
-Successful invite redemption records:
+Successful invite redemption persists only:
 
 ```text
 invite_id
 used_at
 ```
 
-The application does not store the visitor's user-agent or other browser-identifying metadata.
+No client IP address, user-agent, or other browser-identifying metadata is persisted to PostgreSQL.
+
+The rate limiter uses the client identifier transiently in application memory for the duration of the rate-limit window. That state is not written to the database and is discarded when the window expires or the application process restarts.
 
 ### Least-privilege invite tables
 
@@ -1153,6 +1211,7 @@ The project is intended as a focused demonstration of access control, authentica
 The domain remains deliberately small so the important security behaviours are easy to inspect:
 
 - Which visitors may reach the demo
+- How abusive invite-redemption attempts are constrained
 - Who is authenticated
 - Which role an authenticated user has
 - Which routes that role may access
@@ -1171,3 +1230,4 @@ Possible future improvements include:
 5. Add an audit log for consultation status changes.
 6. Add more granular permissions beyond the current student and administrator roles.
 7. Add account management and profile editing.
+8. Move rate-limit state to shared infrastructure if the application is horizontally scaled.
