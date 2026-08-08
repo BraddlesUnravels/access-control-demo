@@ -1,13 +1,15 @@
 # Access Control Demo
 
-A small full-stack learning management system demonstrating authentication, role-based access control, resource ownership, and PostgreSQL row-level security.
+A small full-stack learning management system demonstrating layered access control, authentication, role-based authorization, resource ownership, and PostgreSQL row-level security.
 
-The application is built with Next.js, TypeScript, Supabase, and PostgreSQL. The LMS domain is intentionally small so the authentication and authorization boundaries remain explicit and easy to review.
+The application is built with Next.js, TypeScript, Supabase, PostgreSQL, Docker, and Azure Container Apps. The LMS domain is intentionally small so the authentication and authorization boundaries remain explicit and easy to review.
 
 ## What this project demonstrates
 
-- Resume invite access gate for recruiter demos
-- Email and password authentication
+- An outer invite-based access gate for hosted portfolio and recruiter demos
+- Signed, expiring access-gate cookies
+- HMAC-based invite-code storage without retaining plaintext codes
+- Email and password authentication with Supabase Auth
 - Email confirmation and password recovery
 - Protected application routes
 - Role-based access control for students and administrators
@@ -16,17 +18,41 @@ The application is built with Next.js, TypeScript, Supabase, and PostgreSQL. The
 - PostgreSQL row-level security
 - Read-only administrator access
 - Local authentication email testing with MailPit
-- Automated validation of database access policies
+- Automated unit, proxy, API, database, and container integration tests
+- Containerized deployment with Docker
+- GitHub Actions CI/CD
+- Azure Container Apps deployment through Bicep and GitHub OIDC
 
-## Authorization model
+## Access-control model
 
-The application has two roles:
+The hosted application has two separate access boundaries:
+
+```text
+Visitor
+   |
+   v
+Invite access gate
+   |
+   v
+Supabase authentication
+   |
+   v
+Application authorization
+   |
+   v
+PostgreSQL row-level security
+```
+
+The invite gate controls who may reach the demonstration application. It does not identify an LMS user or grant a student or administrator role.
+
+After passing the gate, the visitor must still authenticate through Supabase Auth.
+
+The authenticated application has two roles:
 
 | Role          | Access                                                                             |
 | ------------- | ---------------------------------------------------------------------------------- |
 | Student       | View, create, reschedule, complete, and cancel their own consultations             |
 | Administrator | View consultations belonging to all students through a read-only dashboard and API |
-|               |
 
 Authorization is enforced at both the application and database layers.
 
@@ -49,11 +75,11 @@ npm run demo:start
 
 This command:
 
-1. Installs dependencies
-2. Starts the local Supabase services
-3. Applies database migrations and seed data
-4. Generates `.env.local`
-5. Starts the Next.js development server
+1. Installs dependencies.
+2. Starts the local Supabase services.
+3. Applies database migrations and seed data.
+4. Generates `.env.local`.
+5. Starts the Next.js development server.
 
 The application runs at:
 
@@ -61,38 +87,210 @@ The application runs at:
 http://localhost:3000
 ```
 
-Local development disables the outer invite gate by default (`ACCESS_GATE_DISABLED=true` from `npm run infra:env`) so the seeded LMS login flow stays easy to use.
-
-To exercise the invite gate locally, set `ACCESS_GATE_DISABLED=false` in `.env.local` and use one of the seeded invite codes below.
-
-## Resume invite access gate
-
-Deployed demos sit behind an outer invite gate so weak demo passwords are not openly reachable.
-
-Flow:
-
-1. A visitor opens `/access` (optionally with `?code=`).
-2. They enter only the invite code.
-3. The server verifies the code, logs a visit, and sets a 7-day httpOnly cookie.
-4. Existing LMS login and role demos continue unchanged.
-
-Identification comes from the invite `label` you set when minting a code, not from a visitor-entered name. Codes are multi-use until expiry or revoke, so a lost cookie or another device only requires entering the same code again.
-
-Mint a code:
-
-```bash
-npm run invite:create -- --label "Acme recruiter" --expires 2026-12-31
-```
-
-Required env for minting and production gate enforcement:
+The generated local environment enables the outer access gate:
 
 ```text
-ACCESS_GATE_SECRET
-SUPABASE_SERVICE_ROLE_KEY
 ACCESS_GATE_DISABLED=false
 ```
 
-Expired or invalid codes show the operator contact details from app constants and a request-more-tokens link.
+Because `npm run infra:reset` recreates the local database, create an invite after the reset:
+
+```bash
+npm run invite:create -- --label "Local demo" --days 14
+```
+
+The command prints the plaintext invite once, for example:
+
+```text
+code: ACD-4GZ3-PDQJ-FWT9
+path: /?code=ACD-4GZ3-PDQJ-FWT9
+```
+
+Open the generated path or enter the code at:
+
+```text
+http://localhost:3000/
+```
+
+To bypass the outer gate during local development, set:
+
+```text
+ACCESS_GATE_DISABLED=true
+```
+
+in `.env.local` and restart the development server.
+
+The bypass is deliberately ignored in Azure Container Apps, so `ACCESS_GATE_DISABLED=true` cannot disable the deployed production gate.
+
+## Visitor invite access gate
+
+The hosted demo sits behind an outer invite gate so the intentionally simple demonstration credentials are not directly exposed to the public internet.
+
+### Flow
+
+1. A visitor opens `/`, optionally with a `?code=` query parameter.
+2. The visitor submits an invite code.
+3. The server normalizes the code and creates an HMAC-SHA256 digest using `ACCESS_GATE_CODE_SECRET`.
+4. `POST /api/access/unlock` calls the PostgreSQL `redeem_access_invite` function.
+5. The database validates the invite and atomically establishes its access window on the first successful redemption.
+6. A successful redemption creates an `access_visits` record.
+7. The server issues a signed `httpOnly` access-gate cookie using the database-controlled absolute expiry.
+8. Subsequent requests with a valid access-gate cookie proceed to the normal Supabase authentication layer.
+
+The root route is the gate entry point:
+
+```text
+/
+```
+
+There is no `/access` route.
+
+Invite links therefore use:
+
+```text
+/?code=ACD-XXXX-XXXX-XXXX
+```
+
+Protected page requests without access are redirected back to `/` with a safe `next` destination.
+
+Protected API requests without access return:
+
+```text
+401 Unauthorized
+```
+
+The health endpoint and access-gate API remain available without an access cookie.
+
+### Invite lifetime
+
+New invites begin with no active access window:
+
+```text
+first_accessed_at = NULL
+expires_at = NULL
+```
+
+The first successful redemption establishes:
+
+```text
+first_accessed_at = first successful redemption time
+expires_at = first_accessed_at + access_duration_days
+```
+
+The same invite may be entered again while that original window remains active.
+
+Re-entry:
+
+- creates another visit record;
+- increments the invite use count;
+- does not change `first_accessed_at`;
+- does not extend `expires_at`.
+
+The invite-creation CLI accepts durations from 1 to 30 days:
+
+```bash
+npm run invite:create -- --label "Acme recruiter" --days 14
+```
+
+If `--days` is omitted, the current database default is used.
+
+### Invite-code storage
+
+Generated codes use the format:
+
+```text
+ACD-XXXX-XXXX-XXXX
+```
+
+The plaintext code is never stored in PostgreSQL.
+
+Instead, the operator script and application independently calculate:
+
+```text
+HMAC-SHA256(normalized invite code, ACCESS_GATE_CODE_SECRET)
+```
+
+and the resulting digest is stored in `access_invites.code_hash`.
+
+The code secret used to mint an invite must therefore exactly match the code secret used by the deployed application.
+
+### Access cookie
+
+The access cookie is HMAC-signed with a separate:
+
+```text
+ACCESS_GATE_COOKIE_SECRET
+```
+
+Its payload contains only:
+
+```text
+version
+inviteId
+exp
+```
+
+The cookie is:
+
+- `httpOnly`;
+- `SameSite=Lax`;
+- `Secure` when running in Azure;
+- limited to the database-provided absolute expiry.
+
+The cookie secret and invite-code secret are intentionally separate.
+
+### Revocation behavior
+
+The redemption function rejects an invite whose `revoked_at` value has been set, preventing further redemption of that invite.
+
+The current access cookie is stateless. A cookie that was issued before an invite was revoked remains valid until its existing absolute expiry.
+
+Immediate revocation of previously issued cookies would require an additional server-side revalidation mechanism.
+
+## Creating invites
+
+### Local Supabase
+
+`npm run infra:env` generates the values required by the local invite-creation script, including a local Supabase service-role key.
+
+Create an invite with:
+
+```bash
+npm run invite:create -- --label "Local recruiter demo" --days 14
+```
+
+The plaintext code is printed once. Store it before closing the terminal.
+
+### Hosted Supabase
+
+For production invites, run the operator script locally while pointing it at the hosted Supabase project.
+
+A local file such as `.env.production.local` can contain:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_...
+ACCESS_GATE_CODE_SECRET=your-production-access-gate-code-secret
+```
+
+`SUPABASE_SECRET_KEY` is preferred for trusted server-side/operator tooling. The script also supports the legacy:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+as a fallback.
+
+Run:
+
+```bash
+node --env-file=.env.production.local \
+  scripts/create-access-invite.mjs \
+  --label "Acme recruiter" \
+  --days 14
+```
+
+The Supabase secret/service-role key is an operator credential. It is not required by the deployed Next.js application and should not be exposed to browser code or committed to the repository.
 
 ## Demo accounts
 
@@ -104,27 +302,21 @@ The local seed data creates the following users:
 | Student       | `student2@lms.com` | `password123` |
 | Administrator | `admin@lms.com`    | `password123` |
 
-These credentials are intended only for the local demonstration environment.
+These credentials are intended only for the demonstration environment.
 
-## Demo access invite codes
-
-Local seed data also creates invite hashes for `ACCESS_GATE_SECRET=local-access-gate-secret` (the value written by `npm run infra:env`):
-
-| Code            | Label                | Notes                                  |
-| --------------- | -------------------- | -------------------------------------- |
-| `ACD-DEV1-TEST` | Local developer      | Valid, no expiry                       |
-| `ACD-DEV2-TEST` | Local recruiter demo | Valid, expires one year after seed     |
-| `ACD-EXPIRED1`  | Expired local invite | Already expired; useful for failure UX |
-
-Example unlock path:
-
-```text
-http://localhost:3000/access?code=ACD-DEV1-TEST
-```
-
-Plaintext codes are documented only for local development. The database stores code hashes, never the codes themselves.
+Invite codes are not seeded into the database. Create them with `npm run invite:create` after resetting the local database.
 
 ## Suggested walkthrough
+
+### Visitor gate
+
+1. Create a local invite.
+2. Open `/`.
+3. Enter the generated invite code.
+4. Confirm that the application redirects to the LMS login.
+5. Delete the `access_gate` browser cookie.
+6. Re-enter the same invite code.
+7. Confirm that access is restored without extending the original database expiry.
 
 ### Student workflow
 
@@ -149,9 +341,11 @@ Plaintext codes are documented only for local development. The database stores c
 
 ### Authorization checks
 
-The main access-control boundaries are:
+The main application access-control boundaries are:
 
-- Unauthenticated API requests receive `401 Unauthorized`.
+- Visitors without invite access cannot reach protected application pages.
+- Protected API requests without invite access receive `401 Unauthorized`.
+- Unauthenticated LMS API requests receive `401 Unauthorized`.
 - Students cannot access administrator endpoints.
 - Administrators cannot use student consultation endpoints.
 - Students can retrieve only their own consultations.
@@ -170,11 +364,12 @@ http://localhost:54324
 
 ### Sign-up confirmation
 
-1. Open `/auth/sign-up`.
-2. Register a new account.
-3. Open MailPit.
-4. Select the confirmation email.
-5. Follow the confirmation link.
+1. Pass the local invite gate or temporarily disable it locally.
+2. Open `/auth/sign-up`.
+3. Register a new account.
+4. Open MailPit.
+5. Select the confirmation email.
+6. Follow the confirmation link.
 
 ### Password recovery
 
@@ -189,38 +384,80 @@ MailPit keeps local authentication testing deterministic and avoids requiring an
 
 ## Architecture
 
-The application uses a deliberately small architecture:
+The request path is deliberately layered:
 
 ```text
-Browser UI
-    |
-    v
+Browser
+   |
+   v
+Next.js Proxy
+   |
+   +--> Invite access-gate validation
+   |
+   +--> Supabase SSR session refresh
+   |
+   v
 Next.js route handlers
-    |
-    v
+   |
+   v
 Supabase client
-    |
-    v
-PostgreSQL with row-level security
+   |
+   v
+PostgreSQL + row-level security
 ```
+
+Invite redemption uses a separate path:
+
+```text
+AccessGateForm
+      |
+      v
+POST /api/access/unlock
+      |
+      v
+HMAC invite-code digest
+      |
+      v
+redeem_access_invite(...)
+      |
+      +--> access_invites
+      |
+      +--> access_visits
+      |
+      v
+Signed access_gate cookie
+```
+
+### Next.js Proxy
+
+The root `proxy.ts` performs two lightweight request-boundary operations:
+
+1. The outer access-gate check.
+2. Supabase SSR session refresh for requests allowed through the gate.
+
+The access-gate proxy performs optimistic verification using the signed cookie and does not query PostgreSQL on every request.
+
+Public access-gate and health routes remain reachable without the cookie.
 
 ### User interface
 
 The user interface is responsible for:
 
+- Rendering the invite access form
 - Rendering authentication forms
 - Displaying role-appropriate dashboards
 - Submitting consultation actions
 - Presenting loading, success, and error states
 
-The interface hides actions that are unavailable to the current role, but authorization does not depend on those controls being hidden.
+The interface hides actions unavailable to the current role, but authorization does not depend on those controls being hidden.
 
 ### Route handlers
 
 Next.js route handlers are responsible for:
 
-- Verifying the authenticated session
-- Resolving the application role
+- Redeeming access invites
+- Verifying authenticated sessions
+- Resolving application roles
 - Enforcing role requirements
 - Enforcing resource ownership
 - Validating request payloads
@@ -231,9 +468,9 @@ Keeping these checks at the API boundary makes authorization decisions explicit 
 
 ### Database
 
-PostgreSQL row-level security provides an additional authorization layer.
+PostgreSQL provides both the LMS authorization boundary and the transactional invite-redemption boundary.
 
-The database policies enforce that:
+The LMS policies enforce that:
 
 - Students can select only their own consultations.
 - Students can create consultations only for their own account.
@@ -242,15 +479,29 @@ The database policies enforce that:
 - Administrators cannot insert, update, or delete consultations.
 - Authenticated users cannot physically delete consultation records.
 
-This provides defense in depth if an application endpoint is incorrectly configured or bypassed.
+The access-gate database design additionally ensures that:
+
+- Browser-facing roles cannot directly access `access_invites` or `access_visits`.
+- Plaintext invite codes are never stored.
+- The trusted operator role has only the table privileges required to create and read invites.
+- Redemption occurs through a narrowly scoped `SECURITY DEFINER` function.
+- Concurrent first redemptions are serialized with a row lock.
+- First-use expiry is established atomically.
+- Re-entry does not slide or extend the existing access window.
 
 ## Authentication and authorization
 
 The project separates four related concerns.
 
+### Visitor access
+
+The invite gate determines whether a browser may reach the demonstration application.
+
+It is an outer access-control layer, not the LMS identity system.
+
 ### Authentication
 
-Authentication determines who the current user is.
+Authentication determines who the current LMS user is.
 
 Supabase Auth manages:
 
@@ -311,6 +562,22 @@ This preserves the record and retains cancellation metadata.
 
 ## API summary
 
+### Access gate
+
+#### `POST /api/access/unlock`
+
+Redeems an invite code.
+
+Possible application outcomes include:
+
+- `200` for a successful redemption;
+- `400` for malformed or invalid request input;
+- `401` when no invite matches the submitted code;
+- `403` for an expired or revoked invite;
+- `500` when the invite-verification infrastructure or RPC contract fails.
+
+A successful response sets the signed `access_gate` cookie.
+
 ### Student endpoints
 
 #### `GET /api/consultations`
@@ -319,6 +586,7 @@ Returns consultations belonging to the authenticated student.
 
 Requirements:
 
+- The visitor must have invite access.
 - The user must be authenticated.
 - The user must have the `student` role.
 
@@ -335,6 +603,7 @@ The request validates:
 
 Requirements:
 
+- The visitor must have invite access.
 - The user must be authenticated.
 - The user must have the `student` role.
 - The consultation owner must match the authenticated user.
@@ -351,6 +620,7 @@ Supported actions include:
 
 Requirements:
 
+- The visitor must have invite access.
 - The user must be authenticated.
 - The user must have the `student` role.
 - The consultation must belong to the authenticated user.
@@ -364,6 +634,7 @@ The database record is not physically deleted.
 
 Requirements:
 
+- The visitor must have invite access.
 - The user must be authenticated.
 - The user must have the `student` role.
 - The consultation must belong to the authenticated user.
@@ -378,10 +649,45 @@ Returns a read-only list of consultations belonging to all students.
 
 Requirements:
 
+- The visitor must have invite access.
 - The user must be authenticated.
 - The user must have the `admin` role.
 
+### Health endpoint
+
+#### `GET /api/health`
+
+Returns the application health status.
+
+This route intentionally bypasses the access gate so Docker and Azure Container Apps health probes do not depend on user authentication or Supabase availability.
+
 ## Database model
+
+### `public.access_invites`
+
+Stores invite metadata and the access-window state.
+
+Important fields include:
+
+- `code_hash`
+- `label`
+- `access_duration_days`
+- `first_accessed_at`
+- `expires_at`
+- `revoked_at`
+- `use_count`
+- `created_at`
+
+### `public.access_visits`
+
+Records successful invite redemptions.
+
+Important fields include:
+
+- `invite_id`
+- `used_at`
+
+No user-agent or other browser-identifying metadata is stored.
 
 ### `public.profiles`
 
@@ -417,61 +723,97 @@ Important fields include:
 
 ```text
 app/
-├── admin/
-│   └── page.tsx
 ├── api/
+│   ├── access/
+│   │   └── unlock/
+│   │       └── route.ts
 │   ├── admin/
 │   │   └── consultations/
-│   │       └── route.ts
-│   └── consultations/
-│       ├── [id]/
-│       │   └── route.ts
-│       └── route.ts
+│   ├── consultations/
+│   └── health/
 ├── auth/
-│   ├── confirm/
-│   ├── error/
-│   ├── forgot-password/
-│   ├── login/
-│   ├── sign-up/
-│   └── update-password/
-└── protected/
-    └── page.tsx
+├── protected/
+├── page.tsx
+└── layout.tsx
 
 components/
 ├── admin/
 ├── student/
 └── ui/
+    └── forms/
+        └── access-gate-form.tsx
 
 lib/
+├── access-gate/
+│   ├── constants.ts
+│   ├── cookie.ts
+│   ├── env.ts
+│   ├── hash.ts
+│   ├── paths.ts
+│   └── proxy.ts
 ├── server/
 │   └── auth.ts
 └── supabase/
     ├── client.ts
+    ├── database.types.ts
     ├── proxy.ts
     └── server.ts
+
+scripts/
+├── create-access-invite.mjs
+├── generate-local-env.mjs
+├── run-container-tests.mjs
+└── run-rls-tests.mjs
 
 supabase/
 ├── migrations/
 ├── tests/
+│   ├── access_gate_checks.sql
 │   └── rls_checks.sql
 ├── config.toml
 ├── schema.sql
 └── seed.sql
+
+docker/
+└── Dockerfile
+
+deploy/
+└── azure/
+    ├── bootstrap-oidc.sh
+    └── main.bicep
+
+.github/
+└── workflows/
+    ├── ci.yml
+    ├── container-stage.yml
+    ├── dependency-review.yml
+    ├── production.yml
+    ├── production-teardown.yml
+    └── take-containers-offline.yml
+
+proxy.ts
 ```
 
 Key responsibilities:
 
+- `app/page.tsx`: public invite-gate entry screen
+- `app/api/access/unlock/route.ts`: invite validation and access-cookie issuance
+- `lib/access-gate/**`: invite hashing, cookie signing, safe redirects, environment validation, and proxy gate logic
+- `proxy.ts`: access-gate and Supabase session orchestration
 - `app/auth/**`: authentication screens and callback routes
 - `app/protected/page.tsx`: role-aware dashboard entry point
-- `app/admin/page.tsx`: administrator-only dashboard
-- `app/api/consultations/route.ts`: student consultation list and creation
-- `app/api/consultations/[id]/route.ts`: student consultation updates and cancellation
-- `app/api/admin/consultations/route.ts`: administrator read-only consultation list
-- `lib/server/auth.ts`: authentication context and role authorization
-- `lib/supabase/**`: browser and server Supabase clients
+- `app/admin/**`: administrator-only dashboard
+- `app/api/consultations/**`: student consultation operations
+- `app/api/admin/consultations/**`: administrator read-only consultation API
+- `lib/server/auth.ts`: authenticated application context and role authorization
+- `lib/supabase/**`: browser and server Supabase clients and SSR session handling
 - `supabase/migrations/**`: executable database schema history
-- `supabase/tests/rls_checks.sql`: database authorization checks
-- `supabase/seed.sql`: local demonstration users and data
+- `supabase/tests/rls_checks.sql`: LMS authorization and RLS checks
+- `supabase/tests/access_gate_checks.sql`: access-gate schema, privilege, and lifecycle checks
+- `scripts/create-access-invite.mjs`: trusted invite operator tool
+- `docker/Dockerfile`: production standalone Next.js container
+- `deploy/azure/**`: Azure Container Apps infrastructure and OIDC bootstrap
+- `.github/workflows/**`: CI, container staging, deployment, dependency review, and production operations
 
 ## Manual local setup
 
@@ -499,28 +841,44 @@ Generate the local environment configuration:
 npm run infra:env
 ```
 
+Create an invite:
+
+```bash
+npm run invite:create -- --label "Local demo" --days 14
+```
+
 Start the Next.js development server:
 
 ```bash
 npm run dev
 ```
 
+After another `npm run infra:reset`, recreate any local invites because the local database has been reset.
+
 ## Environment variables
 
-The application requires:
+### Application runtime
+
+The application uses:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-ACCESS_GATE_SECRET
+ACCESS_GATE_CODE_SECRET
+ACCESS_GATE_COOKIE_SECRET
 ```
 
-For minting invites and production gate operation, also set:
+The two access-gate secrets must be at least 32 characters.
+
+They should also be different values.
+
+Local development may additionally use:
 
 ```text
-SUPABASE_SERVICE_ROLE_KEY
-ACCESS_GATE_DISABLED=false
+ACCESS_GATE_DISABLED
 ```
+
+Setting it to `true` bypasses the outer invite gate only outside Azure.
 
 Local values can be generated with:
 
@@ -528,7 +886,55 @@ Local values can be generated with:
 npm run infra:env
 ```
 
-That local generator sets `ACCESS_GATE_DISABLED=true` and a local `ACCESS_GATE_SECRET`.
+### Invite operator tooling
+
+Creating invites additionally requires one trusted Supabase administrative credential:
+
+```text
+SUPABASE_SECRET_KEY
+```
+
+or the legacy fallback:
+
+```text
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+These credentials are only for trusted operator tooling and should not be supplied to browser code.
+
+### Production GitHub environment
+
+The production GitHub Environment uses non-sensitive configuration as environment variables:
+
+```text
+AZURE_RESOURCE_GROUP
+AZURE_LOCATION
+AZURE_CONTAINER_ENVIRONMENT
+AZURE_CONTAINER_APP
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+```
+
+Sensitive values are stored as GitHub environment secrets:
+
+```text
+AZURE_CLIENT_ID
+AZURE_TENANT_ID
+AZURE_SUBSCRIPTION_ID
+ACCESS_GATE_CODE_SECRET
+ACCESS_GATE_COOKIE_SECRET
+```
+
+The production `ACCESS_GATE_CODE_SECRET` must exactly match the value used locally when creating invites against the hosted Supabase project.
+
+The deployed application does not require:
+
+```text
+SUPABASE_SECRET_KEY
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+### Database types
 
 After schema migrations, regenerate database types with:
 
@@ -538,56 +944,176 @@ npm run db:types
 
 ## Available scripts
 
-| Command                 | Purpose                                                     |
-| ----------------------- | ----------------------------------------------------------- |
-| `npm run dev`           | Start the Next.js development server                        |
-| `npm run build`         | Create a production build                                   |
-| `npm run start`         | Start the production server                                 |
-| `npm run typecheck`     | Run the TypeScript compiler without emitting files          |
-| `npm run lint`          | Run ESLint                                                  |
-| `npm run format`        | Format the project with Prettier                            |
-| `npm run format:check`  | Check formatting without modifying files                    |
-| `npm run test`          | Run unit tests with Vitest                                  |
-| `npm run test:watch`    | Run Vitest in watch mode                                    |
-| `npm run test:rls`      | Run PostgreSQL row-level security checks                    |
-| `npm run infra:up`      | Start local Supabase services                               |
-| `npm run infra:reset`   | Reset the local database and apply migrations and seed data |
-| `npm run infra:env`     | Generate local Supabase environment variables               |
-| `npm run infra:down`    | Stop local Supabase services                                |
-| `npm run invite:create` | Mint a labeled resume invite code                           |
-| `npm run demo:start`    | Prepare and start the complete local demonstration          |
-| `npm run db:types`      | Regenerate TypeScript types from the local database         |
+| Command                 | Purpose                                                       |
+| ----------------------- | ------------------------------------------------------------- |
+| `npm run dev`           | Start the Next.js development server                          |
+| `npm run build`         | Create a production build                                     |
+| `npm run start`         | Start the production server                                   |
+| `npm run typecheck`     | Run the TypeScript compiler without emitting files            |
+| `npm run lint`          | Run ESLint                                                    |
+| `npm run format`        | Format the project with Prettier                              |
+| `npm run format:check`  | Check formatting without modifying files                      |
+| `npm test`              | Run unit and application tests with Vitest                    |
+| `npm run test:watch`    | Run Vitest in watch mode                                      |
+| `npm run test:db`       | Run LMS RLS and access-gate PostgreSQL checks                 |
+| `npm run infra:up`      | Start local Supabase services                                 |
+| `npm run infra:reset`   | Reset the local database and apply migrations and seed data   |
+| `npm run infra:env`     | Generate local Supabase and access-gate environment variables |
+| `npm run infra:down`    | Stop local Supabase services                                  |
+| `npm run invite:create` | Create a labeled invite whose lifetime begins on first use    |
+| `npm run demo:start`    | Prepare and start the complete local demonstration            |
+| `npm run db:types`      | Regenerate TypeScript types from the local database           |
 
 ## Testing
 
-Run the application unit tests with:
+Run the application test suite with:
 
 ```bash
 npm test
 ```
 
-Run the row-level security checks with:
+The Vitest suite covers:
+
+- invite-code normalization and HMAC hashing;
+- access-cookie signing and malformed-cookie rejection;
+- safe access-gate redirects;
+- local versus Azure access-gate configuration;
+- proxy gate behavior;
+- access-unlock API outcomes;
+- Supabase proxy cookie/session handling;
+- root Proxy orchestration;
+- invite-creation tooling.
+
+Run the database security and lifecycle checks with:
 
 ```bash
-npm run test:rls
+npm run test:db
 ```
 
-Run the complete quality checks with:
+This runs:
+
+```text
+supabase/tests/rls_checks.sql
+supabase/tests/access_gate_checks.sql
+```
+
+The database suite verifies both the LMS authorization model and access-gate behavior, including:
+
+- RLS configuration;
+- table privileges;
+- RPC execution privileges;
+- invite-state constraints;
+- invalid, expired, and revoked redemption outcomes;
+- first-use expiry;
+- non-sliding re-entry;
+- access-visit creation;
+- browser-role isolation from gate tables.
+
+Run the complete local quality checks with:
 
 ```bash
 npm run format:check
 npm run typecheck
 npm run lint
 npm test
-npm run test:rls
+npm run test:db
 npm run build
 ```
 
+## CI/CD and deployment
+
+### Continuous integration
+
+Pull requests run application quality checks including:
+
+- formatting;
+- TypeScript type checking;
+- linting;
+- Vitest;
+- production builds;
+- dependency review.
+
+### Container stage
+
+The container-stage workflow starts a disposable local Supabase environment, reapplies migrations and seed data, runs the database checks, builds the production Docker image, and performs container integration tests before deployment.
+
+### Production
+
+Production images are built as standalone Next.js containers and published to GitHub Container Registry.
+
+GitHub Actions authenticates to Azure with OpenID Connect rather than a stored Azure client secret.
+
+Bicep provisions:
+
+- the Azure Container Apps environment;
+- the Container App;
+- external HTTPS ingress;
+- application runtime configuration;
+- access-gate secrets;
+- startup, readiness, and liveness probes;
+- a single always-available application replica.
+
+Production deployment uses immutable commit-SHA image references.
+
+Operational workflows are also provided for taking the production application offline or tearing down the Container App resources.
+
 ## Design decisions
+
+### Layered access control
+
+The outer invite gate and Supabase authentication solve different problems.
+
+The invite gate limits access to the hosted demonstration, while Supabase Auth identifies the LMS user.
+
+Passing the invite gate never grants a student or administrator role.
+
+### First-use invite expiry
+
+Invite validity is anchored to the first successful redemption rather than invite creation time.
+
+This avoids consuming a recruiter's access window before they first open the demo.
+
+The expiry is established transactionally in PostgreSQL and subsequent redemption cannot extend it.
+
+### Separate HMAC secrets
+
+Invite-code hashing and cookie signing use separate secrets:
+
+```text
+ACCESS_GATE_CODE_SECRET
+ACCESS_GATE_COOKIE_SECRET
+```
+
+Compromise or rotation of one therefore does not require using the same key for the other cryptographic purpose.
+
+### Stateless access cookie
+
+Normal protected requests validate the signed cookie without querying the database.
+
+This keeps Next.js Proxy lightweight and avoids a database lookup on every asset or page request.
+
+The trade-off is that database revocation does not immediately invalidate an already-issued cookie.
+
+### Minimal visitor data
+
+Successful invite redemption records:
+
+```text
+invite_id
+used_at
+```
+
+The application does not store the visitor's user-agent or other browser-identifying metadata.
+
+### Least-privilege invite tables
+
+Browser-facing Supabase roles do not directly access the invite tables.
+
+The trusted operator role has only the table privileges needed to create and inspect invites, while browser redemption occurs through the dedicated database function.
 
 ### Defense in depth
 
-Authorization is enforced in both Next.js route handlers and PostgreSQL row-level security policies.
+LMS authorization is enforced in both Next.js route handlers and PostgreSQL row-level security policies.
 
 This duplication is intentional:
 
@@ -616,31 +1142,32 @@ This preserves historical data and associated timestamps.
 
 The project intentionally avoids unnecessary service and repository layers.
 
-For the current scope, keeping authentication, authorization, validation, and persistence visible in the route handlers makes the behaviour easier to follow.
+For the current scope, keeping authentication, authorization, validation, and persistence visible at their relevant boundaries makes the behaviour easier to review.
 
-Additional layers would become appropriate if the application introduced more complex domain workflows, transactions, external integrations, or multiple entry points.
+Additional layers would become appropriate if the application introduced more complex domain workflows, external integrations, or multiple entry points.
 
 ## Scope
 
-The project is intended as a focused example of authentication and authorization rather than a complete learning management system.
+The project is intended as a focused demonstration of access control, authentication, authorization, and deployment practices rather than a complete learning management system.
 
-The domain remains deliberately small so the important security behaviours are easy to demonstrate:
+The domain remains deliberately small so the important security behaviours are easy to inspect:
 
+- Which visitors may reach the demo
 - Who is authenticated
-- Which role they have
-- Which routes they may access
-- Which resources they own
-- Which rows the database permits them to read or modify
+- Which role an authenticated user has
+- Which routes that role may access
+- Which resources the user owns
+- Which rows PostgreSQL permits them to read or modify
+- Which security boundaries remain independent
 
 ## Potential extensions
 
 Possible future improvements include:
 
-1. Add end-to-end tests for complete authentication flows.
-2. Add route-level integration tests for unauthorized and forbidden requests.
-3. Add pagination, search, and filtering to the administrator dashboard.
-4. Add an audit log for consultation status changes.
-5. Add more granular permissions beyond the current student and administrator roles.
-6. Add account management and profile editing.
-7. Containerize the Next.js application for deployment.
-8. Add CI checks for unit tests, type checking, linting, builds, and RLS validation.
+1. Add browser-level end-to-end tests for the complete invite and authentication flows.
+2. Add bounded server-side revalidation so revoking an invite can invalidate already-issued access cookies before their natural expiry.
+3. Add narrowly scoped operator commands for listing and revoking invites.
+4. Add pagination, search, and filtering to the administrator dashboard.
+5. Add an audit log for consultation status changes.
+6. Add more granular permissions beyond the current student and administrator roles.
+7. Add account management and profile editing.

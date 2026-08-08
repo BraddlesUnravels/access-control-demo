@@ -244,13 +244,13 @@ otp_expiry = 3600
 
 # Use a production-ready SMTP server
 [auth.email.smtp]
-enabled = true
-host = "smtp-relay.gmail.com"
-port = 587
-user = "stackchatr@gmail.com"
-pass = "env(EMAIL_PASSWORD)"
-admin_email = "stackchatr@email.com"
-sender_name = "Admin"
+enabled = false
+#host = "smtp-relay.gmail.com"
+#port = 587
+#user = "stackchatr@gmail.com"
+#pass = "env(EMAIL_PASSWORD)"
+#admin_email = "stackchatr@email.com"
+#sender_name = "Admin"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

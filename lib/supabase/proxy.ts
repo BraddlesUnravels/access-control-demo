@@ -2,12 +2,22 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { ACCESS_GATE_DEFAULT_DESTINATION } from '@/lib/access-gate/constants';
 
-const copyResponseCookies = (
+const SUPABASE_CACHE_HEADERS = ['cache-control', 'expires', 'pragma'] as const;
+
+const copyResponseState = (
   source: NextResponse,
   target: NextResponse,
 ): NextResponse => {
   source.cookies.getAll().forEach((cookie) => {
     target.cookies.set(cookie);
+  });
+
+  SUPABASE_CACHE_HEADERS.forEach((headerName) => {
+    const value = source.headers.get(headerName);
+
+    if (value) {
+      target.headers.set(headerName, value);
+    }
   });
 
   return target;
@@ -68,7 +78,7 @@ export async function updateSession(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = ACCESS_GATE_DEFAULT_DESTINATION;
     redirectUrl.search = '';
-    return copyResponseCookies(
+    return copyResponseState(
       supabaseResponse,
       NextResponse.redirect(redirectUrl),
     );
