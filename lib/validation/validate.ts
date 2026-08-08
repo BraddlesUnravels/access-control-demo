@@ -7,7 +7,7 @@ type ValidationSuccess<TOutput> = {
   data: TOutput;
 };
 
-type ValidationFailure = {
+export type ValidationFailure = {
   success: false;
   errors: string[];
   fieldErrors: FieldErrors;

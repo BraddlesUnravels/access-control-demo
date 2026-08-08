@@ -7,6 +7,16 @@ import {
 } from '@/lib/access-gate/constants';
 import { verifyAccessGateCookieValue } from '@/lib/access-gate/cookie';
 import { serverRequestClient } from '@/lib/supabase/server';
+import { getClientIdentifier } from '@/lib/rate-limiter/client';
+import { consumeRateLimit } from '@/lib/rate-limiter/in-memory';
+
+vi.mock('@/lib/rate-limiter/client', () => ({
+  getClientIdentifier: vi.fn(),
+}));
+
+vi.mock('@/lib/rate-limiter/in-memory', () => ({
+  consumeRateLimit: vi.fn(),
+}));
 
 vi.mock('@/lib/supabase/server', () => ({
   serverRequestClient: vi.fn(),
@@ -56,6 +66,14 @@ const buildRequest = (body: string): Request => {
 describe('app/api/access/unlock/route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    vi.mocked(getClientIdentifier).mockReturnValue('client-a');
+
+    vi.mocked(consumeRateLimit).mockReturnValue({
+      allowed: true,
+      remaining: 4,
+      retryAfterSeconds: 60,
+    });
 
     vi.stubEnv('ACCESS_GATE_CODE_SECRET', CODE_SECRET);
 

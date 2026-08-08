@@ -1,8 +1,11 @@
-import { NextResponse } from 'next/server';
 import {
-  ACCESS_GATE_CONTACT_EMAIL,
-  ACCESS_GATE_REQUEST_TOKENS_URL,
-} from '@/lib/access-gate/constants';
+  isRedeemAccessInviteReason,
+  getAccessExpiryMs,
+  rateLimitExceededResponse,
+  validationFailureResponse,
+  invalidReasonResponse,
+  successResponse,
+} from './helpers';
 import {
   createAccessGateCookieValue,
   getAccessGateCookieOptions,
@@ -12,6 +15,8 @@ import {
   getAccessGateCookieSecret,
 } from '@/lib/access-gate/env';
 import { hashInviteCode } from '@/lib/access-gate/hash';
+import { getClientIdentifier } from '@/lib/rate-limiter/client';
+import { consumeRateLimit } from '@/lib/rate-limiter/in-memory';
 import { AppError } from '@/lib/errors';
 import { serverRequestClient } from '@/lib/supabase/server';
 import { accessUnlockInputSchema } from '@/lib/validation/schemas';
@@ -19,48 +24,12 @@ import { validateWithSchema } from '@/lib/validation/validate';
 import { withApiHandler } from '@/lib/with-api-handler';
 import { isAzureEnv } from '@/lib/utils';
 
-type RedeemAccessInviteReason = 'ok' | 'invalid' | 'expired' | 'revoked';
-
-type RedeemAccessInviteRow = {
-  invite_id: string | null;
-  visit_id: string | null;
-  label: string | null;
-  access_expires_at: string | null;
-  reason: RedeemAccessInviteReason | null;
-};
-
-const NO_STORE_HEADERS = {
-  'Cache-Control': 'no-store',
-};
-
-const gateHelpPayload = {
-  contactEmail: ACCESS_GATE_CONTACT_EMAIL,
-  requestTokensUrl: ACCESS_GATE_REQUEST_TOKENS_URL,
-};
-
-const isRedeemAccessInviteReason = (
-  value: unknown,
-): value is RedeemAccessInviteReason => {
-  return (
-    value === 'ok' ||
-    value === 'invalid' ||
-    value === 'expired' ||
-    value === 'revoked'
-  );
-};
-
-const getAccessExpiryMs = (expiresAt: string | null): number | undefined => {
-  if (!expiresAt) return;
-
-  const expiresAtDateMs = Date.parse(expiresAt);
-
-  if (!Number.isFinite(expiresAtDateMs) || expiresAtDateMs <= Date.now())
-    return;
-
-  return expiresAtDateMs;
-};
-
 export const POST = withApiHandler(async (request: Request) => {
+  const rateLimit = consumeRateLimit(getClientIdentifier(request));
+
+  if (!rateLimit.allowed)
+    return rateLimitExceededResponse(String(rateLimit.retryAfterSeconds));
+
   let payload: unknown;
 
   try {
@@ -74,22 +43,7 @@ export const POST = withApiHandler(async (request: Request) => {
 
   const validation = validateWithSchema(accessUnlockInputSchema, payload);
 
-  if (!validation.success)
-    return NextResponse.json(
-      {
-        error:
-          validation.errors[0] ??
-          Object.values(validation.fieldErrors)[0]?.[0] ??
-          'Access unlock input is invalid',
-        errors: validation.errors,
-        fieldErrors: validation.fieldErrors,
-        ...gateHelpPayload,
-      },
-      {
-        status: 400,
-        headers: NO_STORE_HEADERS,
-      },
-    );
+  if (!validation.success) return validationFailureResponse(validation);
 
   const codeHash = hashInviteCode(
     validation.data.code,
@@ -112,63 +66,33 @@ export const POST = withApiHandler(async (request: Request) => {
       },
     });
 
-  const redeemRows = data as RedeemAccessInviteRow[] | null;
-
-  if (!Array.isArray(redeemRows) || redeemRows.length !== 1) {
+  if (!Array.isArray(data) || data.length !== 1)
     throw new AppError(
       'Access invite redeem returned an invalid result count',
       {
         status: 500,
         safeMessage: 'Unable to verify invite code',
         meta: {
-          resultCount: Array.isArray(redeemRows) ? redeemRows.length : null,
+          resultCount: Array.isArray(data) ? data.length : undefined,
         },
       },
     );
-  }
 
-  const [redeemResult] = redeemRows;
+  const [result] = data;
 
-  if (!redeemResult || !isRedeemAccessInviteReason(redeemResult.reason)) {
+  if (!result || !isRedeemAccessInviteReason(result.reason))
     throw new AppError('Access invite redeem returned an invalid result', {
       status: 500,
       safeMessage: 'Unable to verify invite code',
     });
-  }
 
-  const { reason } = redeemResult;
+  const { reason } = result;
 
-  if (reason !== 'ok') {
-    const status = reason === 'expired' || reason === 'revoked' ? 403 : 401;
+  if (reason !== 'ok') return invalidReasonResponse(reason);
 
-    const message =
-      reason === 'expired'
-        ? 'This invite code has expired.'
-        : reason === 'revoked'
-          ? 'This invite code is no longer valid.'
-          : 'Invite code is invalid.';
+  const expiresAtMs = getAccessExpiryMs(result.access_expires_at);
 
-    return NextResponse.json(
-      {
-        error: message,
-        reason,
-        ...gateHelpPayload,
-      },
-      {
-        status,
-        headers: NO_STORE_HEADERS,
-      },
-    );
-  }
-
-  const expiresAtMs = getAccessExpiryMs(redeemResult.access_expires_at);
-
-  if (
-    !redeemResult.invite_id ||
-    !redeemResult.visit_id ||
-    !redeemResult.label ||
-    !expiresAtMs
-  ) {
+  if (!result.invite_id || !result.visit_id || !result.label || !expiresAtMs) {
     throw new AppError('Access invite redeem returned an incomplete result', {
       status: 500,
       safeMessage: 'Unable to verify invite code',
@@ -177,7 +101,7 @@ export const POST = withApiHandler(async (request: Request) => {
 
   const cookieValue = createAccessGateCookieValue(
     {
-      inviteId: redeemResult.invite_id,
+      inviteId: result.invite_id,
     },
     getAccessGateCookieSecret(),
     expiresAtMs,
@@ -185,18 +109,7 @@ export const POST = withApiHandler(async (request: Request) => {
 
   const cookieOptions = getAccessGateCookieOptions(isAzureEnv(), expiresAtMs);
 
-  const response = NextResponse.json(
-    {
-      data: {
-        label: redeemResult.label,
-        expiresAt: redeemResult.access_expires_at,
-      },
-    },
-    {
-      status: 200,
-      headers: NO_STORE_HEADERS,
-    },
-  );
+  const response = successResponse(result);
 
   response.cookies.set({
     name: cookieOptions.name,
