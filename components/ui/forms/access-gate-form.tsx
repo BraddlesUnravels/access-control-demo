@@ -1,16 +1,11 @@
 'use client';
 
+import { ArrowRight, LoaderCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { ACCESS_GATE_REQUEST_TOKENS_URL } from '@/lib/access-gate/constants';
 import { getSafeAccessGateDestination } from '@/lib/access-gate/paths';
+import { getApiErrorMessage, readJsonResponse } from '@/lib/api-response';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,18 +17,8 @@ type AccessGateFormProps = {
   className?: string;
 };
 
-type AccessUnlockErrorBody = {
-  error?: unknown;
-};
-
-const readAccessUnlockError = async (
-  response: Response,
-): Promise<AccessUnlockErrorBody> => {
-  try {
-    return (await response.json()) as AccessUnlockErrorBody;
-  } catch {
-    return {};
-  }
+type AccessUnlockResponse = {
+  error?: string;
 };
 
 export function AccessGateForm({
@@ -43,15 +28,13 @@ export function AccessGateForm({
 }: AccessGateFormProps) {
   const router = useRouter();
   const [code, setCode] = useState(initialCode);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [showRequestHelp, setShowRequestHelp] = useState(false);
+  const [error, setError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(undefined);
-    setShowRequestHelp(false);
 
     try {
       const response = await fetch('/api/access/unlock', {
@@ -62,73 +45,121 @@ export function AccessGateForm({
         body: JSON.stringify({ code }),
       });
 
-      if (!response.ok) {
-        const body = await readAccessUnlockError(response);
+      const payload = await readJsonResponse<AccessUnlockResponse>(response);
 
-        setError(
-          typeof body.error === 'string'
-            ? body.error
-            : 'Unable to verify invite code',
-        );
-        setShowRequestHelp(true);
+      if (!response.ok) {
+        setError(getApiErrorMessage(payload, 'Unable to verify invite code'));
         return;
       }
 
       router.replace(getSafeAccessGateDestination(nextPath));
     } catch {
       setError('Unable to verify invite code');
-      setShowRequestHelp(true);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={cn('flex flex-col gap-6', className)}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Enter invite code</CardTitle>
-          <CardDescription>
-            Use the access code from the Bradley Laskey&apos;s resume. Or click
-            the link on to open this demo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="code">Invite code</Label>
-                <Input
-                  id="code"
-                  name="code"
-                  autoComplete="one-time-code"
-                  required
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  placeholder="ACD-XXXX-XXXX-XXXX"
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              {showRequestHelp && (
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>
-                    Need a new code? Contact{' '}
-                    <a
-                      className="underline underline-offset-4"
-                      href={ACCESS_GATE_REQUEST_TOKENS_URL}
-                    >
-                      Request more tokens
-                    </a>
-                  </p>
-                </div>
-              )}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Checking code...' : 'Continue'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <form onSubmit={handleSubmit} className={cn('space-y-5', className)}>
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between">
+          <Label
+            htmlFor="code"
+            className="text-xs font-semibold uppercase tracking-[0.08em] text-zinc-400"
+          >
+            Invite code
+          </Label>
+
+          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-700">
+            Required
+          </span>
+        </div>
+
+        <div className="relative">
+          <Input
+            id="code"
+            name="code"
+            autoComplete="one-time-code"
+            autoCapitalize="characters"
+            spellCheck={false}
+            required
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            placeholder="ACD-XXXX-XXXX-XXXX"
+            aria-describedby={error ? 'access-code-error' : undefined}
+            aria-invalid={Boolean(error)}
+            className={cn(
+              'h-13 rounded-xl border-white/[0.1] bg-black/25 px-4 font-mono',
+              'text-sm tracking-[0.1em] text-zinc-100 shadow-inner',
+              'placeholder:text-zinc-700',
+              'focus-visible:border-cyan-300/40 focus-visible:ring-2',
+              'focus-visible:ring-cyan-300/10',
+              error &&
+                'border-destructive/50 focus-visible:border-destructive/60 focus-visible:ring-destructive/10',
+            )}
+          />
+
+          <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-300/0 to-transparent transition-all peer-focus:via-cyan-300/40" />
+        </div>
+      </div>
+
+      {error && (
+        <div
+          id="access-code-error"
+          role="alert"
+          className="rounded-lg border border-destructive/15 bg-destructive/[0.06] px-3.5 py-3 text-xs leading-5 text-red-300"
+        >
+          {error}
+        </div>
+      )}
+
+      <Button
+        type="submit"
+        size="lg"
+        disabled={isLoading}
+        className={cn(
+          'group h-10 w-full rounded-xl bg-gradient-to-r from-cyan-300 to-cyan-200',
+          'font-semibold text-slate-950 shadow-[0_8px_28px_rgba(34,211,238,0.12)]',
+          'transition-all duration-200',
+          'hover:from-cyan-200 hover:to-cyan-100',
+          'hover:shadow-[0_10px_34px_rgba(34,211,238,0.2)]',
+          'active:translate-y-px',
+        )}
+      >
+        {isLoading ? (
+          <>
+            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            Verifying access
+          </>
+        ) : (
+          <>
+            Unlock demo
+            <ArrowRight
+              className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </>
+        )}
+      </Button>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-white/[0.06]" />
+        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-700">
+          Invite only
+        </span>
+        <div className="h-px flex-1 bg-white/[0.06]" />
+      </div>
+
+      <p className="text-center text-xs leading-5 text-zinc-600">
+        Don&apos;t have a valid invite?{' '}
+        <a
+          className="font-medium text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition-colors hover:text-cyan-200 hover:decoration-cyan-300/50"
+          href={ACCESS_GATE_REQUEST_TOKENS_URL}
+        >
+          Request access
+        </a>
+      </p>
+    </form>
   );
 }

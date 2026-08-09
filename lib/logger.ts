@@ -1,5 +1,4 @@
 import pino from 'pino';
-import { isAzureEnv } from './utils';
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -16,15 +15,17 @@ export const logger = pino({
     ],
     censor: '[Redacted]',
   },
-  transport: !isAzureEnv()
+  ...(process.stdout.isTTY === true
     ? {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          singleLine: false,
-          translateTime: 'yyyy-mm-dd HH:MM:ss.l',
-          ignore: 'pid,hostname',
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            colorize: true,
+            singleLine: false,
+            translateTime: 'yyyy-mm-dd HH:MM:ss.l',
+            ignore: 'pid,hostname',
+          },
         },
       }
-    : undefined,
+    : {}),
 });
