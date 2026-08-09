@@ -39,6 +39,8 @@ jobs:
       AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
       AZURE_CONTAINER_ENVIRONMENT: ${{ vars.AZURE_CONTAINER_ENVIRONMENT }}
       AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP }}
+      AZURE_CUSTOM_DOMAIN: ${{ vars.AZURE_CUSTOM_DOMAIN }}
+      AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID: ${{ vars.AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID }}
 
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
@@ -65,6 +67,8 @@ jobs:
             AZURE_LOCATION
             AZURE_CONTAINER_ENVIRONMENT
             AZURE_CONTAINER_APP
+            AZURE_CUSTOM_DOMAIN
+            AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID
             NEXT_PUBLIC_SUPABASE_URL
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
             ACCESS_GATE_CODE_SECRET
@@ -267,6 +271,8 @@ jobs:
                 supabasePublishableKey="${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
                 accessGateCodeSecret="${ACCESS_GATE_CODE_SECRET}" \
                 accessGateCookieSecret="${ACCESS_GATE_COOKIE_SECRET}" \
+                customDomainName="${AZURE_CUSTOM_DOMAIN}" \
+                customDomainCertificateId="${AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID}" \
               --query properties.outputs.applicationUrl.value \
               --output tsv
           )"
@@ -297,6 +303,7 @@ jobs:
                 image: properties.template.containers[0].image,
                 env: properties.template.containers[0].env,
                 secretNames: properties.configuration.secrets[].name
+                customDomains: properties.configuration.ingress.customDomains
               }" \
               --output json
           )"
@@ -313,6 +320,17 @@ jobs:
                 (.env | any(.name == "ACCESS_GATE_COOKIE_SECRET" and .secretRef == "access-gate-cookie-secret")) and
                 (.secretNames | index("access-gate-code-secret") != null) and
                 (.secretNames | index("access-gate-cookie-secret") != null)
+                (
+                  .customDomains |
+                  any(
+                    .name == $expected_custom_domain and
+                    .bindingType == "SniEnabled" and
+                    (
+                      (.certificateId | ascii_downcase) ==
+                      ($expected_certificate_id | ascii_downcase)
+                    )
+                  )
+                )
               ' \
               >/dev/null
 
@@ -390,6 +408,7 @@ jobs:
             echo "- Application: ${APPLICATION_URL}"
             echo "- Image: \`${IMAGE}\`"
             echo "- Container App: \`${AZURE_CONTAINER_APP}\`"
+            echo "- Custom domain: \`${AZURE_CUSTOM_DOMAIN}\`"
             echo "- Minimum replicas: \`1\`"
             echo "- Maximum replicas: \`1\`"
           } >> "${GITHUB_STEP_SUMMARY}"

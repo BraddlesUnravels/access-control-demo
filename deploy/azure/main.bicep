@@ -27,6 +27,12 @@ param accessGateCodeSecret string
 @description('Server-only HMAC secret used to sign access-gate cookies.')
 param accessGateCookieSecret string
 
+@description('Custom domain bound to the production Container App.')
+param customDomainName string
+
+@description('Resource ID of the existing TLS certificate bound to the custom domain.')
+param customDomainCertificateId string
+
 var commonTags = {
   application: 'access-control-demo'
   environment: 'production'
@@ -65,6 +71,13 @@ resource containerApp 'Microsoft.App/containerApps@2026-01-01' = {
         allowInsecure: false
         targetPort: 3000
         transport: 'auto'
+        customDomains: [
+          {
+            name: customDomainName
+            bindingType: 'SniEnabled'
+            certificateId: customDomainCertificateId
+          }
+        ]
       }
       secrets: [
         {
@@ -179,4 +192,4 @@ resource containerApp 'Microsoft.App/containerApps@2026-01-01' = {
 
 output applicationName string = containerApp.name
 output applicationFqdn string = containerApp.properties.configuration.ingress.fqdn
-output applicationUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output applicationUrl string = 'https://${customDomainName}'
