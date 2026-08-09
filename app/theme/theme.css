@@ -1,0 +1,146 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Font */
+  --font-sans: var(--font-fira-sans);
+
+  /* Application colours */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  /* Border radii */
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+
+  /*
+   * Fluid typography scale.
+   *
+   * Each clamp() contains:
+   * minimum size, fluid size, maximum size.
+   */
+
+  /* Fluid Text Size Tokens */
+
+  /* Recalibrated Fluid Text Size Tokens (Scaled Down) */
+  /* 24px → 32px */
+  --text-display: clamp(2.5rem, 1.75rem + 2vw, 4rem);
+  /* 20px → 26px */
+  --text-page-title: clamp(1.25rem, 1.1rem + 0.6vw, 1.625rem);
+  /* 18px → 22px */
+  --text-section-title: clamp(1.125rem, 1.025rem + 0.4vw, 1.375rem);
+  /* 15px → 18px */
+  --text-component-title: clamp(0.9375rem, 0.86rem + 0.3vw, 1.125rem);
+  /* 14px → 16px */
+  --text-body-large: clamp(0.875rem, 0.825rem + 0.2vw, 1rem);
+  /* 13.5px → 14px (Strict Layout Base) */
+  --text-body: clamp(0.84rem, 0.825rem + 0.06vw, 0.875rem);
+  /* 12.5px → 13px */
+  --text-body-small: clamp(0.78rem, 0.765rem + 0.06vw, 0.8125rem);
+  /* 12.5px → 13px */
+  --text-label: clamp(0.78rem, 0.765rem + 0.06vw, 0.8125rem);
+  /* 12.5px → 13px */
+  --text-action: clamp(0.78rem, 0.765rem + 0.06vw, 0.8125rem);
+  /* 11px → 11.5px */
+  --text-caption: clamp(0.6875rem, 0.675rem + 0.05vw, 0.71875rem);
+}
+
+@utility text-display {
+  font-size: var(--text-display);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+
+@utility text-page-title {
+  font-size: var(--text-page-title);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+@utility text-section-title {
+  font-size: var(--text-section-title);
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+
+@utility text-component-title {
+  font-size: var(--text-component-title);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+@utility text-body-large {
+  font-size: var(--text-body-large);
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+@utility text-body {
+  font-size: var(--text-body);
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+@utility text-body-small {
+  font-size: var(--text-body-small);
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+@utility text-label {
+  font-size: var(--text-label);
+  line-height: 1.4;
+  letter-spacing: 0.005em;
+  font-weight: 500;
+}
+
+@utility text-action {
+  font-size: var(--text-action);
+  line-height: 1.25;
+  letter-spacing: 0.005em;
+  font-weight: 600;
+}
+
+@utility text-caption {
+  font-size: var(--text-caption);
+  line-height: 1.45;
+  font-weight: 400;
+}
