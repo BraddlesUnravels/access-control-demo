@@ -288,21 +288,21 @@ jobs:
         shell: bash
         env:
           EXPECTED_IMAGE: ${{ steps.image.outputs.sha }}
+          EXPECTED_CUSTOM_DOMAIN: ${{ env.AZURE_CUSTOM_DOMAIN }}
+          EXPECTED_CUSTOM_DOMAIN_CERTIFICATE_ID: ${{ env.AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID }}
         run: |
           set -euo pipefail
 
           deployment_state="$(
-            az resource show \
+            az containerapp show \
               --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --resource-type "Microsoft.App/containerApps" \
               --name "${AZURE_CONTAINER_APP}" \
-              --api-version "2026-01-01" \
               --query "{
                 minReplicas: properties.template.scale.minReplicas,
                 maxReplicas: properties.template.scale.maxReplicas,
                 image: properties.template.containers[0].image,
                 env: properties.template.containers[0].env,
-                secretNames: properties.configuration.secrets[].name
+                secretNames: properties.configuration.secrets[].name,
                 customDomains: properties.configuration.ingress.customDomains
               }" \
               --output json
@@ -311,6 +311,8 @@ jobs:
           echo "${deployment_state}" |
             jq --exit-status \
               --arg expected_image "${EXPECTED_IMAGE}" \
+              --arg expected_custom_domain "${EXPECTED_CUSTOM_DOMAIN}" \
+              --arg expected_certificate_id "${EXPECTED_CUSTOM_DOMAIN_CERTIFICATE_ID}" \
               '
                 .minReplicas == 1 and
                 .maxReplicas == 1 and
@@ -319,7 +321,7 @@ jobs:
                 (.env | any(.name == "ACCESS_GATE_CODE_SECRET" and .secretRef == "access-gate-code-secret")) and
                 (.env | any(.name == "ACCESS_GATE_COOKIE_SECRET" and .secretRef == "access-gate-cookie-secret")) and
                 (.secretNames | index("access-gate-code-secret") != null) and
-                (.secretNames | index("access-gate-cookie-secret") != null)
+                (.secretNames | index("access-gate-cookie-secret") != null) and
                 (
                   .customDomains |
                   any(
