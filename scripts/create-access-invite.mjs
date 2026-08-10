@@ -7,14 +7,89 @@ const MINIMUM_SECRET_LENGTH = 32;
 const MINIMUM_ACCESS_DURATION_DAYS = 1;
 const MAXIMUM_ACCESS_DURATION_DAYS = 30;
 
+const getOptionValue = (argv, index, optionName) => {
+  const value = argv[index + 1];
+
+  if (!value || value.startsWith('--')) {
+    throw new Error(`${optionName} requires a value.`);
+  }
+
+  return value;
+};
+
+const parseArgs = (argv) => {
+  const args = {
+    envFile: undefined,
+    label: undefined,
+    days: undefined,
+    help: false,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const current = argv[index];
+
+    if (current === '--env-file') {
+      args.envFile = getOptionValue(argv, index, '--env-file');
+      index += 1;
+      continue;
+    }
+
+    if (current === '--label') {
+      args.label = getOptionValue(argv, index, '--label');
+      index += 1;
+      continue;
+    }
+
+    if (current === '--days') {
+      args.days = getOptionValue(argv, index, '--days');
+      index += 1;
+      continue;
+    }
+
+    if (current === '--help' || current === '-h') {
+      args.help = true;
+      continue;
+    }
+
+    throw new Error(`Unknown option: ${current}`);
+  }
+
+  return args;
+};
+
+const printUsage = () => {
+  process.stdout.write(
+    [
+      'Create an access-gate invite.',
+      '',
+      'Usage:',
+      '  npm run invite:create -- --env-file <path> --label <label>',
+      '',
+      'Examples:',
+      '  npm run invite:create -- --env-file .env.local --label "Local test"',
+      '  npm run invite:create -- --env-file .env.production.local --label "Acme recruiter"',
+      '  npm run invite:create -- --env-file .env.production.local --label "Acme recruiter" --days 14',
+      '',
+      'Options:',
+      '  --env-file <path>  Environment file to load. Required.',
+      '  --label <label>     Human-readable identifier for the invite.',
+      '  --days <days>       Access duration from first successful redemption.',
+      '                      Must be an integer between 1 and 30.',
+      '                      If omitted, the database default is used.',
+      '  --help, -h          Show this help message.',
+      '',
+    ].join('\n'),
+  );
+};
+
 const loadEnvFile = (filePath) => {
   if (!existsSync(filePath)) {
-    return;
+    throw new Error(`Environment file not found: ${filePath}`);
   }
 
   const contents = readFileSync(filePath, 'utf8');
 
-  for (const rawLine of contents.split('\n')) {
+  for (const rawLine of contents.split(/\r?\n/)) {
     const line = rawLine.trim();
 
     if (!line || line.startsWith('#')) {
@@ -30,6 +105,10 @@ const loadEnvFile = (filePath) => {
     const key = line.slice(0, separatorIndex).trim();
     let value = line.slice(separatorIndex + 1).trim();
 
+    if (!key) {
+      continue;
+    }
+
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
@@ -37,74 +116,8 @@ const loadEnvFile = (filePath) => {
       value = value.slice(1, -1);
     }
 
-    if (!(key in process.env)) {
-      process.env[key] = value;
-    }
+    process.env[key] = value;
   }
-};
-
-const getOptionValue = (argv, index, optionName) => {
-  const value = argv[index + 1];
-
-  if (!value || value.startsWith('--')) {
-    throw new Error(`${optionName} requires a value.`);
-  }
-
-  return value;
-};
-
-const parseArgs = (argv) => {
-  const args = {
-    label: undefined,
-    days: undefined,
-  };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const current = argv[index];
-
-    if (current === '--label') {
-      args.label = getOptionValue(argv, index, '--label');
-      index += 1;
-      continue;
-    }
-
-    if (current === '--days') {
-      args.days = getOptionValue(argv, index, '--days');
-      index += 1;
-      continue;
-    }
-
-    if (current === '--help' || current === '-h') {
-      return {
-        ...args,
-        help: true,
-      };
-    }
-
-    throw new Error(`Unknown option: ${current}`);
-  }
-
-  return args;
-};
-
-const printUsage = () => {
-  process.stdout.write(
-    [
-      'Create an access-gate invite.',
-      '',
-      'Usage:',
-      '  npm run invite:create -- --label "Acme recruiter"',
-      '  npm run invite:create -- --label "Acme recruiter" --days 14',
-      '',
-      'Options:',
-      '  --label <label>  Human-readable identifier for the invite.',
-      '  --days <days>    Access duration from first successful redemption.',
-      '                   Must be an integer between 1 and 30.',
-      '                   If omitted, the database default is used.',
-      '  --help, -h       Show this help message.',
-      '',
-    ].join('\n'),
-  );
 };
 
 const parseAccessDurationDays = (value) => {
@@ -151,6 +164,7 @@ const generateInviteCode = () => {
 
 const requireEnv = (name) => {
   const value = process.env[name];
+
   if (!value) {
     throw new Error(`Environment variable ${name} is required.`);
   }
@@ -247,15 +261,21 @@ const createInvite = async ({ label, accessDurationDays }) => {
 };
 
 const main = async () => {
-  loadEnvFile(resolve(process.cwd(), '.env.local'));
-  loadEnvFile(resolve(process.cwd(), '.env'));
-
   const args = parseArgs(process.argv.slice(2));
 
   if (args.help) {
     printUsage();
     return;
   }
+
+  if (!args.envFile) {
+    printUsage();
+    throw new Error('--env-file is required.');
+  }
+
+  const envFilePath = resolve(process.cwd(), args.envFile);
+
+  loadEnvFile(envFilePath);
 
   const label = args.label?.trim();
 
@@ -296,5 +316,6 @@ main().catch((error) => {
   process.stderr.write(
     `${error instanceof Error ? error.message : String(error)}\n`,
   );
+
   process.exitCode = 1;
 });
