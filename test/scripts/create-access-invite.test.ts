@@ -1,6 +1,8 @@
 import { createHmac } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -23,6 +25,24 @@ type CapturedRequest = {
 };
 
 let activeServer: Server | undefined;
+
+const temporaryDirectories: string[] = [];
+
+const createTestEnvFile = async (): Promise<string> => {
+  const directory = await mkdtemp(join(tmpdir(), 'create-access-invite-test-'));
+
+  temporaryDirectories.push(directory);
+
+  const envFilePath = join(directory, '.env.test');
+
+  await writeFile(
+    envFilePath,
+    '# Test environment file for create-access-invite.mjs\n',
+    'utf8',
+  );
+
+  return envFilePath;
+};
 
 const runScript = (
   args: string[],
@@ -136,24 +156,31 @@ const startPostgrestStub = async () => {
 };
 
 afterEach(async () => {
-  if (!activeServer) {
-    return;
+  if (activeServer) {
+    const server = activeServer;
+
+    activeServer = undefined;
+
+    await new Promise<void>((resolveClose, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolveClose();
+      });
+    });
   }
 
-  const server = activeServer;
-
-  activeServer = undefined;
-
-  await new Promise<void>((resolveClose, reject) => {
-    server.close((error) => {
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      resolveClose();
-    });
-  });
+  await Promise.all(
+    temporaryDirectories.splice(0).map((directory) =>
+      rm(directory, {
+        recursive: true,
+        force: true,
+      }),
+    ),
+  );
 });
 
 describe('scripts/create-access-invite.mjs', () => {
@@ -166,7 +193,16 @@ describe('scripts/create-access-invite.mjs', () => {
   });
 
   it('should reject an access duration above the configured maximum', async () => {
-    const result = await runScript(['--label', 'Test invite', '--days', '31']);
+    const envFilePath = await createTestEnvFile();
+
+    const result = await runScript([
+      '--env-file',
+      envFilePath,
+      '--label',
+      'Test invite',
+      '--days',
+      '31',
+    ]);
 
     expect(result.status).toBe(1);
 
@@ -178,17 +214,22 @@ describe('scripts/create-access-invite.mjs', () => {
   it('should create an HMAC-backed invite without starting its access window', async () => {
     const { capturedRequests, supabaseUrl } = await startPostgrestStub();
 
-    const result = await runScript(['--label', 'Test invite', '--days', '14'], {
-      NODE_ENV: 'test',
+    const envFilePath = await createTestEnvFile();
 
-      ACCESS_GATE_CODE_SECRET: CODE_SECRET,
+    const result = await runScript(
+      ['--env-file', envFilePath, '--label', 'Test invite', '--days', '14'],
+      {
+        NODE_ENV: 'test',
 
-      NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
+        ACCESS_GATE_CODE_SECRET: CODE_SECRET,
 
-      SUPABASE_SECRET_KEY: ADMIN_KEY,
+        NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
 
-      SUPABASE_SERVICE_ROLE_KEY: '',
-    });
+        SUPABASE_SECRET_KEY: ADMIN_KEY,
+
+        SUPABASE_SERVICE_ROLE_KEY: '',
+      },
+    );
 
     expect(result.status).toBe(0);
 
@@ -217,7 +258,7 @@ describe('scripts/create-access-invite.mjs', () => {
     expect(insertRequest?.url).toContain('/rest/v1/access_invites');
 
     const insertedBody = Array.isArray(insertRequest?.body)
-      ? insertRequest?.body[0]
+      ? insertRequest.body[0]
       : insertRequest?.body;
 
     expect(insertedBody).toEqual({

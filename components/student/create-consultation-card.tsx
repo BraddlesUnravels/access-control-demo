@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { CalendarPlus } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -46,20 +48,32 @@ export const CreateConsultationCard = ({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create consultation</CardTitle>
-        <CardDescription>
-          Fill in the required fields and choose a date and time.
-        </CardDescription>
+    <Card className="overflow-hidden">
+      <CardHeader className="border-b border-white/[0.06] bg-white/[0.015]">
+        <div className="flex items-start gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06]">
+            <CalendarPlus className="size-4 text-cyan-300" aria-hidden="true" />
+          </div>
+
+          <div>
+            <CardTitle>Create consultation</CardTitle>
+
+            <CardDescription className="mt-1.5">
+              Add a new consultation record and choose its scheduled date and
+              time.
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
+
+      <CardContent className="pt-6">
         <form
           onSubmit={handleCreateConsultation}
-          className="grid gap-4 md:grid-cols-2"
+          className="grid gap-5 md:grid-cols-2"
         >
           <div className="grid gap-2">
             <Label htmlFor="first-name">First name</Label>
+
             <Input
               id="first-name"
               value={createForm.firstName}
@@ -72,8 +86,10 @@ export const CreateConsultationCard = ({
               required
             />
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="last-name">Last name</Label>
+
             <Input
               id="last-name"
               value={createForm.lastName}
@@ -86,8 +102,10 @@ export const CreateConsultationCard = ({
               required
             />
           </div>
+
           <div className="grid gap-2 md:col-span-2">
             <Label htmlFor="reason">Reason</Label>
+
             <Input
               id="reason"
               value={createForm.reason}
@@ -100,8 +118,10 @@ export const CreateConsultationCard = ({
               required
             />
           </div>
+
           <div className="grid gap-2">
             <Label htmlFor="scheduled-for">Date and time</Label>
+
             <Input
               id="scheduled-for"
               type="datetime-local"
@@ -115,8 +135,15 @@ export const CreateConsultationCard = ({
               required
             />
           </div>
-          <div className="flex items-end">
-            <Button type="submit" disabled={submittingCreate}>
+
+          <div className="flex items-end md:justify-end">
+            <Button
+              type="submit"
+              className="w-full md:w-auto"
+              disabled={submittingCreate}
+            >
+              <CalendarPlus aria-hidden="true" />
+
               {submittingCreate ? 'Creating...' : 'Create consultation'}
             </Button>
           </div>

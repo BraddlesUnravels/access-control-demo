@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { firaSans } from './theme/font';
-import { ThemeProvider } from 'next-themes';
+import { AppVersion } from '../components/ui/app-version';
 import './theme/globals.css';
 
 const defaultUrl = process.env.VERCEL_URL
@@ -22,14 +22,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={firaSans.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        {children}
+        <AppVersion />
       </body>
     </html>
   );

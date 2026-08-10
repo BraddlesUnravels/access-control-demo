@@ -4,24 +4,32 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors focus:outline-hidden focus:ring-2 focus:ring-cyan-300/15',
   {
     variants: {
       variant: {
         default:
-          'border-transparent bg-primary text-primary-foreground shadow-sm hover:bg-primary/80',
+          'border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-200 hover:bg-cyan-300/[0.1]',
+
         secondary:
-          'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
+          'border-white/[0.07] bg-white/[0.04] text-zinc-400 hover:bg-white/[0.07]',
+
         destructive:
-          'border-transparent bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/80',
-        outline: 'text-foreground',
+          'border-red-400/15 bg-red-400/[0.07] text-red-300 hover:bg-red-400/[0.1]',
+
+        outline: 'border-white/[0.1] bg-transparent text-zinc-300',
+
         scheduled:
-          'border-transparent bg-green-600 text-white hover:bg-green-500',
-        cancelled: 'border-transparent bg-red-600 text-white hover:bg-red-500',
+          'border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-200 hover:bg-cyan-300/[0.1]',
+
+        cancelled:
+          'border-red-400/15 bg-red-400/[0.07] text-red-300 hover:bg-red-400/[0.1]',
+
         completed:
-          'border-transparent bg-slate-600 text-white hover:bg-slate-500',
+          'border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300 hover:bg-emerald-400/[0.1]',
       },
     },
+
     defaultVariants: {
       variant: 'default',
     },
