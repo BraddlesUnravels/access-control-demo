@@ -1,32 +1,48 @@
 'use client';
 
+import { useState } from 'react';
 import { CalendarClock, CheckCircle2, XCircle } from 'lucide-react';
-
 import { ConsultationSummaryCard } from '@/components/consultations/consultation-summary-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { ConsultationRecord } from '@/lib/validation/types';
 
+const toDatetimeLocalValue = (isoString: string) => {
+  const date = new Date(isoString);
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
+
+  return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
+};
+
 type ConsultationItemProps = {
-  actionInProgress: boolean;
   consultation: ConsultationRecord;
-  onCancel: (consultation: ConsultationRecord) => Promise<void>;
-  onReschedule: (consultation: ConsultationRecord) => Promise<void>;
-  onRescheduleChange: (consultationId: string, value: string) => void;
+  onCancel: (consultationId: string) => Promise<void>;
+  onReschedule: (consultationId: string, scheduledFor: string) => Promise<void>;
   onToggleCompleted: (consultation: ConsultationRecord) => Promise<void>;
-  rescheduleValue: string;
 };
 
 export const ConsultationItem = ({
-  actionInProgress,
   consultation,
   onCancel,
   onReschedule,
-  onRescheduleChange,
   onToggleCompleted,
-  rescheduleValue,
 }: ConsultationItemProps) => {
+  const [actionInProgress, setActionInProgress] = useState(false);
+  const [rescheduleValue, setRescheduleValue] = useState(() =>
+    toDatetimeLocalValue(consultation.scheduled_for),
+  );
+
+  const runAction = async (action: () => Promise<void>) => {
+    setActionInProgress(true);
+
+    try {
+      await action();
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
   const actionDisabled =
     consultation.status === 'cancelled' ||
     consultation.status === 'completed' ||
@@ -48,9 +64,7 @@ export const ConsultationItem = ({
               type="datetime-local"
               value={rescheduleValue}
               disabled={actionDisabled}
-              onChange={(event) =>
-                onRescheduleChange(consultation.id, event.target.value)
-              }
+              onChange={(event) => setRescheduleValue(event.target.value)}
             />
           </div>
 
@@ -58,7 +72,11 @@ export const ConsultationItem = ({
             type="button"
             variant="outline"
             disabled={actionDisabled}
-            onClick={() => void onReschedule(consultation)}
+            onClick={() =>
+              void runAction(() =>
+                onReschedule(consultation.id, rescheduleValue),
+              )
+            }
           >
             <CalendarClock aria-hidden="true" />
             Reschedule
@@ -69,7 +87,9 @@ export const ConsultationItem = ({
               type="button"
               variant="secondary"
               disabled={completedDisabled}
-              onClick={() => void onToggleCompleted(consultation)}
+              onClick={() =>
+                void runAction(() => onToggleCompleted(consultation))
+              }
             >
               <CheckCircle2 aria-hidden="true" />
 
@@ -82,7 +102,7 @@ export const ConsultationItem = ({
               type="button"
               variant="destructive"
               disabled={actionDisabled}
-              onClick={() => void onCancel(consultation)}
+              onClick={() => void runAction(() => onCancel(consultation.id))}
             >
               <XCircle aria-hidden="true" />
               Cancel
