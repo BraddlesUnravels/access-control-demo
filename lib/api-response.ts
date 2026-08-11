@@ -1,26 +1,32 @@
-type ApiErrorPayload = {
-  error?: unknown;
-};
+import * as v from 'valibot';
 
-export const readJsonResponse = async <TPayload>(response: Response) => {
+const apiErrorPayloadSchema = v.object({
+  error: v.string(),
+});
+
+export const readJsonResponse = async (
+  response: Response,
+): Promise<unknown | undefined> => {
   const responseContentType = response.headers.get('content-type') ?? '';
   const isJsonResponse = responseContentType.includes('application/json');
 
   if (!isJsonResponse) return undefined;
 
   try {
-    return (await response.json()) as TPayload;
+    const payload: unknown = await response.json();
+
+    return payload;
   } catch {
     return undefined;
   }
 };
 
 export const getApiErrorMessage = (
-  payload: ApiErrorPayload | undefined,
+  payload: unknown,
   fallbackMessage: string,
-) => {
-  if (!payload || typeof payload.error !== 'string') return fallbackMessage;
-  if (!payload.error) return fallbackMessage;
+): string => {
+  const result = v.safeParse(apiErrorPayloadSchema, payload);
+  if (!result.success || !result.output.error) return fallbackMessage;
 
-  return payload.error;
+  return result.output.error;
 };

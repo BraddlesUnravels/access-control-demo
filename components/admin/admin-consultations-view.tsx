@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Eye, ShieldCheck } from 'lucide-react';
-
 import { ConsultationSummaryCard } from '@/components/consultations/consultation-summary-card';
 import {
   Card,
@@ -11,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getApiErrorMessage, readJsonResponse } from '@/lib/api-response';
+import { getAdminConsultations } from '@/lib/consultations/api';
 import type { ConsultationRecord } from '@/lib/validation/types';
 
 export const AdminConsultationsView = () => {
@@ -22,29 +21,9 @@ export const AdminConsultationsView = () => {
   useEffect(() => {
     const loadConsultations = async () => {
       try {
-        const response = await fetch('/api/admin/consultations', {
-          method: 'GET',
-        });
+        const consultationRecords = await getAdminConsultations();
 
-        const payload = await readJsonResponse<{
-          data?: ConsultationRecord[];
-          error?: string;
-        }>(response);
-
-        if (!response.ok) {
-          throw new Error(
-            getApiErrorMessage(
-              payload,
-              'Failed to load administrator consultations',
-            ),
-          );
-        }
-
-        if (!payload?.data) {
-          throw new Error('Failed to load administrator consultations');
-        }
-
-        setConsultations(payload.data);
+        setConsultations(consultationRecords);
       } catch (loadError) {
         const message =
           loadError instanceof Error

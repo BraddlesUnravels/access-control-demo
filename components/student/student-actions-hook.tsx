@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getApiErrorMessage, readJsonResponse } from '@/lib/api-response';
+import {
+  cancelStudentConsultation,
+  createStudentConsultation,
+  getStudentConsultations,
+  updateStudentConsultation,
+} from '@/lib/consultations/api';
 import type {
   ConsultationRecord,
   CreateConsultationForm,
@@ -35,28 +40,20 @@ export const useStudentActions = () => {
     if (showLoading) {
       setLoading(true);
     }
+
     setError(undefined);
 
     try {
-      const response = await fetch('/api/consultations', { method: 'GET' });
-      const payload = await readJsonResponse<{
-        data?: ConsultationRecord[];
-        error?: string;
-      }>(response);
+      const consultationRecords = await getStudentConsultations();
 
-      if (!response.ok)
-        throw new Error(
-          getApiErrorMessage(payload, 'Failed to load consultations'),
-        );
-      if (!payload?.data) throw new Error('Failed to load consultations');
-
-      setConsultations(payload.data);
+      setConsultations(consultationRecords);
       setPendingRescheduleById({});
     } catch (loadError) {
       const message =
         loadError instanceof Error
           ? loadError.message
           : 'Failed to load consultations';
+
       setError(message);
     } finally {
       if (showLoading) {
@@ -98,22 +95,12 @@ export const useStudentActions = () => {
     setError(undefined);
 
     try {
-      const response = await fetch('/api/consultations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: createForm.firstName,
-          lastName: createForm.lastName,
-          reason: createForm.reason,
-          scheduledFor: toIsoDateString(createForm.scheduledFor),
-        }),
+      await createStudentConsultation({
+        firstName: createForm.firstName,
+        lastName: createForm.lastName,
+        reason: createForm.reason,
+        scheduledFor: toIsoDateString(createForm.scheduledFor),
       });
-      const payload = await readJsonResponse<{ error?: string }>(response);
-
-      if (!response.ok)
-        throw new Error(
-          getApiErrorMessage(payload, 'Failed to create consultation'),
-        );
 
       await loadConsultations({ showLoading: false });
     } catch (createError) {
@@ -133,17 +120,12 @@ export const useStudentActions = () => {
     try {
       const nextStatus =
         consultation.status === 'completed' ? 'scheduled' : 'completed';
-      const response = await fetch(`/api/consultations/${consultation.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      const payload = await readJsonResponse<{ error?: string }>(response);
 
-      if (!response.ok)
-        throw new Error(
-          getApiErrorMessage(payload, 'Failed to update consultation status'),
-        );
+      await updateStudentConsultation(
+        consultation.id,
+        { status: nextStatus },
+        'Failed to update consultation status',
+      );
 
       await loadConsultations({ showLoading: false });
     } catch (updateError) {
@@ -169,17 +151,13 @@ export const useStudentActions = () => {
     setError(undefined);
 
     try {
-      const response = await fetch(`/api/consultations/${consultation.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduledFor: toIsoDateString(datetimeLocal) }),
-      });
-      const payload = await readJsonResponse<{ error?: string }>(response);
-
-      if (!response.ok)
-        throw new Error(
-          getApiErrorMessage(payload, 'Failed to reschedule consultation'),
-        );
+      await updateStudentConsultation(
+        consultation.id,
+        {
+          scheduledFor: toIsoDateString(datetimeLocal),
+        },
+        'Failed to reschedule consultation',
+      );
 
       await loadConsultations({ showLoading: false });
     } catch (rescheduleError) {
@@ -198,15 +176,7 @@ export const useStudentActions = () => {
     setError(undefined);
 
     try {
-      const response = await fetch(`/api/consultations/${consultation.id}`, {
-        method: 'DELETE',
-      });
-      const payload = await readJsonResponse<{ error?: string }>(response);
-
-      if (!response.ok)
-        throw new Error(
-          getApiErrorMessage(payload, 'Failed to cancel consultation'),
-        );
+      await cancelStudentConsultation(consultation.id);
 
       await loadConsultations({ showLoading: false });
     } catch (cancelError) {
