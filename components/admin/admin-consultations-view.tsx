@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Eye, ShieldCheck } from 'lucide-react';
+import useSWR from 'swr';
 import { ConsultationSummaryCard } from '@/components/consultations/consultation-summary-card';
 import {
   Card,
@@ -10,40 +10,24 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { getAdminConsultations } from '@/lib/consultations/api';
-import type { ConsultationRecord } from '@/lib/validation/types';
+import {
+  ADMIN_CONSULTATIONS_API_PATH,
+  getAdminConsultations,
+} from '@/lib/consultations/api';
 
 export const AdminConsultationsView = () => {
-  const [consultations, setConsultations] = useState<ConsultationRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>();
+  const {
+    data: consultations = [],
+    error: loadError,
+    isLoading: loading,
+  } = useSWR(ADMIN_CONSULTATIONS_API_PATH, getAdminConsultations);
 
-  useEffect(() => {
-    const loadConsultations = async () => {
-      try {
-        const consultationRecords = await getAdminConsultations();
-
-        setConsultations(consultationRecords);
-      } catch (loadError) {
-        const message =
-          loadError instanceof Error
-            ? loadError.message
-            : 'Failed to load administrator consultations';
-
-        setError(message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const timeoutId = setTimeout(() => {
-      void loadConsultations();
-    }, 0);
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, []);
+  const error =
+    loadError instanceof Error
+      ? loadError.message
+      : loadError
+        ? 'Failed to load administrator consultations'
+        : undefined;
 
   return (
     <div className="flex w-full flex-col gap-7">

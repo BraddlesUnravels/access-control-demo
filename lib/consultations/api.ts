@@ -10,6 +10,9 @@ import type {
   ConsultationUpdateInput,
 } from '@/lib/validation/types';
 
+export const STUDENT_CONSULTATIONS_API_PATH = '/api/consultations';
+export const ADMIN_CONSULTATIONS_API_PATH = '/api/admin/consultations';
+
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
 } as const;
@@ -25,15 +28,12 @@ const requestJson = async <
   const response = await fetch(path, init);
   const payload = await readJsonResponse(response);
 
-  if (!response.ok) {
+  if (!response.ok)
     throw new Error(getApiErrorMessage(payload, fallbackMessage));
-  }
 
   const result = v.safeParse(schema, payload);
 
-  if (!result.success) {
-    throw new Error(fallbackMessage);
-  }
+  if (!result.success) throw new Error(fallbackMessage);
 
   return result.output;
 };
@@ -42,7 +42,7 @@ export const getStudentConsultations = async (): Promise<
   ConsultationRecord[]
 > => {
   const payload = await requestJson(
-    '/api/consultations',
+    STUDENT_CONSULTATIONS_API_PATH,
     consultationListResponseSchema,
     'Failed to load consultations',
     { method: 'GET' },
@@ -57,7 +57,7 @@ export const getAdminConsultations = async (): Promise<
   ConsultationRecord[]
 > => {
   const payload = await requestJson(
-    '/api/admin/consultations',
+    ADMIN_CONSULTATIONS_API_PATH,
     consultationListResponseSchema,
     'Failed to load administrator consultations',
     { method: 'GET' },
@@ -72,7 +72,7 @@ export const createStudentConsultation = async (
   input: ConsultationCreateInput,
 ): Promise<ConsultationRecord> => {
   const payload = await requestJson(
-    '/api/consultations',
+    STUDENT_CONSULTATIONS_API_PATH,
     consultationResponseSchema,
     'Failed to create consultation',
     {
@@ -93,7 +93,7 @@ export const updateStudentConsultation = async (
   fallbackMessage = 'Failed to update consultation',
 ): Promise<ConsultationRecord> => {
   const payload = await requestJson(
-    `/api/consultations/${consultationId}`,
+    `${STUDENT_CONSULTATIONS_API_PATH}/${consultationId}`,
     consultationResponseSchema,
     fallbackMessage,
     {
@@ -112,7 +112,7 @@ export const cancelStudentConsultation = async (
   consultationId: string,
 ): Promise<ConsultationRecord> => {
   const payload = await requestJson(
-    `/api/consultations/${consultationId}`,
+    `${STUDENT_CONSULTATIONS_API_PATH}/${consultationId}`,
     consultationResponseSchema,
     'Failed to cancel consultation',
     {
