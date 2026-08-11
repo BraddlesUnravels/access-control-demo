@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import useSWR from 'swr';
+
 import {
   cancelStudentConsultation,
   createStudentConsultation,
   getStudentConsultations,
+  STUDENT_CONSULTATIONS_API_PATH,
   updateStudentConsultation,
 } from '@/lib/consultations/api';
 import type {
@@ -23,10 +26,12 @@ const toIsoDateString = (datetimeLocal: string) => {
   return new Date(datetimeLocal).toISOString();
 };
 
+const getErrorMessage = (error: unknown, fallbackMessage: string) => {
+  return error instanceof Error ? error.message : fallbackMessage;
+};
+
 export const useStudentActions = () => {
-  const [consultations, setConsultations] = useState<ConsultationRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const [actionError, setActionError] = useState<string | undefined>();
   const [actionInProgressById, setActionInProgressById] = useState<
     Record<string, boolean>
   >({});
@@ -34,41 +39,27 @@ export const useStudentActions = () => {
     Record<string, string>
   >({});
 
-  const loadConsultations = async (options?: { showLoading?: boolean }) => {
-    const showLoading = options?.showLoading ?? true;
+  const {
+    data: consultations = [],
+    error: loadError,
+    isLoading: loading,
+    mutate: mutateConsultations,
+  } = useSWR(STUDENT_CONSULTATIONS_API_PATH, getStudentConsultations);
 
-    if (showLoading) {
-      setLoading(true);
-    }
+  const loadErrorMessage = loadError
+    ? getErrorMessage(loadError, 'Failed to load consultations')
+    : undefined;
 
-    setError(undefined);
+  const error = actionError ?? loadErrorMessage;
 
+  const revalidateConsultations = async () => {
     try {
-      const consultationRecords = await getStudentConsultations();
-
-      setConsultations(consultationRecords);
+      await mutateConsultations();
       setPendingRescheduleById({});
-    } catch (loadError) {
-      const message =
-        loadError instanceof Error
-          ? loadError.message
-          : 'Failed to load consultations';
-
-      setError(message);
-    } finally {
-      if (showLoading) {
-        setLoading(false);
-      }
+    } catch {
+      // SWR retains the failed revalidation as query error state.
     }
   };
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      void loadConsultations();
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
-  }, []);
 
   const setActionLoading = (consultationId: string, loadingState: boolean) => {
     setActionInProgressById((state) => ({
@@ -92,7 +83,7 @@ export const useStudentActions = () => {
   };
 
   const createConsultation = async (createForm: CreateConsultationForm) => {
-    setError(undefined);
+    setActionError(undefined);
 
     try {
       await createStudentConsultation({
@@ -102,20 +93,21 @@ export const useStudentActions = () => {
         scheduledFor: toIsoDateString(createForm.scheduledFor),
       });
 
-      await loadConsultations({ showLoading: false });
+      await revalidateConsultations();
     } catch (createError) {
-      const message =
-        createError instanceof Error
-          ? createError.message
-          : 'Failed to create consultation';
-      setError(message);
+      const message = getErrorMessage(
+        createError,
+        'Failed to create consultation',
+      );
+
+      setActionError(message);
       throw new Error(message);
     }
   };
 
   const toggleCompleted = async (consultation: ConsultationRecord) => {
     setActionLoading(consultation.id, true);
-    setError(undefined);
+    setActionError(undefined);
 
     try {
       const nextStatus =
@@ -127,13 +119,14 @@ export const useStudentActions = () => {
         'Failed to update consultation status',
       );
 
-      await loadConsultations({ showLoading: false });
+      await revalidateConsultations();
     } catch (updateError) {
-      const message =
-        updateError instanceof Error
-          ? updateError.message
-          : 'Failed to update consultation status';
-      setError(message);
+      const message = getErrorMessage(
+        updateError,
+        'Failed to update consultation status',
+      );
+
+      setActionError(message);
     } finally {
       setActionLoading(consultation.id, false);
     }
@@ -143,12 +136,12 @@ export const useStudentActions = () => {
     const datetimeLocal = getRescheduleValue(consultation);
 
     if (!datetimeLocal) {
-      setError('Scheduled time is required');
+      setActionError('Scheduled time is required');
       return;
     }
 
     setActionLoading(consultation.id, true);
-    setError(undefined);
+    setActionError(undefined);
 
     try {
       await updateStudentConsultation(
@@ -159,13 +152,14 @@ export const useStudentActions = () => {
         'Failed to reschedule consultation',
       );
 
-      await loadConsultations({ showLoading: false });
+      await revalidateConsultations();
     } catch (rescheduleError) {
-      const message =
-        rescheduleError instanceof Error
-          ? rescheduleError.message
-          : 'Failed to reschedule consultation';
-      setError(message);
+      const message = getErrorMessage(
+        rescheduleError,
+        'Failed to reschedule consultation',
+      );
+
+      setActionError(message);
     } finally {
       setActionLoading(consultation.id, false);
     }
@@ -173,18 +167,19 @@ export const useStudentActions = () => {
 
   const cancelConsultation = async (consultation: ConsultationRecord) => {
     setActionLoading(consultation.id, true);
-    setError(undefined);
+    setActionError(undefined);
 
     try {
       await cancelStudentConsultation(consultation.id);
 
-      await loadConsultations({ showLoading: false });
+      await revalidateConsultations();
     } catch (cancelError) {
-      const message =
-        cancelError instanceof Error
-          ? cancelError.message
-          : 'Failed to cancel consultation';
-      setError(message);
+      const message = getErrorMessage(
+        cancelError,
+        'Failed to cancel consultation',
+      );
+
+      setActionError(message);
     } finally {
       setActionLoading(consultation.id, false);
     }
