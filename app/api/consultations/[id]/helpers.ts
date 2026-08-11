@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import { AppError } from '@/lib/errors';
 import { serverRequestClient } from '@/lib/supabase/server';
+import type { TablesUpdate } from '@/lib/supabase/database.types';
 import type {
   ConsultationRecord,
   ConsultationUpdateInput,
 } from '@/lib/validation/types';
 
-type ConsultationUpdatePatch = {
-  scheduled_for?: string;
-  status?: 'scheduled' | 'completed';
-  completed_at?: string | null;
-  cancelled_at?: string | null;
+type ConsultationUpdatePatch = Pick<
+  TablesUpdate<'consultations'>,
+  'scheduled_for' | 'completed_at'
+> & {
+  status?: NonNullable<ConsultationUpdateInput['status']>;
 };
 
 export const parseRequestJson = async (request: Request): Promise<unknown> => {
