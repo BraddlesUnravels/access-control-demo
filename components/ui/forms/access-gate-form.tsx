@@ -17,10 +17,6 @@ type AccessGateFormProps = {
   className?: string;
 };
 
-type AccessUnlockResponse = {
-  error?: string;
-};
-
 export function AccessGateForm({
   initialCode = '',
   nextPath = '/auth/login',
@@ -45,7 +41,7 @@ export function AccessGateForm({
         body: JSON.stringify({ code }),
       });
 
-      const payload = await readJsonResponse<AccessUnlockResponse>(response);
+      const payload = await readJsonResponse(response);
 
       if (!response.ok) {
         setError(getApiErrorMessage(payload, 'Unable to verify invite code'));
