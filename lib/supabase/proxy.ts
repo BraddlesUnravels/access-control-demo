@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import type { Database } from '@/lib/supabase/database.types';
 import { ACCESS_GATE_DEFAULT_DESTINATION } from '@/lib/access-gate/constants';
 
 const SUPABASE_CACHE_HEADERS = ['cache-control', 'expires', 'pragma'] as const;
@@ -30,7 +31,7 @@ export async function updateSession(request: NextRequest) {
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {

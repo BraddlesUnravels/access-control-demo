@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { AppError } from '@/lib/errors';
 import { serverRequestClient } from '@/lib/supabase/server';
+import type { Enums } from '@/lib/supabase/database.types';
 
-export type AppRole = 'student' | 'admin';
+export type AppRole = Enums<'app_role'>;
 
 export type AuthContext = {
   userId: string;
