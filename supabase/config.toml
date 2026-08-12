@@ -163,10 +163,16 @@ site_url = "http://127.0.0.1:3000"
 additional_redirect_urls = [
   "http://localhost:3000/auth/confirm",
   "http://localhost:3000/auth/confirm?next=/protected",
+  "http://localhost:3000/auth/confirm-email?next=/protected",
   "http://localhost:3000/auth/update-password",
+
+  "http://127.0.0.1:3000/auth/confirm-email?next=/protected",
+
   "http://*********:3000/auth/confirm",
   "http://*********:3000/auth/confirm?next=/protected",
+  "http://*********:3000/auth/confirm-email?next=/protected",
   "http://*********:3000/auth/update-password",
+
   "http://localhost:3000/protected",
   "http://127.0.0.1:3000/protected",
 ]
@@ -236,7 +242,7 @@ enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+max_frequency = "1m"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
@@ -244,13 +250,17 @@ otp_expiry = 3600
 
 # Use a production-ready SMTP server
 [auth.email.smtp]
-enabled = false
-#host = "smtp-relay.gmail.com"
-#port = 587
-#user = "stackchatr@gmail.com"
-#pass = "env(EMAIL_PASSWORD)"
-#admin_email = "stackchatr@email.com"
-#sender_name = "Admin"
+enabled = true
+host = "smtp.gmail.com"
+port = 587
+user = "bradley.laskey1990@gmail.com"
+pass = "env(EMAIL_PASSWORD)"
+admin_email = "bradley.laskey1990@gmail.com"
+sender_name = "Bradley"
+
+[auth.email.template.confirmation]
+subject = "Confirm your email address"
+content_path = "./supabase/templates/confirmation.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

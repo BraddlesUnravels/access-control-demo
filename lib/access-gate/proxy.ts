@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { buildAppUrl } from '@/lib/app-url';
 import {
   ACCESS_GATE_COOKIE_NAME,
   ACCESS_GATE_ENTRY_PATH,
@@ -41,13 +42,10 @@ const hasValidAccessGateCookie = (request: NextRequest): boolean => {
 };
 
 const buildEntryRedirect = (request: NextRequest): NextResponse => {
-  const redirectUrl = request.nextUrl.clone();
   const requestedPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  const redirectUrl = buildAppUrl(request, ACCESS_GATE_ENTRY_PATH);
 
-  redirectUrl.pathname = ACCESS_GATE_ENTRY_PATH;
-  redirectUrl.search = '';
   redirectUrl.searchParams.set('next', requestedPath);
-
   return NextResponse.redirect(redirectUrl);
 };
 
@@ -56,7 +54,7 @@ const buildDestinationRedirect = (request: NextRequest): NextResponse => {
     request.nextUrl.searchParams.get('next'),
   );
 
-  return NextResponse.redirect(new URL(destination, request.url));
+  return NextResponse.redirect(buildAppUrl(request, destination));
 };
 
 export const handleAccessGateRequest = (
@@ -68,7 +66,7 @@ export const handleAccessGateRequest = (
     if (pathname === ACCESS_GATE_ENTRY_PATH)
       return buildDestinationRedirect(request);
 
-    return undefined;
+    return;
   }
 
   const hasCookie = request.cookies.has(ACCESS_GATE_COOKIE_NAME);
@@ -84,7 +82,7 @@ export const handleAccessGateRequest = (
 
   if (isAccessGatePublicPath(pathname)) return NextResponse.next({ request });
 
-  if (hasValidCookie) return undefined;
+  if (hasValidCookie) return;
 
   const response = pathname.startsWith('/api/')
     ? NextResponse.json(

@@ -118,6 +118,10 @@ resource containerApp 'Microsoft.App/containerApps@2026-01-01' = {
               value: '3000'
             }
             {
+              name: 'AZURE_CUSTOM_DOMAIN'
+              value: customDomainName
+            }
+            {
               name: 'NEXT_PUBLIC_SUPABASE_URL'
               value: supabaseUrl
             }
