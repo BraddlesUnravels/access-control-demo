@@ -29,13 +29,17 @@ export function SignUpForm({
 
   const handleSignUp = async (e: React.SubmitEvent) => {
     e.preventDefault();
+
     const supabase = browserClient();
+
     setIsLoading(true);
     setError(undefined);
 
     if (password !== repeatPassword) {
       setError('Passwords do not match');
+
       setIsLoading(false);
+
       return;
     }
 
@@ -44,13 +48,16 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirm?next=/protected`,
+          emailRedirectTo: `${window.location.origin}/auth/confirm-email?next=/protected`,
         },
       });
+
       if (error) throw error;
+
       setEmail('');
       setPassword('');
       setRepeatPassword('');
+
       router.push('/auth/sign-up-success');
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred');
@@ -71,6 +78,7 @@ export function SignUpForm({
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
+
                 <Input
                   id="email"
                   type="email"
@@ -80,10 +88,12 @@ export function SignUpForm({
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
+
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Password</Label>
                 </div>
+
                 <Input
                   id="password"
                   type="password"
@@ -92,6 +102,7 @@ export function SignUpForm({
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
+
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="repeat-password">Repeat Password</Label>
@@ -104,11 +115,13 @@ export function SignUpForm({
                   onChange={(e) => setRepeatPassword(e.target.value)}
                 />
               </div>
+
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Creating an account...' : 'Sign up'}
               </Button>
             </div>
+
             <div className="mt-4 text-center text-sm">
               Already have an account?{' '}
               <Link href="/auth/login" className="underline underline-offset-4">

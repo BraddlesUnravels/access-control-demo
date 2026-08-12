@@ -7,6 +7,12 @@ vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(),
 }));
 
+const AZURE_CONTAINER_APP_NAME = 'aca-access-control-demo';
+
+const AZURE_ENV_DNS_SUFFIX = 'example.australiaeast.azurecontainerapps.io';
+
+const CUSTOM_DOMAIN = 'braddlesunravels.online';
+
 type CookiesToSet = Parameters<SetAllCookies>[0];
 
 const setupSupabaseMock = ({
@@ -14,6 +20,7 @@ const setupSupabaseMock = ({
   cookiesToSet = [],
 }: {
   claims: Record<string, unknown> | null;
+
   cookiesToSet?: CookiesToSet;
 }) => {
   const getClaims = vi.fn();
@@ -54,6 +61,15 @@ describe('lib/supabase/proxy', () => {
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost:54321');
 
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-key');
+
+    /*
+     * Default to local/non-Azure behaviour.
+     */
+    vi.stubEnv('CONTAINER_APP_NAME', '');
+
+    vi.stubEnv('CONTAINER_APP_ENV_DNS_SUFFIX', '');
+
+    vi.stubEnv('AZURE_CUSTOM_DOMAIN', '');
   });
 
   afterEach(() => {
@@ -91,6 +107,50 @@ describe('lib/supabase/proxy', () => {
 
     expect(response.headers.get('location')).toBe(
       'http://localhost/auth/login',
+    );
+  });
+
+  it('should use the custom domain for unauthenticated redirects in Azure', async () => {
+    vi.stubEnv('CONTAINER_APP_NAME', AZURE_CONTAINER_APP_NAME);
+
+    vi.stubEnv('CONTAINER_APP_ENV_DNS_SUFFIX', AZURE_ENV_DNS_SUFFIX);
+
+    vi.stubEnv('AZURE_CUSTOM_DOMAIN', CUSTOM_DOMAIN);
+
+    setupSupabaseMock({
+      claims: null,
+    });
+
+    const response = await updateSession(
+      new NextRequest('http://0.0.0.0:3000/protected'),
+    );
+
+    expect(response.status).toBe(307);
+
+    expect(response.headers.get('location')).toBe(
+      'https://braddlesunravels.online/auth/login',
+    );
+  });
+
+  it('should fall back to the Azure-generated FQDN when no custom domain is available', async () => {
+    vi.stubEnv('CONTAINER_APP_NAME', AZURE_CONTAINER_APP_NAME);
+
+    vi.stubEnv('CONTAINER_APP_ENV_DNS_SUFFIX', AZURE_ENV_DNS_SUFFIX);
+
+    vi.stubEnv('AZURE_CUSTOM_DOMAIN', '');
+
+    setupSupabaseMock({
+      claims: null,
+    });
+
+    const response = await updateSession(
+      new NextRequest('http://0.0.0.0:3000/protected'),
+    );
+
+    expect(response.status).toBe(307);
+
+    expect(response.headers.get('location')).toBe(
+      'https://aca-access-control-demo.example.australiaeast.azurecontainerapps.io/auth/login',
     );
   });
 
