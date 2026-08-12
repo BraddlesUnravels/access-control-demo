@@ -1,4 +1,5 @@
 import * as v from 'valibot';
+import { Constants } from '@/lib/supabase/database.types';
 
 const DATE_ERROR_MESSAGE = 'Scheduled time must be a valid date';
 
@@ -11,9 +12,7 @@ const scheduledForSchema = v.pipe(
 );
 
 export const consultationStatusSchema = v.picklist([
-  'scheduled',
-  'completed',
-  'cancelled',
+  ...Constants.public.Enums.consultation_status,
 ]);
 
 export const consultationCreateInputSchema = v.object({
