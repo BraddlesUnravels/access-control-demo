@@ -1,4 +1,5 @@
 'use client';
+
 import { ShieldCheck, UserRound } from 'lucide-react';
 import {
   Card,
@@ -9,21 +10,25 @@ import {
 } from '@/components/ui/card';
 import { ConsultationList } from './consultation-list';
 import { CreateConsultationCard } from './create-consultation-card';
-import { useStudentActions } from './student-actions-hook';
+import { useStudentConsultationActions } from './student-consultation-action-hook';
+import { useStudentConsultations } from './student-consultation-hook';
 
 export const StudentConsultationsView = () => {
   const {
     consultations,
     loading,
-    error,
-    actionInProgressById,
-    getRescheduleValue,
-    setRescheduleValue,
+    error: loadError,
+  } = useStudentConsultations();
+
+  const {
+    error: actionError,
     createConsultation,
     toggleCompleted,
     reschedule,
     cancelConsultation,
-  } = useStudentActions();
+  } = useStudentConsultationActions();
+
+  const error = actionError ?? loadError;
 
   return (
     <div className="flex w-full flex-col gap-7">
@@ -87,13 +92,10 @@ export const StudentConsultationsView = () => {
             </div>
           ) : (
             <ConsultationList
-              actionInProgressById={actionInProgressById}
               consultations={consultations}
               onCancel={cancelConsultation}
               onReschedule={reschedule}
-              onRescheduleChange={setRescheduleValue}
               onToggleCompleted={toggleCompleted}
-              getRescheduleValue={getRescheduleValue}
             />
           )}
         </CardContent>

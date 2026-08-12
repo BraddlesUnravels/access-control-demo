@@ -1,8 +1,8 @@
 # Access Control Demo
 
-A small full-stack learning management system demonstrating layered access control, authentication, role-based authorization, resource ownership, and PostgreSQL row-level security.
+A small full-stack learning management system demonstrating layered access control, authentication, role-based authorization, resource ownership, type-safe API boundaries, client-side server-state management, and PostgreSQL row-level security.
 
-The application is built with Next.js, TypeScript, Supabase, PostgreSQL, Docker, and Azure Container Apps. The LMS domain is intentionally small so the authentication and authorization boundaries remain explicit and easy to review.
+The application is built with Next.js, React, TypeScript, SWR, Valibot, Supabase, PostgreSQL, Docker, and Azure Container Apps. The LMS domain is intentionally small so the authentication, authorization, data-flow, and security boundaries remain explicit and easy to review.
 
 ## What this project demonstrates
 
@@ -18,8 +18,15 @@ The application is built with Next.js, TypeScript, Supabase, PostgreSQL, Docker,
 - Server-side authorization in Next.js route handlers
 - PostgreSQL row-level security
 - Read-only administrator access
+- Generated Supabase database types as the source of truth for database rows and enums
+- Typed Supabase clients across browser, proxy, and server boundaries
+- Valibot runtime validation for request input and consultation API responses
+- A dedicated consultation API client that isolates HTTP transport from React components
+- SWR-based client-side server-state caching and revalidation
+- Scoped React hooks that separate consultation queries from mutation orchestration
+- Component-local state for row-specific consultation interactions
 - Local authentication email testing with MailPit
-- Automated unit, proxy, API, database, and container integration tests
+- Automated unit, proxy, API-client, route-handler, database, and container integration tests
 - Containerized deployment with Docker
 - GitHub Actions CI/CD
 - Azure Container Apps deployment through Bicep and GitHub OIDC
@@ -406,7 +413,9 @@ MailPit keeps local authentication testing deterministic and avoids requiring an
 
 ## Architecture
 
-The request path is deliberately layered:
+The application uses several deliberately separate boundaries rather than allowing UI components to communicate directly with the database.
+
+The main authenticated consultation flow is:
 
 ```text
 Browser
@@ -419,13 +428,68 @@ Next.js Proxy
    +--> Supabase SSR session refresh
    |
    v
+Protected React UI
+   |
+   +--> Query hooks
+   |      |
+   |      v
+   |     SWR
+   |
+   +--> Mutation hook
+          |
+          +--> create / update / cancel
+          |
+          v
+Typed consultation API client
+lib/consultations/api.ts
+   |
+   +--> HTTP request
+   |
+   +--> response treated as unknown
+   |
+   +--> Valibot runtime validation
+   |
+   v
 Next.js route handlers
    |
-   v
-Supabase client
+   +--> authentication
+   +--> role authorization
+   +--> ownership checks
+   +--> request validation
    |
    v
-PostgreSQL + row-level security
+Typed Supabase server client
+   |
+   v
+PostgreSQL
+   |
+   v
+Row-level security
+```
+
+This keeps distinct responsibilities at distinct boundaries:
+
+```text
+React components
+    -> presentation and local interaction state
+
+SWR
+    -> client-side server state and revalidation
+
+Consultation hooks
+    -> query and mutation orchestration
+
+Consultation API client
+    -> HTTP transport and response validation
+
+Route handlers
+    -> authentication, authorization, input validation, and persistence
+
+Supabase generated types
+    -> compile-time database contracts
+
+PostgreSQL RLS
+    -> independent database authorization
 ```
 
 Invite redemption uses a separate path:
@@ -479,10 +543,131 @@ The user interface is responsible for:
 - Rendering the invite access form
 - Rendering authentication forms
 - Displaying role-appropriate dashboards
-- Submitting consultation actions
+- Collecting consultation input
 - Presenting loading, success, and error states
+- Owning transient UI state that belongs to individual components
 
 The interface hides actions unavailable to the current role, but authorization does not depend on those controls being hidden.
+
+Student consultation state is intentionally divided by responsibility.
+
+`useStudentConsultations` owns only the student consultation query and exposes SWR-backed data, loading state, and query errors.
+
+`useStudentConsultationActions` owns consultation mutation orchestration. After a successful create, update, reschedule, completion change, or cancellation, it asks SWR to revalidate the student consultation resource rather than manually maintaining a second copy of server state.
+
+Individual `ConsultationItem` components own row-specific interaction state, including the current rescheduling value and whether that row has an action in progress.
+
+This avoids placing unrelated query, mutation, and per-row UI state into one large application hook.
+
+### Client-side server state
+
+SWR manages consultation server state in the authenticated frontend.
+
+The consultation API paths also act as the SWR resource keys:
+
+```text
+/api/consultations
+/api/admin/consultations
+```
+
+Mutations do not manually fetch the entire consultation collection and replace React state.
+
+Instead, the flow is:
+
+```text
+mutation
+   |
+   v
+API request succeeds
+   |
+   v
+SWR mutate(resource key)
+   |
+   v
+resource revalidation
+   |
+   v
+updated cached server state
+```
+
+Student and administrator consultation views therefore use the same server-state convention while retaining separate endpoints and authorization rules.
+
+The implementation intentionally uses revalidation rather than a more complex optimistic cache update because the dataset is small and correctness is more important than avoiding a single follow-up GET request.
+
+### Consultation API boundary
+
+React components do not construct consultation HTTP requests directly.
+
+`lib/consultations/api.ts` encapsulates:
+
+- API paths
+- HTTP methods
+- JSON serialization
+- response parsing
+- API error extraction
+- runtime response validation
+
+Raw network responses are treated as untrusted values.
+
+The API client follows this boundary:
+
+```text
+HTTP response
+      |
+      v
+unknown JSON
+      |
+      v
+Valibot response schema
+      |
+      v
+validated typed value
+      |
+      v
+application code
+```
+
+A successful HTTP status therefore does not by itself make a payload trusted.
+
+Consultation response schemas in `lib/consultations/schemas.ts` validate both individual consultation records and consultation collections before the data enters the application.
+
+### Type safety
+
+Database-backed application types are derived from the generated Supabase schema rather than manually reproducing table structures.
+
+For example:
+
+```text
+PostgreSQL schema
+      |
+      v
+Supabase generated Database type
+      |
+      +--> Tables<'consultations'>
+      |
+      +--> Enums<'consultation_status'>
+      |
+      +--> Enums<'app_role'>
+      |
+      v
+Application types
+```
+
+Supabase browser, proxy, and server clients are parameterized with the generated `Database` type.
+
+Runtime schemas remain necessary at external boundaries because TypeScript types do not validate network data at runtime.
+
+The application therefore uses both:
+
+```text
+generated Supabase types
+    -> compile-time database safety
+
+Valibot schemas
+    -> runtime boundary validation
+```
+
+These mechanisms solve different problems and are intentionally used together.
 
 ### Route handlers
 
@@ -498,7 +683,11 @@ Next.js route handlers are responsible for:
 - Performing database operations
 - Returning appropriate HTTP responses
 
+Student consultation operations are scoped using both the consultation identifier and authenticated student ID.
+
 Keeping these checks at the API boundary makes authorization decisions explicit and easy to inspect.
+
+The database repeats the critical ownership restrictions through row-level security, so route-handler authorization is not the sole security boundary.
 
 ### Database
 
@@ -768,8 +957,14 @@ app/
 │   │       └── types.ts
 │   ├── admin/
 │   │   └── consultations/
+│   │       └── route.ts
 │   ├── consultations/
+│   │   ├── [id]/
+│   │   │   ├── helpers.ts
+│   │   │   └── route.ts
+│   │   └── route.ts
 │   └── health/
+│       └── route.ts
 ├── auth/
 ├── protected/
 ├── page.tsx
@@ -778,6 +973,12 @@ app/
 components/
 ├── admin/
 ├── student/
+│   ├── consultation-item.tsx
+│   ├── consultation-list.tsx
+│   ├── create-consultation-card.tsx
+│   ├── student-consultation-action-hook.ts
+│   ├── student-consultation-hook.ts
+│   └── student-consultations-view.tsx
 └── ui/
     └── forms/
         └── access-gate-form.tsx
@@ -790,17 +991,34 @@ lib/
 │   ├── hash.ts
 │   ├── paths.ts
 │   └── proxy.ts
+├── consultations/
+│   ├── api.ts
+│   └── schemas.ts
 ├── rate-limiter/
 │   ├── client.ts
 │   ├── in-memory.ts
 │   └── types.ts
 ├── server/
 │   └── auth.ts
-└── supabase/
-    ├── client.ts
-    ├── database.types.ts
-    ├── proxy.ts
-    └── server.ts
+├── supabase/
+│   ├── client.ts
+│   ├── database.types.ts
+│   ├── proxy.ts
+│   └── server.ts
+└── validation/
+    ├── schemas/
+    ├── types/
+    └── validate.ts
+
+test/
+├── app/
+├── lib/
+│   ├── access-gate/
+│   ├── consultations/
+│   ├── rate-limiter/
+│   ├── server/
+│   └── supabase/
+└── scripts/
 
 scripts/
 ├── create-access-invite.mjs
@@ -845,12 +1063,20 @@ Key responsibilities:
 - `lib/rate-limiter/**`: trusted client identification and bounded in-memory fixed-window rate limiting
 - `proxy.ts`: access-gate and Supabase session orchestration
 - `app/auth/**`: authentication screens and callback routes
-- `app/protected/page.tsx`: role-aware dashboard entry point
-- `app/admin/**`: administrator-only dashboard
-- `app/api/consultations/**`: student consultation operations
+- `app/protected/page.tsx`: authenticated role-aware dashboard entry point
+- `components/student/student-consultation-hook.ts`: SWR-backed student consultation query state
+- `components/student/student-consultation-action-hook.ts`: student consultation mutation orchestration and cache revalidation
+- `components/student/consultation-item.tsx`: individual consultation presentation and row-local interaction state
+- `components/admin/**`: administrator read-only consultation interface
+- `lib/consultations/api.ts`: consultation HTTP client, error handling, and runtime response validation
+- `lib/consultations/schemas.ts`: runtime schemas for consultation API responses
+- `lib/validation/schemas/**`: runtime validation for application input boundaries
+- `lib/validation/types/**`: application input types and database-derived domain aliases
+- `app/api/consultations/**`: authenticated student consultation operations and ownership enforcement
 - `app/api/admin/consultations/**`: administrator read-only consultation API
 - `lib/server/auth.ts`: authenticated application context and role authorization
-- `lib/supabase/**`: browser and server Supabase clients and SSR session handling
+- `lib/supabase/database.types.ts`: generated PostgreSQL/Supabase type definitions
+- `lib/supabase/**`: typed browser and server Supabase clients and SSR session handling
 - `supabase/migrations/**`: executable database schema history
 - `supabase/tests/rls_checks.sql`: LMS authorization and RLS checks
 - `supabase/tests/access_gate_checks.sql`: access-gate schema, privilege, and lifecycle checks
@@ -980,11 +1206,19 @@ SUPABASE_SERVICE_ROLE_KEY
 
 ### Database types
 
-After schema migrations, regenerate database types with:
+Supabase-generated database types are the source of truth for database-backed TypeScript structures.
+
+Application types such as consultation rows, consultation status, and application roles are derived from the generated schema rather than manually duplicating PostgreSQL definitions.
+
+After changing database schema migrations, regenerate the types with:
 
 ```bash
 npm run db:types
 ```
+
+`lib/supabase/database.types.ts` is generated output and should not be manually edited.
+
+Runtime validation remains separate from generated TypeScript types. Valibot schemas validate external input and network responses because compile-time TypeScript types cannot establish that runtime data matches the expected contract.
 
 ## Available scripts
 
@@ -1028,7 +1262,21 @@ The Vitest suite covers:
 - access-unlock API outcomes, including rate-limited requests;
 - Supabase proxy cookie/session handling;
 - root Proxy orchestration;
+- authentication context and role resolution;
+- consultation API-client endpoint selection and HTTP methods;
+- consultation create, update, cancellation, and administrator request construction;
+- API error propagation;
+- rejection of successful consultation responses that do not satisfy the runtime response contract;
+- student consultation route authentication and role enforcement;
+- student ownership scoping for consultation reads and mutations;
+- consultation request validation and malformed JSON handling;
+- consultation status transitions, rescheduling, and idempotent cancellation;
+- administrator consultation route authorization;
 - invite-creation tooling.
+
+The consultation API-client and route-handler tests protect both sides of the consultation HTTP contract.
+
+Successful network responses are runtime validated rather than trusted through TypeScript assertions, so malformed server payloads are rejected before entering the consultation UI.
 
 Run the database security and lifecycle checks with:
 
@@ -1046,6 +1294,9 @@ supabase/tests/access_gate_checks.sql
 The database suite verifies both the LMS authorization model and access-gate behavior, including:
 
 - RLS configuration;
+- student ownership restrictions;
+- administrator read access;
+- mutation restrictions;
 - table privileges;
 - RPC execution privileges;
 - invite-state constraints;
@@ -1064,6 +1315,22 @@ npm run lint
 npm test
 npm run test:db
 npm run build
+```
+
+Together, the application and database suites exercise separate layers of the security model:
+
+```text
+TypeScript + Valibot
+    -> application contracts
+
+Vitest
+    -> application behavior
+
+PostgreSQL tests
+    -> database authorization and lifecycle rules
+
+container tests
+    -> deployed application behavior
 ```
 
 ## CI/CD and deployment
@@ -1112,6 +1379,40 @@ The outer invite gate and Supabase authentication solve different problems.
 The invite gate limits access to the hosted demonstration, while Supabase Auth identifies the LMS user.
 
 Passing the invite gate never grants a student or administrator role.
+
+### Generated database types
+
+Database-backed TypeScript types are derived from the Supabase-generated `Database` definition.
+
+This avoids maintaining independent application copies of table rows, database enums, and update column types.
+
+The generated types provide compile-time alignment with PostgreSQL, while narrower application input types remain intentionally defined by the operations the application permits.
+
+### Runtime-validated API contracts
+
+Network data is treated as untrusted even when an HTTP request succeeds.
+
+The consultation API client parses response bodies as unknown values and validates successful payloads with Valibot before returning them to React.
+
+This prevents generic TypeScript assertions such as `response.json() as T` from creating a false guarantee that the runtime response matches the expected frontend contract.
+
+### SWR server-state management
+
+Consultation query data is server state and is managed with SWR rather than duplicated manually in React state.
+
+Successful student mutations trigger SWR revalidation of the consultation resource.
+
+This replaces application-managed mutation/refetch synchronization with SWR's standard cache revalidation model.
+
+The application currently favors simple revalidation over optimistic updates because consultation collections are small and the simpler consistency model is easier to reason about.
+
+### Scoped React state
+
+Consultation state is separated according to ownership rather than centralized in one large custom hook.
+
+Query state belongs to `useStudentConsultations`, mutation orchestration belongs to `useStudentConsultationActions`, and row-specific interaction state belongs to `ConsultationItem`.
+
+This keeps server state, domain actions, and transient presentation state independently understandable while avoiding unnecessary global state-management infrastructure.
 
 ### First-use invite expiry
 
@@ -1198,11 +1499,13 @@ This preserves historical data and associated timestamps.
 
 ### Small application architecture
 
-The project intentionally avoids unnecessary service and repository layers.
+The project intentionally avoids unnecessary service, repository, and global state-management layers.
 
-For the current scope, keeping authentication, authorization, validation, and persistence visible at their relevant boundaries makes the behaviour easier to review.
+Abstractions are introduced where they establish a meaningful boundary: authentication and authorization, runtime validation, consultation HTTP transport, server-state management, and database access.
 
-Additional layers would become appropriate if the application introduced more complex domain workflows, external integrations, or multiple entry points.
+For the current scope, this keeps important behavior visible while avoiding both large multi-purpose components and unnecessary architectural indirection.
+
+Additional layers would become appropriate if the application introduced more complex domain workflows, external integrations, multiple persistence implementations, or substantially broader client-side state requirements.
 
 ## Scope
 
