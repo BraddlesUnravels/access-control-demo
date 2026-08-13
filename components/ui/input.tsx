@@ -1,6 +1,9 @@
 import React from 'react';
-
 import { cn } from '@/lib/utils';
+
+type InputProps = React.ComponentProps<'input'> & {
+  endIcon?: React.ReactNode;
+};
 
 const inputStyles = [
   'flex h-11 w-full rounded-xl border border-white/[0.1] bg-black/25 px-3.5 py-1 text-base text-zinc-100 shadow-inner',
@@ -12,15 +15,25 @@ const inputStyles = [
   'md:text-sm',
 ].join(' ');
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
-  ({ className, type, ...props }, ref) => {
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, endIcon, ...props }, ref) => {
     return (
-      <input
-        type={type}
-        className={cn(inputStyles, className)}
-        ref={ref}
-        {...props}
-      />
+      <div className="relative">
+        <input
+          type={type}
+          className={cn(inputStyles, className)}
+          ref={ref}
+          {...props}
+        />
+        {endIcon && (
+          <div
+            className="absolute inset-y-0 right-3 flex items-center text-zinc-500"
+            aria-hidden="true"
+          >
+            {endIcon}
+          </div>
+        )}
+      </div>
     );
   },
 );
