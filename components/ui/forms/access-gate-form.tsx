@@ -8,7 +8,10 @@ import { getSafeAccessGateDestination } from '@/lib/access-gate/paths';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api-response';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
+import { FormMessage } from '@/components/ui/form-message';
+import { FormSubmitButton } from '@/components/ui/form-submit-button';
+import { Typography } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 
 type AccessGateFormProps = {
@@ -58,20 +61,20 @@ export function AccessGateForm({
 
   return (
     <form onSubmit={handleSubmit} className={cn('space-y-5', className)}>
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <Label
-            htmlFor="code"
-            className="text-xs font-semibold uppercase tracking-[0.08em] text-zinc-400"
+      <FormField
+        htmlFor="code"
+        label="Invite code"
+        labelClassName="font-semibold uppercase tracking-[0.08em] text-zinc-400"
+        action={
+          <Typography
+            as="span"
+            variant="caption"
+            className="font-mono uppercase tracking-[0.12em] text-zinc-700"
           >
-            Invite code
-          </Label>
-
-          <span className="font-mono text-[9px] uppercase tracking-[0.12em] text-zinc-700">
             Required
-          </span>
-        </div>
-
+          </Typography>
+        }
+      >
         <div className="relative">
           <Input
             id="code"
@@ -98,20 +101,13 @@ export function AccessGateForm({
 
           <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-300/0 to-transparent transition-all peer-focus:via-cyan-300/40" />
         </div>
-      </div>
+      </FormField>
 
-      {error && (
-        <div
-          id="access-code-error"
-          role="alert"
-          className="rounded-lg border border-destructive/15 bg-destructive/[0.06] px-3.5 py-3 text-xs leading-5 text-red-300"
-        >
-          {error}
-        </div>
-      )}
+      {error && <FormMessage id="access-code-error">{error}</FormMessage>}
 
-      <Button
-        type="submit"
+      <FormSubmitButton
+        isLoading={isLoading}
+        loadingLabel="Verifying access"
         size="lg"
         disabled={isLoading}
         className={cn(
@@ -123,39 +119,40 @@ export function AccessGateForm({
           'active:translate-y-px',
         )}
       >
-        {isLoading ? (
-          <>
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-            Verifying access
-          </>
-        ) : (
-          <>
-            Unlock demo
-            <ArrowRight
-              className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
-          </>
-        )}
-      </Button>
+        Unlock demo
+        <ArrowRight
+          className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+          aria-hidden="true"
+        />
+      </FormSubmitButton>
 
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-white/[0.06]" />
-        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-700">
+        <Typography
+          as="span"
+          variant="caption"
+          className="font-mono text-[9px] uppercase tracking-[0.14em] text-zinc-700"
+        >
           Invite only
-        </span>
+        </Typography>
         <div className="h-px flex-1 bg-white/[0.06]" />
       </div>
 
-      <p className="text-center text-xs leading-5 text-zinc-600">
+      <Typography
+        as="p"
+        variant="body-small"
+        className="text-center leading-5 text-zinc-600"
+      >
         Don&apos;t have a valid invite?{' '}
-        <a
+        <Typography
+          as="a"
+          variant="body-small"
           className="font-medium text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition-colors hover:text-cyan-200 hover:decoration-cyan-300/50"
           href={ACCESS_GATE_REQUEST_TOKENS_URL}
         >
           Request access
-        </a>
-      </p>
+        </Typography>
+      </Typography>
     </form>
   );
 }
