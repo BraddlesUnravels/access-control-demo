@@ -4,7 +4,7 @@ import {
   Header,
   BackgroundStyles,
   Footer,
-  AccessPanel,
+  AccessGate,
 } from '@/components/ui/access-gate';
 
 export type AccessPageSearchParams = Promise<{
@@ -52,8 +52,9 @@ export default function AccessPage({ searchParams }: AccessPageProps) {
             aria-hidden="true"
             className="absolute inset-0 hidden bg-gradient-to-b from-white/[0.035] via-transparent to-transparent lg:block"
           />
-          <AccessPanel searchParams={searchParams} />
+          <AccessGate searchParams={searchParams} />
         </section>
+
         {/* Mobile architecture section */}
         <section className="grid grid-rows-[auto_1fr_auto] px-[1rem] pt-[2rem] pb-[1rem] lg:hidden">
           <Architecture />
