@@ -1,9 +1,8 @@
 import { Suspense } from 'react';
-import { KeyRound, ShieldCheck } from 'lucide-react';
+import { KeyRound } from 'lucide-react';
 import { AccessGateForm } from '@/components/ui/forms/access-gate-form';
 import { getSafeAccessGateDestination } from '@/lib/access-gate/paths';
 import type { AccessPageSearchParams } from '@/app/page';
-import { Typography } from '@/components/ui/typography';
 import { AuthPanel } from '@/components/ui/auth-panel';
 import { AuthPanelNote } from '@/components/ui/auth-panel-note';
 

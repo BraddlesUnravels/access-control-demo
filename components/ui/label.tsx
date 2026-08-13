@@ -9,8 +9,12 @@ const styles =
 const Label = React.forwardRef<
   React.ComponentRef<typeof LabelPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <LabelPrimitive.Root ref={ref} className={styles} {...props} />
+>(({ className: classes = '', ...props }, ref) => (
+  <LabelPrimitive.Root
+    ref={ref}
+    className={[styles, classes].join(' ')}
+    {...props}
+  />
 ));
 
 Label.displayName = LabelPrimitive.Root.displayName;

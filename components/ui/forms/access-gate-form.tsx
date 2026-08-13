@@ -1,12 +1,11 @@
 'use client';
 
-import { ArrowRight, LoaderCircle } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ACCESS_GATE_REQUEST_TOKENS_URL } from '@/lib/access-gate/constants';
 import { getSafeAccessGateDestination } from '@/lib/access-gate/paths';
 import { getApiErrorMessage, readJsonResponse } from '@/lib/api-response';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
 import { FormMessage } from '@/components/ui/form-message';
