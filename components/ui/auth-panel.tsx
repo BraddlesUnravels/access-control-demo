@@ -11,9 +11,10 @@ type AccessPanelProps = {
   footer?: ReactNode;
   caption?: string;
   children: ReactNode;
+  className?: string;
 };
 
-export const AuthGateLayout = ({
+export const AuthPanel = ({
   icon,
   badge,
   eyebrow,
@@ -22,8 +23,12 @@ export const AuthGateLayout = ({
   footer,
   caption,
   children,
+  className,
 }: AccessPanelProps) => (
-  <div id="auth-gate-layout" className={cn('mx-auto w-full max-w-[460px]')}>
+  <div
+    id="auth-gate-layout"
+    className={cn('mx-auto w-full max-w-[460px]', className)}
+  >
     <div
       id="auth-gate-inner-wrap"
       className="rounded-[2rem] border border-white/[0.1] bg-white/[0.055] p-[0.4rem] shadow-[0_32px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl"

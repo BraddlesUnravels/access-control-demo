@@ -1,10 +1,10 @@
 import { Suspense } from 'react';
-import { KeyRound, ShieldCheck } from 'lucide-react';
+import { KeyRound } from 'lucide-react';
 import { AccessGateForm } from '@/components/ui/forms/access-gate-form';
 import { getSafeAccessGateDestination } from '@/lib/access-gate/paths';
 import type { AccessPageSearchParams } from '@/app/page';
-import { Typography } from '@/components/ui/typography';
-import { AuthGateLayout } from '@/components/ui/auth-gate';
+import { AuthPanel } from '@/components/ui/auth-panel';
+import { AuthPanelNote } from '@/components/ui/auth-panel-note';
 
 type Props = {
   searchParams: AccessPageSearchParams;
@@ -22,7 +22,7 @@ const AccessPageContent = async ({
 };
 
 export const AccessGate = ({ searchParams }: Props) => (
-  <AuthGateLayout
+  <AuthPanel
     icon={<KeyRound className="size-5 text-cyan-200" aria-hidden="true" />}
     badge="Gate 01"
     eyebrow="Private demo access"
@@ -35,25 +35,15 @@ export const AccessGate = ({ searchParams }: Props) => (
       </>
     }
     footer={
-      <div className="flex gap-3">
-        <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.035]">
-          <ShieldCheck className="size-5 text-zinc-500" aria-hidden="true" />
-        </div>
-
-        <Typography
-          as="p"
-          variant="body-small"
-          className="leading-5 text-zinc-600"
-        >
-          Invite codes are verified server-side using an HMAC digest. Plaintext
-          codes are never stored in PostgreSQL.
-        </Typography>
-      </div>
+      <AuthPanelNote>
+        Invite codes are verified server-side using a secure cryptographic check
+        without storing the original codes.
+      </AuthPanelNote>
     }
     caption="Access gate · authentication · authorization · RLS"
   >
     <Suspense fallback={<AccessGateForm />}>
       <AccessPageContent searchParams={searchParams} />
     </Suspense>
-  </AuthGateLayout>
+  </AuthPanel>
 );
