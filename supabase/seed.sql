@@ -1,8 +1,8 @@
 -- Local development seed data only.
 -- Test credentials:
--- - student1@lms.com / password123
--- - student2@lms.com / password123
--- - admin@lms.com / password123
+-- - student1@lms.com / ReviewStudent**1
+-- - student2@lms.com / ReviewStudent**2
+-- - admin@lms.com / ReviewAdmin**0
 
 do $$
 begin
@@ -31,7 +31,7 @@ begin
       'authenticated',
       'authenticated',
       'student1@lms.com',
-      extensions.crypt('password123', extensions.gen_salt('bf')),
+      extensions.crypt('ReviewStudent**1', extensions.gen_salt('bf')),
       '',
       now(),
       '{"provider":"email","providers":["email"]}',
@@ -66,7 +66,7 @@ begin
       'authenticated',
       'authenticated',
       'student2@lms.com',
-      extensions.crypt('password123', extensions.gen_salt('bf')),
+      extensions.crypt('ReviewStudent**2', extensions.gen_salt('bf')),
       '',
       now(),
       '{"provider":"email","providers":["email"]}',
@@ -101,7 +101,7 @@ begin
       'authenticated',
       'authenticated',
       'admin@lms.com',
-      extensions.crypt('password123', extensions.gen_salt('bf')),
+      extensions.crypt('ReviewAdmin**0', extensions.gen_salt('bf')),
       '',
       now(),
       '{"provider":"email","providers":["email"]}',
