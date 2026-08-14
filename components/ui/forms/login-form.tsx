@@ -11,21 +11,27 @@ import { FormMessage } from '../form-message';
 import { FormField } from '../form-field';
 import { Input } from '../input';
 import { Typography } from '../typography';
+import type { ComponentPropsWithoutRef, SubmitEventHandler } from 'react';
+
+type LoginFormProps = Omit<ComponentPropsWithoutRef<'form'>, 'onSubmit'> & {
+  initialEmail?: string;
+  initialPassword?: string;
+};
 
 export function LoginForm({
+  initialEmail = '',
+  initialPassword = '',
   className,
   ...props
-}: React.ComponentPropsWithoutRef<'form'>) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+}: LoginFormProps) {
+  const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState(initialPassword);
   const [error, setError] = useState<string | undefined>(undefined);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin: React.SubmitEventHandler<HTMLFormElement> = async (
-    event,
-  ) => {
+  const handleLogin: SubmitEventHandler<HTMLFormElement> = async (event) => {
     event.preventDefault();
 
     const supabase = browserClient();
