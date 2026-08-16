@@ -1,17 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { LogIn, EyeClosed, Eye } from 'lucide-react';
-import { browserClient } from '@/lib/supabase/client';
+import { useActionState, useState } from 'react';
+import { signInAction } from '@/app/auth/actions';
+import { LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FormSubmitButton } from '../form-submit-button';
 import { FormMessage } from '../form-message';
 import { FormField } from '../form-field';
-import { Input } from '../input';
+import { Input, PasswordInput } from '../input';
 import { Typography } from '../typography';
-import type { ComponentPropsWithoutRef, SubmitEventHandler } from 'react';
+import type { ComponentPropsWithoutRef } from 'react';
 
 type LoginFormProps = Omit<ComponentPropsWithoutRef<'form'>, 'onSubmit'> & {
   initialEmail?: string;
@@ -26,46 +25,11 @@ export function LoginForm({
 }: LoginFormProps) {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState(initialPassword);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
-  const handleLogin: SubmitEventHandler<HTMLFormElement> = async (event) => {
-    event.preventDefault();
-
-    const supabase = browserClient();
-
-    setIsLoading(true);
-    setError(undefined);
-
-    try {
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (loginError) throw loginError;
-
-      setEmail('');
-      setPassword('');
-
-      router.replace('/protected');
-    } catch (loginError) {
-      setError(
-        loginError instanceof Error ? loginError.message : 'Failed to login',
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [state, formAction, isPending] = useActionState(signInAction, {});
 
   return (
-    <form
-      onSubmit={handleLogin}
-      className={cn('space-y-5', className)}
-      {...props}
-    >
+    <form {...props} action={formAction} className={cn('space-y-5', className)}>
       <FormField
         label="Email"
         htmlFor="email"
@@ -74,19 +38,21 @@ export function LoginForm({
       >
         <Input
           id="email"
+          name="email"
           type="email"
           placeholder="example@lms.com"
           autoComplete="email"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? 'login-error' : undefined}
+          aria-invalid={Boolean(state.error)}
+          aria-describedby={state.error ? 'login-error' : undefined}
           className="h-12 font-mono text-sm"
         />
       </FormField>
 
       <FormField
+        id="password"
         label="Password"
         htmlFor="password"
         className="gap-2.5"
@@ -101,36 +67,23 @@ export function LoginForm({
           </Link>
         }
       >
-        <Input
+        <PasswordInput
           id="password"
-          type={showPassword ? 'password' : 'text'}
+          name="password"
           autoComplete="current-password"
           required
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? 'login-error' : undefined}
+          aria-invalid={Boolean(state.error)}
+          aria-describedby={state.error ? 'login-error' : undefined}
           className="h-12"
-          endIcon={
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="text-zinc-500 transition-colors hover:text-zinc-400 hover:cursor-pointer"
-            >
-              {showPassword ? (
-                <EyeClosed className="size-5" aria-hidden="true" />
-              ) : (
-                <Eye className="size-5" aria-hidden="true" />
-              )}
-            </button>
-          }
         />
       </FormField>
 
-      {error && <FormMessage id="login-error">{error}</FormMessage>}
+      {state.error && <FormMessage id="login-error">{state.error}</FormMessage>}
 
       <FormSubmitButton
-        isLoading={isLoading}
+        isLoading={isPending}
         loadingLabel="Signing in..."
         size="lg"
         className="w-full"

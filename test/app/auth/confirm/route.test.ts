@@ -169,10 +169,12 @@ describe('app/auth/confirm/route', () => {
     expect(response.headers.get('location')).toBe('http://localhost/protected');
   });
 
-  it('should preserve non-signup token-hash GET flows', async () => {
+  it('should establish a recovery session before redirecting to the password update page', async () => {
     const { applyServerCookies, verifyOtp } = setupServerResponseClientMock();
 
-    const request = buildGetRequest('?token_hash=hash123&type=recovery');
+    const request = buildGetRequest(
+      '?token_hash=hash123&type=recovery&next=/auth/update-password',
+    );
 
     const response = await GET(request);
 
@@ -185,7 +187,9 @@ describe('app/auth/confirm/route', () => {
 
     expect(response.status).toBe(307);
 
-    expect(response.headers.get('location')).toBe('http://localhost/protected');
+    expect(response.headers.get('location')).toBe(
+      'http://localhost/auth/update-password',
+    );
   });
 
   it('should not consume signup email token hashes through GET', async () => {

@@ -1,4 +1,4 @@
-import { UpdatePasswordForm } from '@/components/ui/forms/lms-update-password-form';
+import { UpdatePasswordForm } from '@/components/ui/forms/update-password-form';
 
 export default function Page() {
   return (

@@ -1,4 +1,4 @@
-import { ForgotPasswordForm } from '@/components/ui/forms/lms-forgot-password-form';
+import { ForgotPasswordForm } from '@/components/ui/forms/forgot-password-form';
 
 export default function Page() {
   return (

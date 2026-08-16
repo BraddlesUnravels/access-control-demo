@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { browserClient } from '@/lib/supabase/client';
+import { useActionState } from 'react';
+import { requestPasswordResetAction } from '@/app/auth/actions';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,42 +13,21 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import Link from 'next/link';
-import { useState } from 'react';
+import { FormField } from '@/components/ui/form-field';
+import { Typography } from '../typography';
 
 export function ForgotPasswordForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [success, setSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const supabase = browserClient();
-    setIsLoading(true);
-    setError(undefined);
-
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/update-password`,
-      });
-      if (error) throw error;
-      setEmail('');
-      setSuccess(true);
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'An error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [state, formAction, isPending] = useActionState(
+    requestPasswordResetAction,
+    {},
+  );
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      {success ? (
+      {state.success ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Check Your Email</CardTitle>
@@ -62,29 +43,39 @@ export function ForgotPasswordForm({
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Reset Your LMS Password</CardTitle>
+            <CardTitle className="text-2xl">Reset Your Password</CardTitle>
             <CardDescription>
               Type in your email and we&apos;ll send you a link to reset your
               password
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleForgotPassword}>
+            <form action={formAction}>
               <div className="flex flex-col gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                <FormField
+                  id="email"
+                  label="Email"
+                  htmlFor="email"
+                  className="gap-1"
+                  labelClassName="font-semibold uppercase tracking-[0.08em] text-zinc-400"
+                >
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     placeholder="example@lms.com"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    aria-invalid={state.error ? true : undefined}
+                    aira-describedby={state.error ? 'reset-error' : undefined}
                   />
-                </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Sending...' : 'Send reset email'}
+                </FormField>
+                {state.error && (
+                  <Typography as="p" variant="caption" className="text-red-500">
+                    {state.error}
+                  </Typography>
+                )}
+                <Button type="submit" className="w-full" disabled={isPending}>
+                  {isPending ? 'Sending...' : 'Send reset email'}
                 </Button>
               </div>
               <div className="mt-4 text-center text-sm">

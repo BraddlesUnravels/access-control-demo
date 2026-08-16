@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
-import { Label } from '@/components/ui/label';
+import { Typography } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 
 type FormFieldProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> & {
@@ -21,9 +21,9 @@ export const FormField = ({
 }: FormFieldProps) => (
   <div className={cn('grid gap-2', className)} {...props}>
     <div className="flex items-center justify-between gap-3">
-      <Label htmlFor={htmlFor} className={labelClassName}>
+      <Typography as="label" htmlFor={htmlFor} className={labelClassName}>
         {label}
-      </Label>
+      </Typography>
 
       {action}
     </div>

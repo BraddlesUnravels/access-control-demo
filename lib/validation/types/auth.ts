@@ -1,4 +1,5 @@
 import * as v from 'valibot';
-import { loginInputSchema } from '../schemas/auth';
+import { LoginInputSchema, SignUpInputSchema } from '../schemas/auth';
 
-export type LoginInput = v.InferOutput<typeof loginInputSchema>;
+export type LoginInput = v.InferOutput<typeof LoginInputSchema>;
+export type SignUpInput = v.InferOutput<typeof SignUpInputSchema>;
