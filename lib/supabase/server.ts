@@ -26,6 +26,27 @@ export const serverRequestClient = async () => {
   );
 };
 
+export const serverActionClient = async () => {
+  const cookieStore = await cookies();
+
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    },
+  );
+};
+
 export const serverResponseClient = async () => {
   const cookieStore = await cookies();
   const cookiesToSet: ResponseCookie[] = [];
@@ -45,6 +66,7 @@ export const serverResponseClient = async () => {
       },
     },
   );
+
   const applyServerCookies = (response: NextResponse) => {
     cookiesToSet.forEach(({ name, value, options }) => {
       response.cookies.set(name, value, options);

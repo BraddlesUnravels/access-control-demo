@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Eye, EyeClosed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type InputProps = React.ComponentProps<'input'> & {
@@ -41,3 +42,37 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 Input.displayName = 'Input';
 
 export { Input };
+
+const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, ...props }, ref) => {
+    const [hidden, setHidden] = useState(true);
+
+    return (
+      <div className="relative">
+        <input
+          type={hidden ? 'password' : 'text'}
+          className={cn(inputStyles, className)}
+          ref={ref}
+          {...props}
+        />
+
+        <button
+          type="button"
+          className="absolute inset-y-0 right-3 flex items-center text-zinc-500 transition-colors hover:cursor-pointer hover:text-zinc-400"
+          onClick={() => setHidden((previous) => !previous)}
+          aria-label={hidden ? 'Show password' : 'Hide password'}
+        >
+          {hidden ? (
+            <Eye className="size-5" aria-hidden="true" />
+          ) : (
+            <EyeClosed className="size-5" aria-hidden="true" />
+          )}
+        </button>
+      </div>
+    );
+  },
+);
+
+PasswordInput.displayName = 'PasswordInput';
+
+export { PasswordInput };
