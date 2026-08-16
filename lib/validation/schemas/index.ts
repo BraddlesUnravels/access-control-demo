@@ -4,7 +4,7 @@ import {
   consultationCreateInputSchema,
   consultationUpdateInputSchema,
 } from './consultation';
-import { loginInputSchema } from './auth';
+import { LoginInputSchema } from './auth';
 import {
   profileRoleSchema,
   profileSchema,
@@ -17,7 +17,7 @@ export {
   consultationStatusSchema,
   consultationCreateInputSchema,
   consultationUpdateInputSchema,
-  loginInputSchema,
+  LoginInputSchema,
   profileRoleSchema,
   profileSchema,
   profileCreateInputSchema,

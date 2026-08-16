@@ -60,7 +60,7 @@ describe('app/auth/actions', () => {
       );
 
       expect(result).toEqual({
-        error: 'Email is invalid',
+        error: 'Please enter a valid email address',
       });
 
       expect(serverActionClient).not.toHaveBeenCalled();
@@ -72,12 +72,12 @@ describe('app/auth/actions', () => {
 
       await signInAction(
         {},
-        buildLoginFormData('  student@example.com  ', 'password123'),
+        buildLoginFormData('  student@example.com  ', 'TestPassword1!'),
       );
 
       expect(signInWithPassword).toHaveBeenCalledWith({
         email: 'student@example.com',
-        password: 'password123',
+        password: 'TestPassword1!',
       });
 
       expect(redirect).toHaveBeenCalledWith('/protected');
@@ -88,7 +88,7 @@ describe('app/auth/actions', () => {
 
       signInWithPassword.mockResolvedValue({
         error: {
-          message: 'Invalid login credentials',
+          message: 'Password must contain at least one uppercase letter',
         },
       });
 
@@ -98,7 +98,7 @@ describe('app/auth/actions', () => {
       );
 
       expect(result).toEqual({
-        error: 'Invalid login credentials',
+        error: 'Password must contain at least one uppercase letter',
       });
 
       expect(redirect).not.toHaveBeenCalled();
