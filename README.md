@@ -19,7 +19,8 @@ The application is built with Next.js, React, TypeScript, SWR, Valibot, Supabase
 - PostgreSQL row-level security
 - Read-only administrator access
 - Generated Supabase database types as the source of truth for database rows and enums
-- Typed Supabase clients across browser, proxy, and server boundaries
+- Typed Supabase clients across proxy and server boundaries
+- Server Action-backed authentication mutations with no direct browser Supabase access
 - Valibot runtime validation for request input and consultation API responses
 - A dedicated consultation API client that isolates HTTP transport from React components
 - SWR-based client-side server-state caching and revalidation
@@ -325,11 +326,11 @@ The Supabase secret/service-role key is an operator credential. It is not requir
 
 The local seed data creates the following users:
 
-| Role          | Email              | Password      |
-| ------------- | ------------------ | ------------- |
-| Student       | `student1@lms.com` | `password123` |
-| Student       | `student2@lms.com` | `password123` |
-| Administrator | `admin@lms.com`    | `password123` |
+| Role          | Email              | Password           |
+| ------------- | ------------------ | ------------------ |
+| Student       | `student1@lms.com` | `ReviewStudent**1` |
+| Student       | `student2@lms.com` | `ReviewStudent**2` |
+| Administrator | `admin@lms.com`    | `ReviewAdmin**0`   |
 
 These credentials are intended only for the demonstration environment.
 
@@ -415,6 +416,26 @@ MailPit keeps local authentication testing deterministic and avoids requiring an
 
 The application uses several deliberately separate boundaries rather than allowing UI components to communicate directly with the database.
 
+Authentication mutations use a server-only boundary:
+
+```text
+Authentication form
+   |
+   v
+Next.js Server Action
+   |
+   +--> Runtime input validation
+   |
+   +--> Supabase Auth operation
+   |
+   v
+Typed Supabase server client
+```
+
+Sign-in, sign-out, account registration, password-reset requests, and password updates do not create Supabase clients in browser code.
+
+Authentication callbacks remain Route Handlers because they receive external redirects or token exchanges from Supabase.
+
 The main authenticated consultation flow is:
 
 ```text
@@ -482,8 +503,11 @@ Consultation hooks
 Consultation API client
     -> HTTP transport and response validation
 
+Authentication Server Actions
+    -> authentication mutations and runtime input validation
+
 Route handlers
-    -> authentication, authorization, input validation, and persistence
+    -> HTTP callbacks, authentication, authorization, input validation, and persistence
 
 Supabase generated types
     -> compile-time database contracts
@@ -653,7 +677,7 @@ Supabase generated Database type
 Application types
 ```
 
-Supabase browser, proxy, and server clients are parameterized with the generated `Database` type.
+Supabase proxy and server clients are parameterized with the generated `Database` type.
 
 Runtime schemas remain necessary at external boundaries because TypeScript types do not validate network data at runtime.
 
@@ -734,6 +758,8 @@ Supabase Auth manages:
 - Sign-out
 - Password recovery
 - Password updates
+
+Application-initiated authentication mutations execute through Next.js Server Actions. Supabase email-confirmation and recovery callbacks remain Route Handlers because they require HTTP endpoints.
 
 ### Role-based authorization
 
@@ -1001,7 +1027,6 @@ lib/
 ├── server/
 │   └── auth.ts
 ├── supabase/
-│   ├── client.ts
 │   ├── database.types.ts
 │   ├── proxy.ts
 │   └── server.ts
@@ -1062,7 +1087,7 @@ Key responsibilities:
 - `lib/access-gate/**`: invite hashing, cookie signing, safe redirects, environment validation, and proxy gate logic
 - `lib/rate-limiter/**`: trusted client identification and bounded in-memory fixed-window rate limiting
 - `proxy.ts`: access-gate and Supabase session orchestration
-- `app/auth/**`: authentication screens and callback routes
+- `app/auth/**`: authentication screens, Server Actions, and callback routes
 - `app/protected/page.tsx`: authenticated role-aware dashboard entry point
 - `components/student/student-consultation-hook.ts`: SWR-backed student consultation query state
 - `components/student/student-consultation-action-hook.ts`: student consultation mutation orchestration and cache revalidation
@@ -1076,7 +1101,7 @@ Key responsibilities:
 - `app/api/admin/consultations/**`: administrator read-only consultation API
 - `lib/server/auth.ts`: authenticated application context and role authorization
 - `lib/supabase/database.types.ts`: generated PostgreSQL/Supabase type definitions
-- `lib/supabase/**`: typed browser and server Supabase clients and SSR session handling
+- `lib/supabase/**`: typed proxy and server Supabase clients and SSR session handling
 - `supabase/migrations/**`: executable database schema history
 - `supabase/tests/rls_checks.sql`: LMS authorization and RLS checks
 - `supabase/tests/access_gate_checks.sql`: access-gate schema, privilege, and lifecycle checks
@@ -1263,6 +1288,7 @@ The Vitest suite covers:
 - Supabase proxy cookie/session handling;
 - root Proxy orchestration;
 - authentication context and role resolution;
+- authentication Server Actions for sign-in, sign-out, account registration, password recovery, and password updates;
 - consultation API-client endpoint selection and HTTP methods;
 - consultation create, update, cancellation, and administrator request construction;
 - API error propagation;
@@ -1379,6 +1405,14 @@ The outer invite gate and Supabase authentication solve different problems.
 The invite gate limits access to the hosted demonstration, while Supabase Auth identifies the LMS user.
 
 Passing the invite gate never grants a student or administrator role.
+
+### Server-side authentication boundary
+
+Authentication form mutations are handled by Next.js Server Actions rather than direct Supabase calls from Client Components.
+
+This keeps sign-in, sign-out, account registration, password-reset requests, and password updates behind the server boundary while preserving Route Handlers for Supabase callback flows that require an HTTP endpoint.
+
+Client Components remain responsible for interaction state and form feedback, but they do not instantiate Supabase clients.
 
 ### Generated database types
 
