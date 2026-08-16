@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { redirect } from 'next/navigation';
-import { signInAction, signOutAction } from '@/app/auth/actions';
+import { signInAction, signOutAction, signUpAction } from '@/app/auth/actions';
 import { serverActionClient } from '@/lib/supabase/server';
 
 vi.mock('next/navigation', () => ({
@@ -14,6 +14,7 @@ vi.mock('@/lib/supabase/server', () => ({
 type AuthClientMocks = {
   signInWithPassword: ReturnType<typeof vi.fn>;
   signOut: ReturnType<typeof vi.fn>;
+  signUp: ReturnType<typeof vi.fn>;
 };
 
 const setupServerActionClientMock = (): AuthClientMocks => {
@@ -25,16 +26,22 @@ const setupServerActionClientMock = (): AuthClientMocks => {
     error: null,
   });
 
+  const signUp = vi.fn().mockResolvedValue({
+    error: null,
+  });
+
   vi.mocked(serverActionClient).mockResolvedValue({
     auth: {
       signInWithPassword,
       signOut,
+      signUp,
     },
   } as never);
 
   return {
     signInWithPassword,
     signOut,
+    signUp,
   };
 };
 
@@ -43,6 +50,20 @@ const buildLoginFormData = (email: string, password: string): FormData => {
 
   formData.set('email', email);
   formData.set('password', password);
+
+  return formData;
+};
+
+const buildSignUpFormData = (
+  email: string,
+  password: string,
+  repeatPassword: string,
+): FormData => {
+  const formData = new FormData();
+
+  formData.set('email', email);
+  formData.set('password', password);
+  formData.set('repeatPassword', repeatPassword);
 
   return formData;
 };
@@ -128,5 +149,74 @@ describe('app/auth/actions', () => {
 
       expect(redirect).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('signUpAction', () => {
+  it('creates an account with validated credentials and redirects to the success page', async () => {
+    const { signUp } = setupServerActionClientMock();
+
+    await signUpAction(
+      {},
+      buildSignUpFormData(
+        '  student@example.com  ',
+        'ReviewStudent**1',
+        'ReviewStudent**1',
+      ),
+    );
+
+    expect(signUp).toHaveBeenCalledWith({
+      email: 'student@example.com',
+      password: 'ReviewStudent**1',
+      options: {
+        emailRedirectTo:
+          'http://localhost:3000/auth/confirm-email?next=/protected',
+      },
+    });
+
+    expect(redirect).toHaveBeenCalledWith('/auth/sign-up-success');
+  });
+
+  it('rejects mismatched passwords before creating a Supabase client', async () => {
+    const result = await signUpAction(
+      {},
+      buildSignUpFormData(
+        'student@example.com',
+        'ReviewStudent**1',
+        'DifferentPassword**1',
+      ),
+    );
+
+    expect(result).toEqual({
+      error: 'Passwords do not match',
+    });
+
+    expect(serverActionClient).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it('returns the Supabase sign-up error without redirecting', async () => {
+    const { signUp } = setupServerActionClientMock();
+
+    signUp.mockResolvedValue({
+      error: {
+        message: 'User already registered',
+      },
+    });
+
+    const result = await signUpAction(
+      {},
+      buildSignUpFormData(
+        'student@example.com',
+        'ReviewStudent**1',
+        'ReviewStudent**1',
+      ),
+    );
+
+    expect(result).toEqual({
+      error: 'User already registered',
+    });
+
+    expect(redirect).not.toHaveBeenCalled();
   });
 });

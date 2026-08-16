@@ -1,4 +1,4 @@
-import { LoginInput } from './auth';
+import { LoginInput, SignUpInput } from './auth';
 import {
   ConsultationStatus,
   ConsultationCreateInput,
@@ -15,6 +15,7 @@ import {
 
 export type {
   LoginInput,
+  SignUpInput,
   ConsultationStatus,
   ConsultationCreateInput,
   ConsultationUpdateInput,

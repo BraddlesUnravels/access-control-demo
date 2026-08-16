@@ -41,3 +41,15 @@ export const UpdatePasswordInputSchema = v.pipe(
     'Passwords do not match',
   ),
 );
+
+export const SignUpInputSchema = v.pipe(
+  v.object({
+    email: EmailSchema,
+    password: PasswordSchema,
+    repeatPassword: PasswordSchema,
+  }),
+  v.check(
+    ({ password, repeatPassword }) => password === repeatPassword,
+    'Passwords do not match',
+  ),
+);

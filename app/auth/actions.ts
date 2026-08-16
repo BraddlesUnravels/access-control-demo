@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { serverActionClient } from '@/lib/supabase/server';
 import {
   LoginInputSchema,
+  SignUpInputSchema,
   PasswordResetRequestSchema,
   UpdatePasswordInputSchema,
 } from '@/lib/validation/schemas/auth';
@@ -60,6 +61,10 @@ export type PasswordResetRequestActionState = {
 };
 
 export type UpdatePasswordActionState = {
+  error?: string;
+};
+
+export type SignUpActionState = {
   error?: string;
 };
 
@@ -145,3 +150,48 @@ export const updatePasswordAction = async (
 
   redirect('/auth/login');
 };
+
+export async function signUpAction(
+  _previousState: SignUpActionState,
+  formData: FormData,
+): Promise<SignUpActionState> {
+  const validation = validateWithSchema(SignUpInputSchema, {
+    email: formData.get('email'),
+    password: formData.get('password'),
+    repeatPassword: formData.get('repeatPassword'),
+  });
+
+  if (!validation.success) {
+    return {
+      error:
+        validation.fieldErrors.email?.[0] ??
+        validation.fieldErrors.password?.[0] ??
+        validation.fieldErrors.repeatPassword?.[0] ??
+        validation.errors[0] ??
+        'Invalid sign-up details',
+    };
+  }
+
+  const supabase = await serverActionClient();
+
+  const emailRedirectTo = new URL(
+    '/auth/confirm-email?next=/protected',
+    `${getAppOrigin()}/`,
+  ).toString();
+
+  const { error } = await supabase.auth.signUp({
+    email: validation.data.email,
+    password: validation.data.password,
+    options: {
+      emailRedirectTo,
+    },
+  });
+
+  if (error) {
+    return {
+      error: error.message,
+    };
+  }
+
+  redirect('/auth/sign-up-success');
+}
