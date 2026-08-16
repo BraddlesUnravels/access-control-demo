@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 
 type DemoAccountsPanelProps = {
   accounts: readonly DemoAccount[];
-  selectedAccountId: DemoAccountId | null;
+  selectedAccountId?: DemoAccountId;
   onAccountSelect: (account: DemoAccount) => void;
   className?: string;
 };
