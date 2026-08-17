@@ -35,14 +35,14 @@ export function UpdatePasswordForm({
         <CardContent>
           <form action={formAction}>
             <FormField
-              id="new-password"
+              id="password"
               label="New Password"
               htmlFor="new-password"
               className="gap-1"
               labelClassName="font-semibold uppercase tracking-[0.08em] text-zinc-400"
             >
               <PasswordInput
-                id="new-password"
+                id="password"
                 name="new-password"
                 autoComplete="new-password"
                 required
@@ -57,7 +57,7 @@ export function UpdatePasswordForm({
             <FormField
               id="confirm-password"
               label="Confirm Password"
-              htmlFor="confirm-password"
+              htmlFor="consfirm-password"
               className="gap-1"
               labelClassName="font-semibold uppercase tracking-[0.08em] text-zinc-400"
             >

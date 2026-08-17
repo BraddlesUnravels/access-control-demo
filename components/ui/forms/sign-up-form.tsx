@@ -33,12 +33,19 @@ export function SignUpForm({
           <form action={formAction}>
             <div className="flex flex-col gap-6">
               <FormField label="Email" id="email" htmlFor="email">
-                <Input id="email" type="email" required autoComplete="email" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                />
               </FormField>
 
               <FormField label="Password" id="password" htmlFor="password">
                 <PasswordInput
                   id="password"
+                  name="password"
                   required
                   autoComplete="new-password"
                 />
@@ -51,6 +58,7 @@ export function SignUpForm({
               >
                 <PasswordInput
                   id="repeat-password"
+                  name="repeat-password"
                   required
                   autoComplete="new-password"
                 />
