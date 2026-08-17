@@ -181,25 +181,42 @@ $$;
 
 reset role;
 
-\echo 'RLS CHECK 5/6: Verifying student insert and update access is allowed'
+\echo 'RLS CHECK 5/6: Verifying student mutation boundary and lifecycle enforcement'
 
 do $$
 declare
   student_id uuid;
-  probe_id uuid := gen_random_uuid();
-  inserted_rows integer;
+  other_student_id uuid;
+  other_consultation_id uuid;
+  probe_id uuid;
+  completed_time timestamptz;
+  persisted_completed_time timestamptz;
+  cancelled_time timestamptz;
   updated_rows integer;
-  persisted_reason text;
-  initial_reason text := 'Student insert policy probe';
-  updated_reason text := 'Student update policy probe';
 begin
   select id
   into student_id
   from auth.users
   where email = 'student1@lms.com';
 
-  if student_id is null then
-    raise exception 'Seeded student user not found';
+  select id
+  into other_student_id
+  from auth.users
+  where email = 'student2@lms.com';
+
+  if student_id is null or other_student_id is null then
+    raise exception 'Seeded student users were not found';
+  end if;
+
+  select id
+  into other_consultation_id
+  from public.consultations
+  where student_user_id = other_student_id
+  order by created_at
+  limit 1;
+
+  if other_consultation_id is null then
+    raise exception 'Seeded consultation for student2 was not found';
   end if;
 
   execute 'set local role authenticated';
@@ -210,64 +227,185 @@ begin
     true
   );
 
+  -- Legitimate create using only client-writable columns.
   insert into public.consultations (
-    id,
     student_user_id,
     first_name,
     last_name,
     reason,
-    scheduled_for,
-    status
+    scheduled_for
   )
   values (
-    probe_id,
     student_id,
     'Student',
-    'Write Probe',
-    initial_reason,
-    timezone('utc', now()) + interval '1 day',
-    'scheduled'
-  );
+    'Lifecycle Probe',
+    'Student lifecycle mutation probe',
+    timezone('utc', now()) + interval '1 day'
+  )
+  returning id
+  into probe_id;
 
-  get diagnostics inserted_rows = row_count;
-
-  if inserted_rows <> 1 then
+  if not exists (
+    select 1
+    from public.consultations
+    where id = probe_id
+      and status = 'scheduled'
+      and completed_at is null
+      and cancelled_at is null
+  ) then
     raise exception
-      'Student insert should affect exactly one row. inserted_rows=%',
-      inserted_rows;
+      'Student-created consultation should use database defaults';
   end if;
 
   raise notice
-    'PASS: student can create a consultation owned by their account';
+    'PASS: student can create a consultation using permitted columns';
 
+  -- Protected insert columns must not be client controlled.
+  begin
+    insert into public.consultations (
+      id,
+      student_user_id,
+      first_name,
+      last_name,
+      reason,
+      scheduled_for
+    )
+    values (
+      gen_random_uuid(),
+      student_id,
+      'Student',
+      'Protected Insert Probe',
+      'Protected ID insert should be rejected',
+      timezone('utc', now()) + interval '1 day'
+    );
+
+    raise exception
+      'Student should not be allowed to supply consultation ID';
+  exception
+    when insufficient_privilege then
+      raise notice
+        'PASS: student cannot supply protected insert columns';
+  end;
+
+  -- Immutable-after-creation fields must not be writable directly.
+  begin
+    update public.consultations
+    set reason = 'Protected reason update should be rejected'
+    where id = probe_id;
+
+    raise exception
+      'Student should not be allowed to update consultation reason';
+  exception
+    when insufficient_privilege then
+      raise notice
+        'PASS: student cannot update protected consultation columns';
+  end;
+
+  -- PostgreSQL owns completion metadata.
   update public.consultations
-  set reason = updated_reason
+  set status = 'completed'
   where id = probe_id;
 
-  get diagnostics updated_rows = row_count;
-
-  if updated_rows <> 1 then
-    raise exception
-      'Student update should affect exactly one row. updated_rows=%',
-      updated_rows;
-  end if;
-
-  select reason
-  into persisted_reason
+  select completed_at
+  into completed_time
   from public.consultations
   where id = probe_id;
 
-  if persisted_reason is distinct from updated_reason then
+  if completed_time is null then
     raise exception
-      'Student update was not persisted. expected=%, actual=%',
-      updated_reason,
-      persisted_reason;
+      'Database should set completed_at when status becomes completed';
   end if;
 
   raise notice
-    'PASS: student can update a consultation owned by their account';
+    'PASS: database records consultation completion time';
+
+  -- Other permitted updates must not regenerate completed_at.
+  update public.consultations
+  set scheduled_for = scheduled_for + interval '1 hour'
+  where id = probe_id;
+
+  select completed_at
+  into persisted_completed_time
+  from public.consultations
+  where id = probe_id;
+
+  if persisted_completed_time is distinct from completed_time then
+    raise exception
+      'Rescheduling should not rewrite completed_at';
+  end if;
+
+  raise notice
+    'PASS: unrelated updates preserve completion time';
+
+  -- Existing behaviour allows completed -> scheduled.
+  update public.consultations
+  set status = 'scheduled'
+  where id = probe_id;
+
+  if exists (
+    select 1
+    from public.consultations
+    where id = probe_id
+      and completed_at is not null
+  ) then
+    raise exception
+      'Returning a consultation to scheduled should clear completed_at';
+  end if;
+
+  raise notice
+    'PASS: returning to scheduled clears completion time';
+
+  -- PostgreSQL also owns cancellation metadata.
+  update public.consultations
+  set status = 'cancelled'
+  where id = probe_id;
+
+  select cancelled_at
+  into cancelled_time
+  from public.consultations
+  where id = probe_id;
+
+  if cancelled_time is null then
+    raise exception
+      'Database should set cancelled_at when status becomes cancelled';
+  end if;
+
+  raise notice
+    'PASS: database records consultation cancellation time';
+
+  -- Cancellation remains terminal.
+  begin
+    update public.consultations
+    set scheduled_for = scheduled_for + interval '1 hour'
+    where id = probe_id;
+
+    raise exception
+      'Cancelled consultation should not be reschedulable';
+  exception
+    when check_violation then
+      raise notice
+        'PASS: cancelled consultation cannot be updated';
+  end;
+
+  -- Use an allowed column so RLS, not the column ACL, is what blocks this.
+  update public.consultations
+  set scheduled_for = scheduled_for + interval '1 hour'
+  where id = other_consultation_id;
+
+  get diagnostics updated_rows = row_count;
+
+  if updated_rows <> 0 then
+    raise exception
+      'Student should not update another student consultation. updated_rows=%',
+      updated_rows;
+  end if;
+
+  raise notice
+    'PASS: student cannot update another student consultation';
 end
 $$;
+
+reset role;
 
 reset role;
 
@@ -347,9 +485,8 @@ begin
   end;
 
   update public.consultations
-  set reason = 'Administrator update should not succeed'
+  set scheduled_for = scheduled_for + interval '1 hour'
   where id = student_consultation_id;
-
   get diagnostics updated_rows = row_count;
 
   if updated_rows <> 0 then
