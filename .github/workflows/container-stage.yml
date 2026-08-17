@@ -3,8 +3,12 @@ name: Container Stage
 on:
   pull_request:
     types:
-      - labeled
+      - opened
+      - reopened
       - synchronize
+      - labeled
+      - unlabeled
+      - ready_for_review
   workflow_dispatch:
 
 permissions:
@@ -17,21 +21,38 @@ concurrency:
 jobs:
   container-stage:
     name: Container integration
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      contains(github.event.pull_request.labels.*.name, 'stage')
+    environment: stage
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     env:
-      SUPABASE_CLI_VERSION: '2.110.0'
+      SUPABASE_CLI_VERSION: '2.114.0'
       SUPABASE_TELEMETRY_DISABLED: '1'
 
       ACCESS_GATE_DISABLED: 'false'
-      ACCESS_GATE_CODE_SECRET: 'container-stage-code-secret-that-meets-length-requirements'
-      ACCESS_GATE_COOKIE_SECRET: 'container-stage-cookie-secret-that-meets-length-requirements'
+      ACCESS_GATE_CODE_SECRET: ${{ secrets.ACCESS_GATE_CODE_SECRET }}
+      ACCESS_GATE_COOKIE_SECRET: ${{ secrets.ACCESS_GATE_COOKIE_SECRET }}
 
     steps:
+      - name: Initialize diagnostics log
+        shell: bash
+        run: touch container-stage.log
+
+      - name: Require stage label
+        if: >
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'stage') == false
+        shell: bash
+        run: |
+          {
+            echo "Container stage did not run."
+            echo
+            echo "The pull request is missing the required 'stage' label."
+            echo "Add the 'stage' label to run the mandatory container integration suite."
+          } | tee -a container-stage.log
+
+          exit 1
+
       - name: Check out repository
         uses: actions/checkout@v7
 
@@ -42,26 +63,258 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        shell: bash
+        run: |
+          set -o pipefail
+
+          {
+            echo
+            echo "=== Install dependencies ==="
+          } | tee -a container-stage.log
+
+          npm ci 2>&1 | tee -a container-stage.log
 
       - name: Start disposable Supabase stack
-        run: npx --yes supabase@${SUPABASE_CLI_VERSION} start -x vector
+        shell: bash
+        run: |
+          set -o pipefail
 
-      - name: Reapply migrations and seed data
-        run: npx --yes supabase@${SUPABASE_CLI_VERSION} db reset
+          {
+            echo
+            echo "=== Start disposable Supabase stack ==="
+          } | tee -a container-stage.log
+
+          npx --yes supabase@${SUPABASE_CLI_VERSION} start -x vector \
+            2>&1 | tee -a container-stage.log
 
       - name: Validate database security and access gate
-        run: npm run test:db
+        shell: bash
+        run: |
+          set -o pipefail
+
+          {
+            echo
+            echo "=== Database security and access-gate tests ==="
+          } | tee -a container-stage.log
+
+          npm run test:db 2>&1 | tee -a container-stage.log
 
       - name: Build and test application container
-        run: node scripts/run-container-tests.mjs
-
-      - name: Show diagnostics after failure
-        if: failure()
+        shell: bash
         run: |
-          docker ps --all
-          npx --yes supabase@${SUPABASE_CLI_VERSION} status || true
+          set -o pipefail
+
+          {
+            echo
+            echo "=== Production container integration tests ==="
+          } | tee -a container-stage.log
+
+          node scripts/container-tests/run-container-tests.mjs \
+            2>&1 | tee -a container-stage.log
 
       - name: Stop disposable Supabase stack
         if: always()
-        run: npx --yes supabase@${SUPABASE_CLI_VERSION} stop --no-backup
+        continue-on-error: true
+        shell: bash
+        run: |
+          npx --yes supabase@${SUPABASE_CLI_VERSION} stop --no-backup
+
+      - name: Extract successful diagnostics
+        if: success()
+        shell: bash
+        run: |
+          awk '
+            /Container integration stage passed:/ {
+              capture = 1
+            }
+
+            capture {
+              print
+            }
+          ' container-stage.log > container-stage-success.txt
+
+          if [ ! -s container-stage-success.txt ]; then
+            echo "Container integration completed but no success diagnostics were found."
+            exit 1
+          fi
+
+      - name: Extract failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "Container stage failed."
+            echo
+            echo "Latest diagnostic output:"
+            echo
+            tail -n 160 container-stage.log
+          } > container-stage-failure.txt
+
+      - name: Publish successful diagnostics
+        if: success() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.PR_COMMENT_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const marker = '<!-- container-stage-success -->';
+
+            const diagnostics = fs
+              .readFileSync(
+                'container-stage-success.txt',
+                'utf8',
+              )
+              .trim();
+
+            const runUrl =
+              `${process.env.GITHUB_SERVER_URL}/` +
+              `${process.env.GITHUB_REPOSITORY}/actions/runs/` +
+              `${process.env.GITHUB_RUN_ID}`;
+
+            const shortSha =
+              process.env.GITHUB_SHA.slice(0, 7);
+
+            const body = [
+              marker,
+              '## ✅ Container stage passed',
+              '',
+              '**Most recent successful container-stage run**',
+              '',
+              `Commit: \`${shortSha}\``,
+              '',
+              '```text',
+              diagnostics,
+              '```',
+              '',
+              `[View workflow run](${runUrl})`,
+            ].join('\n');
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+
+            const existingComment = comments.find(
+              (comment) =>
+                comment.body?.includes(marker),
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body,
+              });
+
+              core.info(
+                'Updated existing success diagnostics comment.',
+              );
+
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+            core.info(
+              'Created success diagnostics comment.',
+            );
+
+      - name: Publish failure diagnostics
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.PR_COMMENT_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const marker = '<!-- container-stage-failure -->';
+
+            let diagnostics =
+              'The container stage failed before diagnostic output was available.';
+
+            if (fs.existsSync('container-stage-failure.txt')) {
+              diagnostics = fs
+                .readFileSync(
+                  'container-stage-failure.txt',
+                  'utf8',
+                )
+                .trim();
+            }
+
+            const runUrl =
+              `${process.env.GITHUB_SERVER_URL}/` +
+              `${process.env.GITHUB_REPOSITORY}/actions/runs/` +
+              `${process.env.GITHUB_RUN_ID}`;
+
+            const shortSha =
+              process.env.GITHUB_SHA.slice(0, 7);
+
+            const body = [
+              marker,
+              '## ❌ Container stage failed',
+              '',
+              '**Most recent failed container-stage run**',
+              '',
+              `Commit: \`${shortSha}\``,
+              '',
+              '```text',
+              diagnostics,
+              '```',
+              '',
+              `[View workflow run](${runUrl})`,
+            ].join('\n');
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              },
+            );
+
+            const existingComment = comments.find(
+              (comment) =>
+                comment.body?.includes(marker),
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body,
+              });
+
+              core.info(
+                'Updated existing failure diagnostics comment.',
+              );
+
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+            core.info(
+              'Created failure diagnostics comment.',
+            );
