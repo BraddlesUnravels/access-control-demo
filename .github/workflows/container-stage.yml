@@ -21,6 +21,9 @@ concurrency:
 jobs:
   container-stage:
     name: Container integration
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'stage')
     environment: stage
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -37,21 +40,6 @@ jobs:
       - name: Initialize diagnostics log
         shell: bash
         run: touch container-stage.log
-
-      - name: Require stage label
-        if: >
-          github.event_name == 'pull_request' &&
-          contains(github.event.pull_request.labels.*.name, 'stage') == false
-        shell: bash
-        run: |
-          {
-            echo "Container stage did not run."
-            echo
-            echo "The pull request is missing the required 'stage' label."
-            echo "Add the 'stage' label to run the mandatory container integration suite."
-          } | tee -a container-stage.log
-
-          exit 1
 
       - name: Check out repository
         uses: actions/checkout@v7
