@@ -113,8 +113,8 @@ export const updatePasswordAction = async (
   formData: FormData,
 ): Promise<UpdatePasswordActionState> => {
   const validation = validateWithSchema(UpdatePasswordInputSchema, {
-    password: formData.get('password'),
-    repeatPassword: formData.get('repeatPassword'),
+    password: formData.get('new-password'),
+    repeatPassword: formData.get('confirm-password'),
   });
 
   if (!validation.success)

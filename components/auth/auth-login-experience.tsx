@@ -13,11 +13,13 @@ import { LoginForm } from '@/components/ui/forms/login-form';
 import { DemoAccountsPanel } from './demo-account-panel';
 
 export const LoginExperience = () => {
-  const [selectedAccountId, setSelectedAccountId] =
-    useState<DemoAccountId | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<
+    DemoAccountId | undefined
+  >(undefined);
 
   const selectedAccount =
-    DEMO_ACCOUNTS.find((account) => account.id === selectedAccountId) ?? null;
+    DEMO_ACCOUNTS.find((account) => account.id === selectedAccountId) ??
+    undefined;
 
   const handleAccountSelect = (account: DemoAccount) => {
     setSelectedAccountId(account.id);

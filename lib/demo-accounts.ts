@@ -36,4 +36,5 @@ export const DEMO_ACCOUNTS = [
 ] as const;
 
 export type DemoAccount = (typeof DEMO_ACCOUNTS)[number];
+
 export type DemoAccountId = DemoAccount['id'];

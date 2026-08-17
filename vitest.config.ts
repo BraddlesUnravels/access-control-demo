@@ -37,6 +37,7 @@ export default defineConfig({
             'clsx',
             'lucide-react',
             'tailwind-merge',
+            '@radix-ui/react-label',
           ],
         },
 

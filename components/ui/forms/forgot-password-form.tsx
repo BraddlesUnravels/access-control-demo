@@ -66,7 +66,7 @@ export function ForgotPasswordForm({
                     placeholder="example@lms.com"
                     required
                     aria-invalid={state.error ? true : undefined}
-                    aira-describedby={state.error ? 'reset-error' : undefined}
+                    aria-describedby={state.error ?? undefined}
                   />
                 </FormField>
                 {state.error && (
