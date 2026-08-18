@@ -1,5 +1,10 @@
 import { execSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
+import {
+  STUDENT1_PASSWORD,
+  STUDENT2_PASSWORD,
+  ADMIN_PASSWORD,
+} from '../src/lib/constants';
 
 const stripOuterQuotes = (value) => {
   if (!value) return value;
@@ -60,9 +65,7 @@ const main = () => {
     'ACCESS_GATE_DISABLED=false',
     'ACCESS_GATE_CODE_SECRET=local-access-gate-secret-that-meets-length-requirements',
     'ACCESS_GATE_COOKIE_SECRET=replace-with-safe-secret-that-meets-length-requirements',
-    '',
-    '# SMPT Email',
-    'EMAIL_PASSWORD=replace-with-email-serve-key',
+    ' ',
   ]
     .filter(Boolean)
     .join('\n');
@@ -78,15 +81,15 @@ const main = () => {
       '',
       'Student login:',
       '  Email: student1@lms.com',
-      '  Password: password123',
+      `  Password: ${STUDENT1_PASSWORD}`,
       '',
       'Student login:',
       '  Email: student2@lms.com',
-      '  Password: password123',
+      `  Password: ${STUDENT2_PASSWORD}`,
       '',
       'Admin login:',
       '  Email: admin@lms.com',
-      '  Password: password123',
+      `  Password: ${ADMIN_PASSWORD}`,
       '',
       '============================================================',
     ].join('\n'),
