@@ -15,6 +15,10 @@ import { Input, PasswordInput } from '@/components/ui/input';
 import { FormField } from '../form-field';
 import Link from 'next/link';
 import { Typography } from '../typography';
+import {
+  NEW_PASSWORD_MAX_LENGTH,
+  NEW_PASSWORD_MIN_LENGTH,
+} from '@/lib/validation/limits';
 
 export function SignUpForm({
   className,
@@ -27,7 +31,10 @@ export function SignUpForm({
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+          <CardDescription>
+            Create a new account with a {NEW_PASSWORD_MIN_LENGTH}–
+            {NEW_PASSWORD_MAX_LENGTH} character password.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={formAction}>

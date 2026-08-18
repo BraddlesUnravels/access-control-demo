@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 
 const SQL_PATHS = [
   'supabase/tests/rls_checks.sql',
+  'supabase/tests/validation_checks.sql',
   'supabase/tests/access_gate_checks.sql',
 ];
 

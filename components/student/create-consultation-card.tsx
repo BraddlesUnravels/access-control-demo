@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import { CalendarPlus } from 'lucide-react';
-
+import {
+  CONSULTATION_NAME_MAX_LENGTH,
+  CONSULTATION_REASON_MAX_LENGTH,
+} from '@/lib/validation/limits';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -84,6 +87,7 @@ export const CreateConsultationCard = ({
                 }))
               }
               required
+              maxLength={CONSULTATION_NAME_MAX_LENGTH}
             />
           </div>
 
@@ -100,6 +104,7 @@ export const CreateConsultationCard = ({
                 }))
               }
               required
+              maxLength={CONSULTATION_NAME_MAX_LENGTH}
             />
           </div>
 
@@ -116,6 +121,7 @@ export const CreateConsultationCard = ({
                 }))
               }
               required
+              maxLength={CONSULTATION_REASON_MAX_LENGTH}
             />
           </div>
 

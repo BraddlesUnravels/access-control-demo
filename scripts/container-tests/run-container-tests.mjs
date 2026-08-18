@@ -19,6 +19,11 @@ import {
   getSupabaseAuthCookieName,
   getSupabaseEnvironment,
 } from './supabase.mjs';
+import {
+  STUDENT_1_DEMO_PASSWORD,
+  STUDENT_2_DEMO_PASSWORD,
+  ADMIN_DEMO_PASSWORD,
+} from '../../lib/demo-accounts.ts';
 
 const imageName = process.env.CONTAINER_IMAGE ?? 'access-control-demo:stage';
 const containerName = process.env.CONTAINER_NAME ?? 'access-control-demo-stage';
@@ -40,17 +45,17 @@ const MINIMUM_SECRET_LENGTH = 32;
 const DEMO_ACCOUNTS = {
   student1: {
     email: 'student1@lms.com',
-    password: 'ReviewStudent**1',
+    password: STUDENT_1_DEMO_PASSWORD,
   },
 
   student2: {
     email: 'student2@lms.com',
-    password: 'ReviewStudent**2',
+    password: STUDENT_2_DEMO_PASSWORD,
   },
 
   admin: {
     email: 'admin@lms.com',
-    password: 'ReviewAdmin**0',
+    password: ADMIN_DEMO_PASSWORD,
   },
 };
 

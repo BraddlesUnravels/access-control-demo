@@ -11,7 +11,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { PasswordInput } from '@/components/ui/input';
-
+import {
+  NEW_PASSWORD_MAX_LENGTH,
+  NEW_PASSWORD_MIN_LENGTH,
+} from '@/lib/validation/limits';
 import { FormField } from '@/components/ui/form-field';
 import { Typography } from '@/components/ui/typography';
 
@@ -28,7 +31,8 @@ export function UpdatePasswordForm({
           <CardTitle className="text-2xl">Reset Your Password</CardTitle>
 
           <CardDescription>
-            Please enter your new password below.
+            Choose a new password between {NEW_PASSWORD_MIN_LENGTH} and{' '}
+            {NEW_PASSWORD_MAX_LENGTH} characters.
           </CardDescription>
         </CardHeader>
 
@@ -46,6 +50,8 @@ export function UpdatePasswordForm({
                 name="new-password"
                 autoComplete="new-password"
                 required
+                minLength={NEW_PASSWORD_MIN_LENGTH}
+                maxLength={NEW_PASSWORD_MAX_LENGTH}
                 aria-invalid={Boolean(state.error)}
                 aria-describedby={
                   state.error ? 'update-password-error' : undefined
@@ -65,6 +71,8 @@ export function UpdatePasswordForm({
                 id="confirm-password"
                 name="confirm-password"
                 autoComplete="new-password"
+                minLength={NEW_PASSWORD_MIN_LENGTH}
+                maxLength={NEW_PASSWORD_MAX_LENGTH}
                 required
                 aria-invalid={Boolean(state.error)}
                 aria-describedby={

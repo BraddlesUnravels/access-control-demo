@@ -154,11 +154,11 @@ For full local setup and environment configuration, see [Development](docs/devel
 
 The local seed data creates:
 
-| Role          | Email              | Password           |
-| ------------- | ------------------ | ------------------ |
-| Student       | `student1@lms.com` | `ReviewStudent**1` |
-| Student       | `student2@lms.com` | `ReviewStudent**2` |
-| Administrator | `admin@lms.com`    | `ReviewAdmin**0`   |
+| Role          | Email              | Password            |
+| ------------- | ------------------ | ------------------- |
+| Student       | `student1@lms.com` | `ReviewStudent**01` |
+| Student       | `student2@lms.com` | `ReviewStudent**02` |
+| Administrator | `admin@lms.com`    | `ReviewAdmin**00`   |
 
 These credentials are intended only for the demonstration environment.
 

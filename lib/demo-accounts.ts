@@ -1,6 +1,6 @@
-export const STUDENT_1_DEMO_PASSWORD = 'ReviewStudent**1';
-export const STUDENT_2_DEMO_PASSWORD = 'ReviewStudent**2';
-export const ADMIN_DEMO_PASSWORD = 'ReviewAdmin**0';
+export const STUDENT_1_DEMO_PASSWORD = 'ReviewStudent**01';
+export const STUDENT_2_DEMO_PASSWORD = 'ReviewStudent**02';
+export const ADMIN_DEMO_PASSWORD = 'ReviewAdmin**00';
 
 export const DEMO_ACCOUNTS = [
   {

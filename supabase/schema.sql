@@ -55,7 +55,17 @@ create table public.consultations (
     check (char_length(trim(last_name)) > 0),
 
   constraint consultations_reason_not_blank
-    check (char_length(trim(reason)) > 0)
+    check (char_length(trim(reason)) > 0),
+
+  constraint consultations_first_name_max_length
+    check (char_length(first_name) <= 100),
+
+  constraint consultations_last_name_max_length
+    check (char_length(last_name) <= 100),
+
+  constraint consultations_reason_max_length
+    check (char_length(reason) <= 2000)
+);
 );
 
 create index consultations_student_user_id_idx

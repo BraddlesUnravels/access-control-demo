@@ -144,6 +144,20 @@ The health route bypasses visitor access and LMS authentication.
 
 Health checks therefore do not depend on a user session.
 
+# Supabase Auth password policy
+
+Password creation and authentication intentionally use different application validation rules:
+
+- sign-up and password updates accept passwords between 15 and 64 characters;
+- passwords may contain any supported characters and do not require a prescribed mix of uppercase letters, lowercase letters, numbers, or symbols;
+- sign-in requires only a non-empty password so the application does not pre-reject a credential before Supabase Auth evaluates it.
+
+Local Supabase Auth mirrors the 15-character minimum through `supabase/config.toml`.
+
+The hosted Supabase project's Auth password settings must also use a minimum password length of 15 and must not add character-composition requirements. This keeps direct Supabase Auth requests aligned with the application's password-creation boundary.
+
+The 64-character maximum is enforced by the application when creating or changing passwords.
+
 # Production workflows
 
 The repository contains GitHub Actions workflows for:
