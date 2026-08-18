@@ -48,8 +48,6 @@ jobs:
       ACCESS_GATE_CODE_SECRET: ${{ secrets.ACCESS_GATE_CODE_SECRET }}
       ACCESS_GATE_COOKIE_SECRET: ${{ secrets.ACCESS_GATE_COOKIE_SECRET }}
 
-      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -73,7 +71,6 @@ jobs:
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
             ACCESS_GATE_CODE_SECRET
             ACCESS_GATE_COOKIE_SECRET
-            EMAIL_PASSWORD
           )
 
           for value_name in "${required_values[@]}"; do
