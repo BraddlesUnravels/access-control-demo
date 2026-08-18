@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { GET, POST } from '@/app/api/consultations/route';
+import { AppError } from '@/lib/errors';
 import { requireAuthContext } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
 import { buildConsultation } from '@/test/fixtures/consultation';
@@ -178,7 +178,10 @@ describe('app/api/consultations', () => {
 
     it('should return 401 for an unauthenticated request', async () => {
       vi.mocked(requireAuthContext).mockRejectedValue(
-        new Error('Unauthenticated'),
+        new AppError('Authentication required', {
+          status: 401,
+          safeMessage: 'Unauthorized',
+        }),
       );
 
       const response = await GET(buildGetRequest(), EMPTY_CONTEXT);
@@ -339,7 +342,10 @@ describe('app/api/consultations', () => {
 
     it('should return 401 for an unauthenticated request', async () => {
       vi.mocked(requireAuthContext).mockRejectedValue(
-        new Error('Unauthenticated'),
+        new AppError('Authentication required', {
+          status: 401,
+          safeMessage: 'Unauthorized',
+        }),
       );
 
       const response = await POST(

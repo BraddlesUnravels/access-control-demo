@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { isAppError } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 
-const UNAUTHENTICATED_ERROR = 'Unauthenticated';
 type RouteContext = { params: Promise<Record<string, string>> };
 
 export function withApiHandler<TContext = RouteContext>(
@@ -18,12 +17,6 @@ export function withApiHandler<TContext = RouteContext>(
       };
 
       // 1. Handle Unauthenticated
-      if (error instanceof Error && error.message === UNAUTHENTICATED_ERROR) {
-        logger.warn({ err: error, ...requestMeta }, 'Unauthorized request');
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-
-      // 2. Handle Known Application Errors
       if (isAppError(error)) {
         logger.warn(
           {
@@ -34,17 +27,19 @@ export function withApiHandler<TContext = RouteContext>(
           },
           'Handled application error',
         );
+
         return NextResponse.json(
           { error: error.safeMessage },
           { status: error.status },
         );
       }
 
-      // 3. Handle Unexpected Errors
+      // 2. Handle Unexpected Errors
       logger.error(
         { err: error, ...requestMeta },
         'Unhandled error at API boundary',
       );
+
       return NextResponse.json(
         { error: 'Internal server error' },
         { status: 500 },
