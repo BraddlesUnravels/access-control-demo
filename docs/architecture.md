@@ -470,7 +470,9 @@ LMS authorization is enforced both by Next.js and PostgreSQL RLS.
 The duplication is intentional:
 
 - Route Handlers provide explicit application-level responses.
-- Database policies protect data if the application layer is bypassed or incorrectly configured.
+- RLS protects row ownership if the application layer is bypassed or incorrectly configured.
+- column-level privileges restrict authenticated clients to the mutation fields exposed by the application.
+- database triggers own consultation lifecycle timestamps and enforce terminal cancellation.
 
 ## Read-only administrator role
 
