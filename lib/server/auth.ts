@@ -41,7 +41,10 @@ export const requireAuthContext = async (
 
   if (error || !data.user) {
     if (redirectOnUnauthenticated) redirect('/auth/login');
-    throw new Error('Unauthenticated');
+    throw new AppError('Authentication required', {
+      status: 401,
+      safeMessage: 'Unauthorized',
+    });
   }
 
   const { data: profile, error: profileError } = await supabase
@@ -50,8 +53,22 @@ export const requireAuthContext = async (
     .eq('id', data.user.id)
     .maybeSingle();
 
-  if (profileError) throw new Error('Failed to load user profile');
-  if (!profile) throw new Error('User profile was not found');
+  if (profileError)
+    throw new AppError('Failed to load user profile', {
+      status: 500,
+      safeMessage: 'Internal server error',
+      meta: {
+        userId: data.user.id,
+        code: profileError.code,
+      },
+    });
+
+  if (!profile)
+    throw new AppError('User profile was not found', {
+      status: 500,
+      safeMessage: 'Internal server error',
+      meta: { userId: data.user.id },
+    });
 
   return {
     userId: data.user.id,

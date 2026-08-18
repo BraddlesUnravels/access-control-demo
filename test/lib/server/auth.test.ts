@@ -58,13 +58,24 @@ describe('lib/server/auth', () => {
     expect(authContext).toEqual({ role: 'admin', userId: 'user-1' });
   });
 
-  it('should throw unauthenticated error when user is missing and redirect is disabled', async () => {
+  it('should throw a 401 AppError when user is missing and redirect is disabled', async () => {
     const { getUser } = setupserverRequestClientMock();
     getUser.mockResolvedValue({ data: { user: null }, error: null });
 
-    await expect(
-      requireAuthContext({ redirectOnUnauthenticated: false }),
-    ).rejects.toThrow('Unauthenticated');
+    let thrownError: unknown;
+
+    try {
+      await requireAuthContext({ redirectOnUnauthenticated: false });
+    } catch (error) {
+      thrownError = error;
+    }
+
+    expect(thrownError).toBeInstanceOf(AppError);
+    expect(thrownError).toMatchObject({
+      message: 'Authentication required',
+      status: 401,
+      safeMessage: 'Unauthorized',
+    });
     expect(vi.mocked(redirect)).not.toHaveBeenCalled();
   });
 
@@ -72,11 +83,42 @@ describe('lib/server/auth', () => {
     const { getUser } = setupserverRequestClientMock();
     getUser.mockResolvedValue({ data: { user: null }, error: null });
 
-    await expect(requireAuthContext()).rejects.toThrow('Unauthenticated');
+    await expect(requireAuthContext()).rejects.toMatchObject({
+      status: 401,
+      safeMessage: 'Unauthorized',
+    });
+
     expect(vi.mocked(redirect)).toHaveBeenCalledWith('/auth/login');
   });
 
-  it('should throw when profile row is missing', async () => {
+  it('should throw a structured error when profile lookup fails', async () => {
+    const { getUser, maybeSingle } = setupserverRequestClientMock();
+    getUser.mockResolvedValue({
+      data: { user: { id: 'user-2' } },
+      error: null,
+    });
+    maybeSingle.mockResolvedValue({
+      data: null,
+      error: {
+        code: 'PGRST500',
+        message: 'Database unavailable',
+      },
+    });
+
+    await expect(
+      requireAuthContext({ redirectOnUnauthenticated: false }),
+    ).rejects.toMatchObject({
+      message: 'Failed to load user profile',
+      status: 500,
+      safeMessage: 'Internal server error',
+      meta: {
+        userId: 'user-2',
+        code: 'PGRST500',
+      },
+    });
+  });
+
+  it('should throw a structured error when profile row is missing', async () => {
     const { getUser, maybeSingle } = setupserverRequestClientMock();
     getUser.mockResolvedValue({
       data: { user: { id: 'user-2' } },
@@ -86,7 +128,14 @@ describe('lib/server/auth', () => {
 
     await expect(
       requireAuthContext({ redirectOnUnauthenticated: false }),
-    ).rejects.toThrow('User profile was not found');
+    ).rejects.toMatchObject({
+      message: 'User profile was not found',
+      status: 500,
+      safeMessage: 'Internal server error',
+      meta: {
+        userId: 'user-2',
+      },
+    });
   });
 });
 
