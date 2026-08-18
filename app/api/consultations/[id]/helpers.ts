@@ -9,10 +9,8 @@ import type {
 
 type ConsultationUpdatePatch = Pick<
   TablesUpdate<'consultations'>,
-  'scheduled_for' | 'completed_at'
-> & {
-  status?: NonNullable<ConsultationUpdateInput['status']>;
-};
+  'scheduled_for' | 'status'
+>;
 
 export const parseRequestJson = async (request: Request): Promise<unknown> => {
   try {
@@ -85,10 +83,7 @@ export const buildConsultationUpdatePatch = (
 
   if (scheduledFor) patch.scheduled_for = scheduledFor;
 
-  if (!status) return patch;
-
-  patch.status = status;
-  patch.completed_at = status === 'completed' ? new Date().toISOString() : null;
+  if (status) patch.status = status;
 
   return patch;
 };

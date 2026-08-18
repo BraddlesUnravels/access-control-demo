@@ -99,7 +99,6 @@ export const DELETE = withApiHandler(
       .from('consultations')
       .update({
         status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
       })
       .eq('id', id)
       .eq('student_user_id', userId)

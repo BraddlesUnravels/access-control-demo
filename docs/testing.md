@@ -121,6 +121,8 @@ The database suite verifies:
 - administrator read access;
 - mutation restrictions;
 - table privileges;
+- table and column privileges;
+- database-managed consultation lifecycle timestamps;
 - RPC execution privileges;
 - invite-state constraints;
 - invalid redemption;

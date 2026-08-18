@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DELETE, PATCH } from '@/app/api/consultations/[id]/route';
 import { requireAuthContext } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
@@ -82,10 +82,6 @@ describe('app/api/consultations/[id]', () => {
     vi.mocked(requireAuthContext).mockResolvedValue(STUDENT_AUTH);
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   describe('PATCH', () => {
     it('should return validation errors before querying Supabase', async () => {
       const response = await PATCH(
@@ -142,11 +138,8 @@ describe('app/api/consultations/[id]', () => {
       ['completed', '2026-08-12T01:23:45.000Z'],
       ['scheduled', null],
     ] as const)(
-      'should update status to %s with the expected completed_at value',
+      'should update status to %s without writing lifecycle timestamps in the API',
       async (status, completedAt) => {
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-08-12T01:23:45.000Z'));
-
         const { update, updateIdEq, updateStudentEq } = setupSupabaseMock({
           existing: buildConsultation({
             status: status === 'scheduled' ? 'completed' : 'scheduled',
@@ -160,10 +153,7 @@ describe('app/api/consultations/[id]', () => {
         );
 
         expect(response.status).toBe(200);
-        expect(update).toHaveBeenCalledWith({
-          status,
-          completed_at: completedAt,
-        });
+        expect(update).toHaveBeenCalledWith({ status });
         expect(updateIdEq).toHaveBeenCalledWith('id', 'consultation-1');
         expect(updateStudentEq).toHaveBeenCalledWith(
           'student_user_id',
@@ -214,13 +204,9 @@ describe('app/api/consultations/[id]', () => {
       expect(update).not.toHaveBeenCalled();
     });
 
-    it('should cancel an owned consultation and records the cancellation time', async () => {
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date('2026-08-12T02:34:56.000Z'));
-
+    it('should cancel an owned consultation without writing lifecycle timestamps in the API', async () => {
       const cancelled = buildConsultation({
         status: 'cancelled',
-        cancelled_at: '2026-08-12T02:34:56.000Z',
       });
       const { update, updateIdEq, updateStudentEq } = setupSupabaseMock({
         updated: cancelled,
@@ -230,10 +216,7 @@ describe('app/api/consultations/[id]', () => {
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ data: cancelled });
-      expect(update).toHaveBeenCalledWith({
-        status: 'cancelled',
-        cancelled_at: '2026-08-12T02:34:56.000Z',
-      });
+      expect(update).toHaveBeenCalledWith({ status: 'cancelled' });
       expect(updateIdEq).toHaveBeenCalledWith('id', 'consultation-1');
       expect(updateStudentEq).toHaveBeenCalledWith(
         'student_user_id',
