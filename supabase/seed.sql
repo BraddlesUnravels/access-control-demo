@@ -1,14 +1,14 @@
 -- Local development seed data only.
 -- Test credentials:
--- - student1@lms.com / ReviewStudent**1
--- - student2@lms.com / ReviewStudent**2
--- - admin@lms.com / ReviewAdmin**0
+-- - student1@lms.com / ReviewStudent**01
+-- - student2@lms.com / ReviewStudent**02
+-- - admin@lms.com / ReviewAdmin**00
 
 do $$
 declare 
-  student1_passowrd text := 'ReviewStudent**1';
-  student2_passowrd text := 'ReviewStudent**2';
-  admin_passowrd text := 'ReviewAdmin**0';
+  student1_passowrd text := 'ReviewStudent**01';
+  student2_passowrd text := 'ReviewStudent**02';
+  admin_passowrd text := 'ReviewAdmin**00';
 
 begin
   if not exists (

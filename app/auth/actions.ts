@@ -158,7 +158,7 @@ export async function signUpAction(
   const validation = validateWithSchema(SignUpInputSchema, {
     email: formData.get('email'),
     password: formData.get('password'),
-    repeatPassword: formData.get('repeatPassword'),
+    repeatPassword: formData.get('repeat-password'),
   });
 
   if (!validation.success) {
