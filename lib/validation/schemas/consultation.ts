@@ -1,10 +1,22 @@
 import * as v from 'valibot';
+import {
+  CONSULTATION_NAME_MAX_LENGTH,
+  CONSULTATION_REASON_MAX_LENGTH,
+} from '@/lib/validation/limits';
 import { Constants } from '@/lib/supabase/database.types';
 
 const DATE_ERROR_MESSAGE = 'Scheduled time must be a valid date';
 
-const requiredText = (errorMessage: string) =>
-  v.pipe(v.string(), v.trim(), v.nonEmpty(errorMessage));
+const requiredText = (label: string, maxLength: number) =>
+  v.pipe(
+    v.string(),
+    v.trim(),
+    v.nonEmpty(`${label} is required`),
+    v.maxLength(
+      maxLength,
+      `${label} must be no more than ${maxLength} characters long`,
+    ),
+  );
 
 const scheduledForSchema = v.pipe(
   v.string(),
@@ -16,12 +28,11 @@ export const consultationStatusSchema = v.picklist([
 ]);
 
 export const consultationCreateInputSchema = v.object({
-  firstName: requiredText('First name is required'),
-  lastName: requiredText('Last name is required'),
-  reason: requiredText('Reason is required'),
+  firstName: requiredText('First name', CONSULTATION_NAME_MAX_LENGTH),
+  lastName: requiredText('Last name', CONSULTATION_NAME_MAX_LENGTH),
+  reason: requiredText('Reason', CONSULTATION_REASON_MAX_LENGTH),
   scheduledFor: scheduledForSchema,
 });
-
 export const consultationUpdateInputSchema = v.pipe(
   v.object({
     scheduledFor: v.optional(scheduledForSchema),

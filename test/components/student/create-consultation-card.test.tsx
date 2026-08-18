@@ -1,5 +1,9 @@
 import { expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
+import {
+  CONSULTATION_NAME_MAX_LENGTH,
+  CONSULTATION_REASON_MAX_LENGTH,
+} from '@/lib/validation/limits';
 // Component to test
 import { CreateConsultationCard } from '@/components/student/create-consultation-card';
 
@@ -115,4 +119,22 @@ test('disables the submit button while creation is in progress', async () => {
       }),
     )
     .toBeEnabled();
+});
+
+test('exposes consultation text limits to browser inputs', async () => {
+  const screen = await render(
+    <CreateConsultationCard onCreateConsultation={vi.fn()} />,
+  );
+
+  await expect
+    .element(screen.getByLabelText('First name'))
+    .toHaveAttribute('maxlength', String(CONSULTATION_NAME_MAX_LENGTH));
+
+  await expect
+    .element(screen.getByLabelText('Last name'))
+    .toHaveAttribute('maxlength', String(CONSULTATION_NAME_MAX_LENGTH));
+
+  await expect
+    .element(screen.getByLabelText('Reason'))
+    .toHaveAttribute('maxlength', String(CONSULTATION_REASON_MAX_LENGTH));
 });
