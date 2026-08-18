@@ -249,14 +249,14 @@ otp_length = 6
 otp_expiry = 3600
 
 # Use a production-ready SMTP server
-[auth.email.smtp]
-enabled = true
-host = "smtp.gmail.com"
-port = 587
-user = "bradley.laskey1990@gmail.com"
-pass = "env(EMAIL_PASSWORD)"
-admin_email = "bradley.laskey1990@gmail.com"
-sender_name = "Bradley"
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.gmail.com"
+# port = 587
+# user = "bradley.laskey1990@gmail.com"
+# pass = "env(EMAIL_PASSWORD)"
+# admin_email = "bradley.laskey1990@gmail.com"
+# sender_name = "Bradley"
 
 [auth.email.template.confirmation]
 subject = "Confirm your email address"
