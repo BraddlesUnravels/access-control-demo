@@ -63,7 +63,7 @@ const buildSignUpFormData = (
 
   formData.set('email', email);
   formData.set('password', password);
-  formData.set('repeatPassword', repeatPassword);
+  formData.set('repeat-password', repeatPassword);
 
   return formData;
 };
