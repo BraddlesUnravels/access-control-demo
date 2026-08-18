@@ -4,35 +4,32 @@ import { render } from 'vitest-browser-react';
 import { PasswordInput } from '@/components/ui/input';
 
 test('should toggle password visibility', async () => {
-  const screen = await render(
-    <>
-      <label htmlFor="password">Password</label>
-      <PasswordInput id="password" />
-    </>,
-  );
+  const screen = await render(<PasswordInput id="password" />);
 
-  const password = screen.getByLabelText('Password', {
+  const passwordInput = screen.getByLabelText('Password input field', {
     exact: true,
   });
 
   const showPasswordButton = screen.getByRole('button', {
     name: 'Show password',
+    exact: true,
   });
 
-  await expect.element(password).toHaveAttribute('type', 'password');
+  await expect.element(passwordInput).toHaveAttribute('type', 'password');
   await expect.element(showPasswordButton).toBeInTheDocument();
 
   await showPasswordButton.click();
 
-  await expect.element(password).toHaveAttribute('type', 'text');
+  await expect.element(passwordInput).toHaveAttribute('type', 'text');
 
   const hidePasswordButton = screen.getByRole('button', {
     name: 'Hide password',
+    exact: true,
   });
 
   await expect.element(hidePasswordButton).toBeInTheDocument();
 
   await hidePasswordButton.click();
 
-  await expect.element(password).toHaveAttribute('type', 'password');
+  await expect.element(passwordInput).toHaveAttribute('type', 'password');
 });

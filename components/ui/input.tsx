@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 
 type InputProps = React.ComponentProps<'input'> & {
   endIcon?: React.ReactNode;
+  'show-button-tab-index'?: number;
 };
 
 const inputStyles = [
@@ -50,6 +51,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="relative">
         <input
+          aria-label="Password input field"
           type={hidden ? 'password' : 'text'}
           className={cn(inputStyles, className)}
           ref={ref}
@@ -57,9 +59,12 @@ const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
         />
 
         <button
+          id="show-password-button"
+          name="show-password-button"
+          tabIndex={props['show-button-tab-index']}
           type="button"
           className="absolute inset-y-0 right-3 flex items-center text-zinc-500 transition-colors hover:cursor-pointer hover:text-zinc-400"
-          onClick={() => setHidden((previous) => !previous)}
+          onClick={() => setHidden(!hidden)}
           aria-label={hidden ? 'Show password' : 'Hide password'}
         >
           {hidden ? (
