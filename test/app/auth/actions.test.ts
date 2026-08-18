@@ -104,22 +104,27 @@ describe('app/auth/actions', () => {
       expect(redirect).toHaveBeenCalledWith('/protected');
     });
 
-    it('returns the Supabase authentication error without redirecting', async () => {
+    it('passes legacy-format passwords through to Supabase authentication', async () => {
       const { signInWithPassword } = setupServerActionClientMock();
 
       signInWithPassword.mockResolvedValue({
         error: {
-          message: 'Password must contain at least one uppercase letter',
+          message: 'Invalid login credentials',
         },
       });
 
       const result = await signInAction(
         {},
-        buildLoginFormData('student@example.com', 'wrong-password'),
+        buildLoginFormData('student@example.com', 'legacy'),
       );
 
+      expect(signInWithPassword).toHaveBeenCalledWith({
+        email: 'student@example.com',
+        password: 'legacy',
+      });
+
       expect(result).toEqual({
-        error: 'Password must contain at least one uppercase letter',
+        error: 'Invalid login credentials',
       });
 
       expect(redirect).not.toHaveBeenCalled();
