@@ -40,6 +40,7 @@ export function LoginForm({
           id="email"
           name="email"
           type="email"
+          tabIndex={1}
           placeholder="example@lms.com"
           autoComplete="email"
           required
@@ -59,7 +60,7 @@ export function LoginForm({
         labelClassName="font-semibold uppercase tracking-[0.08em] text-zinc-400"
         action={
           <Link
-            tabIndex={-1}
+            tabIndex={5}
             href="/auth/forgot-password"
             className="text-sm font-medium text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition-colors hover:text-cyan-200 hover:decoration-cyan-300/50"
           >
@@ -70,6 +71,8 @@ export function LoginForm({
         <PasswordInput
           id="password"
           name="password"
+          tabIndex={2}
+          show-button-tab-index={3}
           autoComplete="current-password"
           required
           value={password}
@@ -87,6 +90,7 @@ export function LoginForm({
         loadingLabel="Signing in..."
         size="lg"
         className="w-full"
+        tabIndex={4}
       >
         <LogIn aria-hidden="true" />
         Sign in
@@ -113,6 +117,7 @@ export function LoginForm({
       >
         Don&apos;t have an account?{' '}
         <Link
+          tabIndex={6}
           href="/auth/sign-up"
           className="font-medium text-zinc-400 underline decoration-zinc-700 underline-offset-4 transition-colors hover:text-cyan-200 hover:decoration-cyan-300/50"
         >
