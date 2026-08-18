@@ -5,6 +5,11 @@
 -- - admin@lms.com / ReviewAdmin**0
 
 do $$
+declare 
+  student1_passowrd text := 'ReviewStudent**1';
+  student2_passowrd text := 'ReviewStudent**2';
+  admin_passowrd text := 'ReviewAdmin**0';
+
 begin
   if not exists (
     select 1
@@ -31,7 +36,7 @@ begin
       'authenticated',
       'authenticated',
       'student1@lms.com',
-      extensions.crypt('ReviewStudent**1', extensions.gen_salt('bf')),
+      extensions.crypt(student1_passowrd, extensions.gen_salt('bf')),
       '',
       now(),
       '{"provider":"email","providers":["email"]}',
@@ -66,7 +71,7 @@ begin
       'authenticated',
       'authenticated',
       'student2@lms.com',
-      extensions.crypt('ReviewStudent**2', extensions.gen_salt('bf')),
+      extensions.crypt(student2_passowrd, extensions.gen_salt('bf')),
       '',
       now(),
       '{"provider":"email","providers":["email"]}',
@@ -101,7 +106,7 @@ begin
       'authenticated',
       'authenticated',
       'admin@lms.com',
-      extensions.crypt('ReviewAdmin**0', extensions.gen_salt('bf')),
+      extensions.crypt(admin_passowrd, extensions.gen_salt('bf')),
       '',
       now(),
       '{"provider":"email","providers":["email"]}',
