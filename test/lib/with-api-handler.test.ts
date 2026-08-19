@@ -15,8 +15,8 @@ const ROUTE_CONTEXT = {
   params: Promise.resolve({}),
 };
 
-const buildRequest = () =>
-  new Request('http://localhost/api/test', {
+const buildRequest = (url = 'http://localhost/api/test') =>
+  new Request(url, {
     method: 'GET',
   });
 
@@ -48,7 +48,7 @@ describe('withApiHandler', () => {
         err: error,
         status: 401,
         method: 'GET',
-        url: 'http://localhost/api/test',
+        path: '/api/test',
       }),
       'Handled application error',
     );
@@ -63,7 +63,10 @@ describe('withApiHandler', () => {
       throw error;
     });
 
-    const response = await handler(buildRequest(), ROUTE_CONTEXT);
+    const response = await handler(
+      buildRequest('http://localhost/api/test?token=secret-value'),
+      ROUTE_CONTEXT,
+    );
 
     expect(response.status).toBe(500);
 
@@ -72,11 +75,11 @@ describe('withApiHandler', () => {
     });
 
     expect(logger.error).toHaveBeenCalledWith(
-      expect.objectContaining({
+      {
         err: error,
         method: 'GET',
-        url: 'http://localhost/api/test',
-      }),
+        path: '/api/test',
+      },
       'Unhandled error at API boundary',
     );
 

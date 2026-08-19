@@ -1,4 +1,7 @@
 import pino from 'pino';
+import { isAzureEnv } from './utils';
+
+const usePrettyLogs = !isAzureEnv() && process.stdout.isTTY === true;
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
@@ -15,7 +18,7 @@ export const logger = pino({
     ],
     censor: '[Redacted]',
   },
-  ...(process.stdout.isTTY === true
+  ...(usePrettyLogs
     ? {
         transport: {
           target: 'pino-pretty',

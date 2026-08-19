@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${GITHUB_ACTIONS:-}" == 'true' ]]; then
+  echo 'This bootstrap script must be run from a trusted operator workstation, not GitHub Actions.' >&2
+  exit 1
+fi
+
 required_variables=(
   AZURE_SUBSCRIPTION_ID
   AZURE_RESOURCE_GROUP
+  AZURE_KEY_VAULT
   REPOSITORY_SLUG
 )
 
@@ -14,34 +20,74 @@ for variable_name in "${required_variables[@]}"; do
   fi
 done
 
+if [[ "${REPOSITORY_SLUG}" != */* ]]; then
+  echo 'REPOSITORY_SLUG must use the owner/repository format.' >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(
+  cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1
+  pwd
+)"
+
 REPOSITORY_OWNER="${REPOSITORY_SLUG%%/*}"
-REPOSITORY_OWNER_ID="${103235805}"
-REPOSITORY_ID="${1298659298}"
-REPOSITORY_NAME="access-control-demo"
+REPOSITORY_NAME="${REPOSITORY_SLUG##*/}"
+
+# Immutable GitHub repository identifiers. These remain stable if the
+# repository or owner is renamed.
+REPOSITORY_OWNER_ID="${REPOSITORY_OWNER_ID:-103235805}"
+REPOSITORY_ID="${REPOSITORY_ID:-1298659298}"
 
 AZURE_LOCATION="${AZURE_LOCATION:-australiaeast}"
 AZURE_IDENTITY_NAME="${AZURE_IDENTITY_NAME:-github-access-control-demo-production}"
+AZURE_SECRET_READER_IDENTITY="${AZURE_SECRET_READER_IDENTITY:-id-access-control-demo-secrets}"
 DEPLOYMENT_ENVIRONMENT="${DEPLOYMENT_ENVIRONMENT:-production}"
 
 FEDERATED_CREDENTIAL_NAME="github-${DEPLOYMENT_ENVIRONMENT}"
-OIDC_ISSUER="https://token.actions.githubusercontent.com"
-OIDC_AUDIENCE="api://AzureADTokenExchange"
+OIDC_ISSUER='https://token.actions.githubusercontent.com'
+OIDC_AUDIENCE='api://AzureADTokenExchange'
+
 OIDC_SUBJECT="repo:${REPOSITORY_OWNER}@${REPOSITORY_OWNER_ID}/${REPOSITORY_NAME}@${REPOSITORY_ID}:environment:${DEPLOYMENT_ENVIRONMENT}"
 
 az account set \
   --subscription "${AZURE_SUBSCRIPTION_ID}"
 
-az provider register \
-  --namespace Microsoft.App \
-  --wait
-
-az provider register \
-  --namespace Microsoft.ManagedIdentity \
-  --wait
+for provider_namespace in \
+  Microsoft.App \
+  Microsoft.Insights \
+  Microsoft.KeyVault \
+  Microsoft.ManagedIdentity \
+  Microsoft.OperationalInsights; do
+  az provider register \
+    --namespace "${provider_namespace}" \
+    --wait
+done
 
 az group create \
   --name "${AZURE_RESOURCE_GROUP}" \
   --location "${AZURE_LOCATION}" \
+  --output none
+
+operator_principal_id="$(
+  az ad signed-in-user show \
+    --query id \
+    --output tsv
+)"
+
+if [[ -z "${operator_principal_id}" ]]; then
+  echo 'Unable to resolve the signed-in Azure operator object ID.' >&2
+  exit 1
+fi
+
+az deployment group create \
+  --name 'access-control-demo-bootstrap' \
+  --resource-group "${AZURE_RESOURCE_GROUP}" \
+  --template-file "${SCRIPT_DIR}/bootstrap.bicep" \
+  --parameters \
+    location="${AZURE_LOCATION}" \
+    keyVaultName="${AZURE_KEY_VAULT}" \
+    secretReaderIdentityName="${AZURE_SECRET_READER_IDENTITY}" \
+    secretOperatorPrincipalId="${operator_principal_id}" \
   --output none
 
 if ! az identity show \
@@ -127,7 +173,7 @@ fi
 
 cat <<OUTPUT
 
-Azure OIDC bootstrap completed.
+Azure production bootstrap completed.
 
 Configure the GitHub "${DEPLOYMENT_ENVIRONMENT}" environment with the following values.
 
@@ -137,9 +183,6 @@ AZURE_CLIENT_ID=${client_id}
 AZURE_TENANT_ID=${tenant_id}
 AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
 
-ACCESS_GATE_CODE_SECRET=<production access-gate code secret>
-ACCESS_GATE_COOKIE_SECRET=<production access-gate cookie secret>
-
 
 GitHub environment VARIABLES
 ----------------------------
@@ -147,34 +190,45 @@ AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP}
 AZURE_LOCATION=${AZURE_LOCATION}
 AZURE_CONTAINER_ENVIRONMENT=acae-access-control-demo
 AZURE_CONTAINER_APP=aca-access-control-demo
+AZURE_KEY_VAULT=${AZURE_KEY_VAULT}
+AZURE_SECRET_READER_IDENTITY=${AZURE_SECRET_READER_IDENTITY}
 
 NEXT_PUBLIC_SUPABASE_URL=<hosted Supabase project URL>
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<hosted Supabase publishable key>
 
 
-Access-gate requirements
-------------------------
-- ACCESS_GATE_CODE_SECRET must be at least 32 characters.
-- ACCESS_GATE_COOKIE_SECRET must be at least 32 characters.
-- The two access-gate secrets must be different.
-- ACCESS_GATE_CODE_SECRET must exactly match the production secret used
-  when running scripts/create-access-invite.mjs against hosted Supabase.
-- ACCESS_GATE_COOKIE_SECRET is used only by the deployed application to
-  sign access-gate cookies.
-- Do not store SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in the
-  deployed application's GitHub production environment unless another
-  trusted operator workflow specifically requires them.
+Key Vault setup
+---------------
+Key Vault:
+${AZURE_KEY_VAULT}
+
+Secret reader identity:
+${AZURE_SECRET_READER_IDENTITY}
+
+Before the first production deployment, populate these Key Vault secrets from this trusted operator workstation:
+
+- access-gate-code-secret
+- access-gate-cookie-secret
+
+Use deploy/azure/set-production-secrets.sh to populate or rotate them.
+
+Do not store these access-gate secret values in GitHub Actions.
 
 
-Federated credential
---------------------
-Identity:
+Federated identity
+------------------
+Managed identity:
 ${AZURE_IDENTITY_NAME}
 
-Credential:
+Federated credential name:
 ${FEDERATED_CREDENTIAL_NAME}
 
 Subject:
 ${OIDC_SUBJECT}
+
+IMPORTANT:
+The Azure federated credential subject must exactly match the subject GitHub issues for this repository and environment.
+
+Repositories created before GitHub's immutable-subject rollout must opt in before using the owner-ID/repository-ID subject above.
 
 OUTPUT

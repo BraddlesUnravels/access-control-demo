@@ -13,7 +13,8 @@ export function withApiHandler<TContext = RouteContext>(
     } catch (error) {
       const requestMeta = {
         method: request.method,
-        url: request.url,
+        // strip query params for logging https://www.w3.org/TR/CSP3/#obtain-violation-blocked-uri
+        path: new URL(request.url).pathname,
       };
 
       // 1. Handle Unauthenticated
