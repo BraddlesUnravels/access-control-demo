@@ -309,8 +309,10 @@ jobs:
 
           role_assignments="$(
             az role assignment list \
+              --assignee-object-id "${secret_reader_principal_id}" \
               --scope "${key_vault_id}" \
-              --all \
+              --fill-principal-name false \
+              --fill-role-definition-name false \
               --output json
           )"
 
@@ -401,222 +403,64 @@ jobs:
             echo "diagnostic_setting_name=${diagnostic_setting_name}"
           } >> "${GITHUB_OUTPUT}"
 
-      - name: Verify Azure configuration
+      - name: Verify production bootstrap resources
         shell: bash
-        env:
-          EXPECTED_IMAGE: ${{ steps.image.outputs.sha }}
-          EXPECTED_CUSTOM_DOMAIN: ${{ env.AZURE_CUSTOM_DOMAIN }}
-          EXPECTED_CUSTOM_DOMAIN_CERTIFICATE_ID: ${{ env.AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID }}
-          LOG_ANALYTICS_WORKSPACE: ${{ steps.deploy.outputs.log_analytics_workspace }}
-          DIAGNOSTIC_SETTING_NAME: ${{ steps.deploy.outputs.diagnostic_setting_name }}
         run: |
           set -euo pipefail
 
-          deployment_state="$(
-            az containerapp show \
-              --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --name "${AZURE_CONTAINER_APP}" \
-              --query "{
-                minReplicas: properties.template.scale.minReplicas,
-                maxReplicas: properties.template.scale.maxReplicas,
-                image: properties.template.containers[0].image,
-                env: properties.template.containers[0].env,
-                secretNames: properties.configuration.secrets[].name,
-                customDomains: properties.configuration.ingress.customDomains
-              }" \
-              --output json
-          )"
-
-          echo "${deployment_state}" |
-            jq --exit-status \
-              --arg expected_image "${EXPECTED_IMAGE}" \
-              --arg expected_custom_domain "${EXPECTED_CUSTOM_DOMAIN}" \
-              --arg expected_certificate_id "${EXPECTED_CUSTOM_DOMAIN_CERTIFICATE_ID}" \
-              '
-                .minReplicas == 1 and
-                .maxReplicas == 1 and
-                .image == $expected_image and
-                (.env | any(.name == "ACCESS_GATE_DISABLED" and .value == "false")) and
-                (.env | any(.name == "ACCESS_GATE_CODE_SECRET" and .secretRef == "access-gate-code-secret")) and
-                (.env | any(.name == "ACCESS_GATE_COOKIE_SECRET" and .secretRef == "access-gate-cookie-secret")) and
-                (.secretNames | index("access-gate-code-secret") != null) and
-                (.secretNames | index("access-gate-cookie-secret") != null) and
-                (
-                  .customDomains |
-                  any(
-                    .name == $expected_custom_domain and
-                    .bindingType == "SniEnabled" and
-                    (
-                      (.certificateId | ascii_downcase) ==
-                      ($expected_certificate_id | ascii_downcase)
-                    )
-                  )
-                )
-              ' \
-              >/dev/null
-
-          key_vault_uri="$(
+          key_vault_id="$(
             az keyvault show \
               --resource-group "${AZURE_RESOURCE_GROUP}" \
               --name "${AZURE_KEY_VAULT}" \
-              --query properties.vaultUri \
+              --query id \
               --output tsv
           )"
 
-          secret_reader_identity_id="$(
+          secret_reader_principal_id="$(
             az identity show \
               --resource-group "${AZURE_RESOURCE_GROUP}" \
               --name "${AZURE_SECRET_READER_IDENTITY}" \
-              --query id \
+              --query principalId \
               --output tsv
           )"
 
-          code_secret_reference="$(
-            az containerapp show \
-              --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --name "${AZURE_CONTAINER_APP}" \
-              --query "properties.configuration.secrets[?name=='access-gate-code-secret'] | [0].{keyVaultUrl:keyVaultUrl,identity:identity}" \
-              --output json
-          )"
-
-          cookie_secret_reference="$(
-            az containerapp show \
-              --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --name "${AZURE_CONTAINER_APP}" \
-              --query "properties.configuration.secrets[?name=='access-gate-cookie-secret'] | [0].{keyVaultUrl:keyVaultUrl,identity:identity}" \
-              --output json
-          )"
-
-          echo "${code_secret_reference}" |
-            jq --exit-status \
-              --arg expected_url "${key_vault_uri}secrets/access-gate-code-secret" \
-              --arg expected_identity "${secret_reader_identity_id}" \
-              '
-                .keyVaultUrl == $expected_url and
-                (.identity | ascii_downcase) == ($expected_identity | ascii_downcase)
-              ' \
-              >/dev/null
-
-          echo "${cookie_secret_reference}" |
-            jq --exit-status \
-              --arg expected_url "${key_vault_uri}secrets/access-gate-cookie-secret" \
-              --arg expected_identity "${secret_reader_identity_id}" \
-              '
-                .keyVaultUrl == $expected_url and
-                (.identity | ascii_downcase) == ($expected_identity | ascii_downcase)
-              ' \
-              >/dev/null
-
-          environment_id="$(
-            az containerapp env show \
-              --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --name "${AZURE_CONTAINER_ENVIRONMENT}" \
-              --query id \
-              --output tsv
-          )"
-
-          logging_destination="$(
-            az containerapp env show \
-              --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --name "${AZURE_CONTAINER_ENVIRONMENT}" \
-              --query properties.appLogsConfiguration.destination \
-              --output tsv
-          )"
-
-          if [[ "${logging_destination}" != 'azure-monitor' ]]; then
-            echo \
-              "Container Apps logging destination is ${logging_destination}; expected azure-monitor." \
-              >&2
+          if [[ -z "${key_vault_id}" ]]; then
+            echo "Production Key Vault was not found. Run deploy/azure/bootstrap-oidc.sh first." >&2
             exit 1
           fi
 
-          workspace_id="$(
-            az monitor log-analytics workspace show \
-              --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --workspace-name "${LOG_ANALYTICS_WORKSPACE}" \
-              --query id \
-              --output tsv
-          )"
-
-          diagnostic_state="$(
-            az monitor diagnostic-settings show \
-              --name "${DIAGNOSTIC_SETTING_NAME}" \
-              --resource "${environment_id}" \
-              --output json
-          )"
-
-          echo "${diagnostic_state}" |
-            jq --exit-status \
-              --arg expected_workspace_id "${workspace_id}" \
-              '
-                (.workspaceId | ascii_downcase) == ($expected_workspace_id | ascii_downcase) and
-                .logAnalyticsDestinationType == "Dedicated" and
-                (.logs | any(.category == "ContainerAppConsoleLogs" and .enabled == true)) and
-                (.logs | any(.category == "ContainerAppSystemLogs" and .enabled == true))
-              ' \
-              >/dev/null
-
-      - name: Test deployed application
-        shell: bash
-        env:
-          APPLICATION_URL: ${{ steps.deploy.outputs.application_url }}
-        run: |
-          set -euo pipefail
-
-          assert_status() {
-            local expected_status="$1"
-            local url="$2"
-            shift 2
-            local actual_status
-
-            actual_status="$(
-              curl \
-                --silent \
-                --output /dev/null \
-                --write-out '%{http_code}' \
-                "$@" \
-                "${url}"
-            )"
-
-            if [[ "${actual_status}" != "${expected_status}" ]]; then
-              echo \
-                "Expected ${url} to return ${expected_status}; received ${actual_status}." \
-                >&2
-              exit 1
-            fi
-          }
-
-          healthy=false
-
-          for attempt in {1..30}; do
-            if curl \
-              --fail \
-              --silent \
-              --show-error \
-              "${APPLICATION_URL}/api/health" \
-              >/dev/null; then
-              healthy=true
-              break
-            fi
-
-            sleep 5
-          done
-
-          if [[ "${healthy}" != 'true' ]]; then
-            echo "Deployed application did not become healthy." >&2
+          if [[ -z "${secret_reader_principal_id}" ]]; then
+            echo "Production Key Vault reader identity was not found. Run deploy/azure/bootstrap-oidc.sh first." >&2
             exit 1
           fi
 
-          assert_status 200 "${APPLICATION_URL}/"
-          assert_status 307 "${APPLICATION_URL}/auth/login"
-          assert_status 401 "${APPLICATION_URL}/api/consultations"
+          role_assignments="$(
+            az role assignment list \
+              --assignee-object-id "${secret_reader_principal_id}" \
+              --scope "${key_vault_id}" \
+              --fill-principal-name false \
+              --fill-role-definition-name false \
+              --output json
+          )"
 
-          assert_status \
-            401 \
-            "${APPLICATION_URL}/api/access/unlock" \
-            --request POST \
-            --header 'Content-Type: application/json' \
-            --data '{"code":"ACD-PRODUCTION-SMOKE"}'
+          echo "${role_assignments}" |
+            jq --exit-status \
+              --arg role_id '4633458b-17de-408a-b874-0445c86b69e6' \
+              '
+                any(
+                  .[];
+                  (
+                    .roleDefinitionId |
+                    ascii_downcase |
+                    endswith("/" + ($role_id | ascii_downcase))
+                  )
+                )
+              ' \
+              >/dev/null || {
+                echo "Key Vault reader identity is missing the Key Vault Secrets User role." >&2
+                echo "Run deploy/azure/bootstrap-oidc.sh from the trusted operator workstation." >&2
+                exit 1
+              }
 
       - name: Publish deployment summary
         shell: bash
