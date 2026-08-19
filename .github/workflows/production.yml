@@ -41,12 +41,11 @@ jobs:
       AZURE_CONTAINER_APP: ${{ vars.AZURE_CONTAINER_APP }}
       AZURE_CUSTOM_DOMAIN: ${{ vars.AZURE_CUSTOM_DOMAIN }}
       AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID: ${{ vars.AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID }}
+      AZURE_KEY_VAULT: ${{ vars.AZURE_KEY_VAULT }}
+      AZURE_SECRET_READER_IDENTITY: ${{ vars.AZURE_SECRET_READER_IDENTITY }}
 
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-
-      ACCESS_GATE_CODE_SECRET: ${{ secrets.ACCESS_GATE_CODE_SECRET }}
-      ACCESS_GATE_COOKIE_SECRET: ${{ secrets.ACCESS_GATE_COOKIE_SECRET }}
 
     steps:
       - name: Check out repository
@@ -67,10 +66,10 @@ jobs:
             AZURE_CONTAINER_APP
             AZURE_CUSTOM_DOMAIN
             AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID
+            AZURE_KEY_VAULT
+            AZURE_SECRET_READER_IDENTITY
             NEXT_PUBLIC_SUPABASE_URL
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-            ACCESS_GATE_CODE_SECRET
-            ACCESS_GATE_COOKIE_SECRET
           )
 
           for value_name in "${required_values[@]}"; do
@@ -79,21 +78,6 @@ jobs:
               exit 1
             fi
           done
-
-          if (( ${#ACCESS_GATE_CODE_SECRET} < 32 )); then
-            echo "ACCESS_GATE_CODE_SECRET must be at least 32 characters." >&2
-            exit 1
-          fi
-
-          if (( ${#ACCESS_GATE_COOKIE_SECRET} < 32 )); then
-            echo "ACCESS_GATE_COOKIE_SECRET must be at least 32 characters." >&2
-            exit 1
-          fi
-
-          if [[ "${ACCESS_GATE_CODE_SECRET}" == "${ACCESS_GATE_COOKIE_SECRET}" ]]; then
-            echo "ACCESS_GATE_CODE_SECRET and ACCESS_GATE_COOKIE_SECRET must be different values." >&2
-            exit 1
-          fi
 
       - name: Resolve image names
         id: image
@@ -129,12 +113,56 @@ jobs:
             --tag "${{ steps.image.outputs.latest }}" \
             .
 
+      - name: Verify production image excludes development packages
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker run \
+            --rm \
+            --entrypoint /usr/bin/node \
+            "${{ steps.image.outputs.sha }}" \
+            -e '
+              const unexpectedPackages = [
+                "@eslint/eslintrc",
+                "@vitejs/plugin-react",
+                "eslint",
+                "next-themes",
+                "pino-pretty",
+                "prettier",
+                "typescript",
+                "vitest",
+                "vitest-browser-react",
+              ];
+
+              let unexpectedPackageFound = false;
+
+              for (const packageName of unexpectedPackages) {
+                try {
+                  require.resolve(packageName);
+                  console.error(`Unexpected package in runtime image: ${packageName}`);
+                  unexpectedPackageFound = true;
+                } catch (error) {
+                  if (error?.code !== "MODULE_NOT_FOUND") {
+                    throw error;
+                  }
+                }
+              }
+
+              if (unexpectedPackageFound) {
+                process.exit(1);
+              }
+            '
+
       - name: Test production image
         shell: bash
         run: |
           set -euo pipefail
 
           container_name="access-control-demo-production-test"
+
+          test_access_gate_code_secret="$(openssl rand -hex 32)"
+          test_access_gate_cookie_secret="$(openssl rand -hex 32)"
 
           cleanup() {
             docker rm --force "${container_name}" >/dev/null 2>&1 || true
@@ -178,8 +206,8 @@ jobs:
             --env "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" \
             --env "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
             --env "ACCESS_GATE_DISABLED=false" \
-            --env "ACCESS_GATE_CODE_SECRET=${ACCESS_GATE_CODE_SECRET}" \
-            --env "ACCESS_GATE_COOKIE_SECRET=${ACCESS_GATE_COOKIE_SECRET}" \
+            --env "ACCESS_GATE_CODE_SECRET=${test_access_gate_code_secret}" \
+            --env "ACCESS_GATE_COOKIE_SECRET=${test_access_gate_cookie_secret}" \
             "${{ steps.image.outputs.sha }}"
 
           healthy=false
@@ -248,29 +276,107 @@ jobs:
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Verify production bootstrap resources
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          key_vault_id="$(
+            az keyvault show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${AZURE_KEY_VAULT}" \
+              --query id \
+              --output tsv
+          )"
+
+          secret_reader_principal_id="$(
+            az identity show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${AZURE_SECRET_READER_IDENTITY}" \
+              --query principalId \
+              --output tsv
+          )"
+
+          if [[ -z "${key_vault_id}" ]]; then
+            echo "Production Key Vault was not found. Run deploy/azure/bootstrap-oidc.sh first." >&2
+            exit 1
+          fi
+
+          if [[ -z "${secret_reader_principal_id}" ]]; then
+            echo "Production secret-reader identity was not found. Run deploy/azure/bootstrap-oidc.sh first." >&2
+            exit 1
+          fi
+
+          role_assignments="$(
+            az role assignment list \
+              --scope "${key_vault_id}" \
+              --all \
+              --output json
+          )"
+
+          echo "${role_assignments}" |
+            jq --exit-status \
+              --arg principal_id "${secret_reader_principal_id}" \
+              --arg role_id '4633458b-17de-408a-b874-0445c86b69e6' \
+              '
+                any(
+                  .[];
+                  (.principalId | ascii_downcase) == ($principal_id | ascii_downcase) and
+                  (.roleDefinitionId | ascii_downcase | endswith("/" + ($role_id | ascii_downcase)))
+                )
+              ' \
+              >/dev/null || {
+                echo "Secret-reader identity is missing the Key Vault Secrets User role." >&2
+                echo "Run deploy/azure/bootstrap-oidc.sh from the trusted operator workstation." >&2
+                exit 1
+              }
+
       - name: Deploy Azure Container App
         id: deploy
         shell: bash
         run: |
           set -euo pipefail
 
+          deployment_name="access-control-demo-${GITHUB_RUN_ID}"
+
+          az deployment group create \
+            --name "${deployment_name}" \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --template-file deploy/azure/main.bicep \
+            --parameters \
+              location="${AZURE_LOCATION}" \
+              environmentName="${AZURE_CONTAINER_ENVIRONMENT}" \
+              containerAppName="${AZURE_CONTAINER_APP}" \
+              keyVaultName="${AZURE_KEY_VAULT}" \
+              secretReaderIdentityName="${AZURE_SECRET_READER_IDENTITY}" \
+              image="${{ steps.image.outputs.sha }}" \
+              supabaseUrl="${NEXT_PUBLIC_SUPABASE_URL}" \
+              supabasePublishableKey="${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+              customDomainName="${AZURE_CUSTOM_DOMAIN}" \
+              customDomainCertificateId="${AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID}" \
+            --output none
+
           application_url="$(
-            az deployment group create \
-              --name "access-control-demo-${GITHUB_RUN_ID}" \
+            az deployment group show \
+              --name "${deployment_name}" \
               --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --template-file deploy/azure/main.bicep \
-              --parameters \
-                location="${AZURE_LOCATION}" \
-                environmentName="${AZURE_CONTAINER_ENVIRONMENT}" \
-                containerAppName="${AZURE_CONTAINER_APP}" \
-                image="${{ steps.image.outputs.sha }}" \
-                supabaseUrl="${NEXT_PUBLIC_SUPABASE_URL}" \
-                supabasePublishableKey="${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
-                accessGateCodeSecret="${ACCESS_GATE_CODE_SECRET}" \
-                accessGateCookieSecret="${ACCESS_GATE_COOKIE_SECRET}" \
-                customDomainName="${AZURE_CUSTOM_DOMAIN}" \
-                customDomainCertificateId="${AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID}" \
               --query properties.outputs.applicationUrl.value \
+              --output tsv
+          )"
+
+          log_analytics_workspace="$(
+            az deployment group show \
+              --name "${deployment_name}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --query properties.outputs.observabilityWorkspaceName.value \
+              --output tsv
+          )"
+
+          diagnostic_setting_name="$(
+            az deployment group show \
+              --name "${deployment_name}" \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --query properties.outputs.diagnosticSettingName.value \
               --output tsv
           )"
 
@@ -279,7 +385,21 @@ jobs:
             exit 1
           fi
 
-          echo "application_url=${application_url}" >> "${GITHUB_OUTPUT}"
+          if [[ -z "${log_analytics_workspace}" ]]; then
+            echo "Azure deployment did not return a Log Analytics workspace name." >&2
+            exit 1
+          fi
+
+          if [[ -z "${diagnostic_setting_name}" ]]; then
+            echo "Azure deployment did not return a diagnostic setting name." >&2
+            exit 1
+          fi
+
+          {
+            echo "application_url=${application_url}"
+            echo "log_analytics_workspace=${log_analytics_workspace}"
+            echo "diagnostic_setting_name=${diagnostic_setting_name}"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Verify Azure configuration
         shell: bash
@@ -287,6 +407,8 @@ jobs:
           EXPECTED_IMAGE: ${{ steps.image.outputs.sha }}
           EXPECTED_CUSTOM_DOMAIN: ${{ env.AZURE_CUSTOM_DOMAIN }}
           EXPECTED_CUSTOM_DOMAIN_CERTIFICATE_ID: ${{ env.AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID }}
+          LOG_ANALYTICS_WORKSPACE: ${{ steps.deploy.outputs.log_analytics_workspace }}
+          DIAGNOSTIC_SETTING_NAME: ${{ steps.deploy.outputs.diagnostic_setting_name }}
         run: |
           set -euo pipefail
 
@@ -330,6 +452,107 @@ jobs:
                     )
                   )
                 )
+              ' \
+              >/dev/null
+
+          key_vault_uri="$(
+            az keyvault show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${AZURE_KEY_VAULT}" \
+              --query properties.vaultUri \
+              --output tsv
+          )"
+
+          secret_reader_identity_id="$(
+            az identity show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${AZURE_SECRET_READER_IDENTITY}" \
+              --query id \
+              --output tsv
+          )"
+
+          code_secret_reference="$(
+            az containerapp show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${AZURE_CONTAINER_APP}" \
+              --query "properties.configuration.secrets[?name=='access-gate-code-secret'] | [0].{keyVaultUrl:keyVaultUrl,identity:identity}" \
+              --output json
+          )"
+
+          cookie_secret_reference="$(
+            az containerapp show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${AZURE_CONTAINER_APP}" \
+              --query "properties.configuration.secrets[?name=='access-gate-cookie-secret'] | [0].{keyVaultUrl:keyVaultUrl,identity:identity}" \
+              --output json
+          )"
+
+          echo "${code_secret_reference}" |
+            jq --exit-status \
+              --arg expected_url "${key_vault_uri}secrets/access-gate-code-secret" \
+              --arg expected_identity "${secret_reader_identity_id}" \
+              '
+                .keyVaultUrl == $expected_url and
+                (.identity | ascii_downcase) == ($expected_identity | ascii_downcase)
+              ' \
+              >/dev/null
+
+          echo "${cookie_secret_reference}" |
+            jq --exit-status \
+              --arg expected_url "${key_vault_uri}secrets/access-gate-cookie-secret" \
+              --arg expected_identity "${secret_reader_identity_id}" \
+              '
+                .keyVaultUrl == $expected_url and
+                (.identity | ascii_downcase) == ($expected_identity | ascii_downcase)
+              ' \
+              >/dev/null
+
+          environment_id="$(
+            az containerapp env show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${AZURE_CONTAINER_ENVIRONMENT}" \
+              --query id \
+              --output tsv
+          )"
+
+          logging_destination="$(
+            az containerapp env show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --name "${AZURE_CONTAINER_ENVIRONMENT}" \
+              --query properties.appLogsConfiguration.destination \
+              --output tsv
+          )"
+
+          if [[ "${logging_destination}" != 'azure-monitor' ]]; then
+            echo \
+              "Container Apps logging destination is ${logging_destination}; expected azure-monitor." \
+              >&2
+            exit 1
+          fi
+
+          workspace_id="$(
+            az monitor log-analytics workspace show \
+              --resource-group "${AZURE_RESOURCE_GROUP}" \
+              --workspace-name "${LOG_ANALYTICS_WORKSPACE}" \
+              --query id \
+              --output tsv
+          )"
+
+          diagnostic_state="$(
+            az monitor diagnostic-settings show \
+              --name "${DIAGNOSTIC_SETTING_NAME}" \
+              --resource "${environment_id}" \
+              --output json
+          )"
+
+          echo "${diagnostic_state}" |
+            jq --exit-status \
+              --arg expected_workspace_id "${workspace_id}" \
+              '
+                (.workspaceId | ascii_downcase) == ($expected_workspace_id | ascii_downcase) and
+                .logAnalyticsDestinationType == "Dedicated" and
+                (.logs | any(.category == "ContainerAppConsoleLogs" and .enabled == true)) and
+                (.logs | any(.category == "ContainerAppSystemLogs" and .enabled == true))
               ' \
               >/dev/null
 
@@ -400,6 +623,7 @@ jobs:
         env:
           APPLICATION_URL: ${{ steps.deploy.outputs.application_url }}
           IMAGE: ${{ steps.image.outputs.sha }}
+          LOG_ANALYTICS_WORKSPACE: ${{ steps.deploy.outputs.log_analytics_workspace }}
         run: |
           {
             echo "## Production deployment"
@@ -408,6 +632,10 @@ jobs:
             echo "- Image: \`${IMAGE}\`"
             echo "- Container App: \`${AZURE_CONTAINER_APP}\`"
             echo "- Custom domain: \`${AZURE_CUSTOM_DOMAIN}\`"
+            echo "- Key Vault: \`${AZURE_KEY_VAULT}\`"
+            echo "- Secret reader identity: \`${AZURE_SECRET_READER_IDENTITY}\`"
+            echo "- Log Analytics workspace: \`${LOG_ANALYTICS_WORKSPACE}\`"
+            echo "- Logging destination: \`azure-monitor\`"
             echo "- Minimum replicas: \`1\`"
             echo "- Maximum replicas: \`1\`"
           } >> "${GITHUB_STEP_SUMMARY}"
