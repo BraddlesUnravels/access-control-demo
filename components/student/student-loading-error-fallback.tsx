@@ -7,33 +7,32 @@ type FallbackProps = {
   error?: string;
 };
 
+const fallbackMessage = {
+  loading: {
+    title: 'Loading consultations...',
+    description: 'Please wait while we fetch the consultations',
+  },
+  empty: {
+    title: 'You have no consultations yet',
+    description: 'Consultations will appear here once you create them',
+  },
+};
+
 export const StudentFallback = ({ loading, error }: FallbackProps) => {
-  const getFallbackType = () => {
-    let type: 'loading' | 'error' | 'empty' = 'empty';
-    if (loading) type = 'loading';
-    if (error) type = 'error';
-
-    return fallBackMessage[type];
-  };
-
-  const fallBackMessage = {
-    loading: {
-      title: 'Loading consultations...',
-      description: 'Please wait while we fetch the consultations',
-    },
-    error: {
-      title: 'Error ocurred while fetching consultations',
-      description: `Error: ${JSON.stringify(error)}`,
-    },
-    empty: {
-      title: 'You have no consultations yet',
-      description: 'Consultations will appear here once you create them',
-    },
-  };
+  const fallback = error
+    ? {
+        title: 'Error occurred while fetching consultations',
+        description: error,
+      }
+    : loading
+      ? fallbackMessage.loading
+      : fallbackMessage.empty;
 
   return (
     <div
       id="student-fallback"
+      role={error ? 'alert' : loading ? 'status' : undefined}
+      aria-live={error ? 'assertive' : loading ? 'polite' : undefined}
       className="flex flex-col items-center rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-10 text-center"
     >
       <div className="mb-3 flex size-10 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.03]">
@@ -44,7 +43,7 @@ export const StudentFallback = ({ loading, error }: FallbackProps) => {
       </div>
 
       <Typography variant="body" className="font-medium">
-        {getFallbackType().title}
+        {fallback.title}
       </Typography>
 
       <Typography
@@ -52,7 +51,7 @@ export const StudentFallback = ({ loading, error }: FallbackProps) => {
         variant="body-small"
         className="mt-1 text-muted-foreground"
       >
-        {getFallbackType().description}
+        {fallback.description}
       </Typography>
     </div>
   );
