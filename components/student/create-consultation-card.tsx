@@ -14,9 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Input, DateTimeInput } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { CreateConsultationForm } from '@/lib/validation/types';
+import { useStudentConsultationActions } from './student-consultation-action-hook';
 
 const DEFAULT_FORM: CreateConsultationForm = {
   firstName: '',
@@ -25,15 +26,10 @@ const DEFAULT_FORM: CreateConsultationForm = {
   scheduledFor: '',
 };
 
-type CreateConsultationCardProps = {
-  onCreateConsultation: (createForm: CreateConsultationForm) => Promise<void>;
-};
-
-export const CreateConsultationCard = ({
-  onCreateConsultation,
-}: CreateConsultationCardProps) => {
+export const CreateConsultationCard = () => {
   const [createForm, setCreateForm] =
     useState<CreateConsultationForm>(DEFAULT_FORM);
+  const { createConsultation, error } = useStudentConsultationActions();
   const [submittingCreate, setSubmittingCreate] = useState(false);
 
   const handleCreateConsultation = async (event: React.SubmitEvent) => {
@@ -41,9 +37,9 @@ export const CreateConsultationCard = ({
     setSubmittingCreate(true);
 
     try {
-      await onCreateConsultation(createForm);
+      await createConsultation(createForm);
       setCreateForm(DEFAULT_FORM);
-    } catch {
+    } catch (error) {
       return;
     } finally {
       setSubmittingCreate(false);
@@ -125,13 +121,14 @@ export const CreateConsultationCard = ({
             />
           </div>
 
-          <div className="grid gap-2">
+          <div className="grid gap-2 lg:justify-start">
             <Label htmlFor="scheduled-for">Date and time</Label>
 
-            <Input
+            <DateTimeInput
               id="scheduled-for"
               type="datetime-local"
               value={createForm.scheduledFor}
+              onClick={(event) => event.currentTarget.showPicker()}
               onChange={(event) =>
                 setCreateForm((state) => ({
                   ...state,
@@ -142,7 +139,7 @@ export const CreateConsultationCard = ({
             />
           </div>
 
-          <div className="flex items-end md:justify-end">
+          <div className="flex justify-end items-end">
             <Button
               type="submit"
               className="w-full md:w-auto"
@@ -153,6 +150,15 @@ export const CreateConsultationCard = ({
               {submittingCreate ? 'Creating...' : 'Create consultation'}
             </Button>
           </div>
+
+          {error ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300"
+            >
+              {error}
+            </div>
+          ) : null}
         </form>
       </CardContent>
     </Card>

@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 // Test the ConsultationList component
-import { ConsultationList } from '@/components/student/consultation-list';
+import { ConsultationList } from '@/components/student/consultation-list-student';
 
 test('should show an empty state when there are no consulations', async () => {
   const screen = await render(
