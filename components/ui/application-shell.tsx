@@ -1,17 +1,17 @@
-import type { ReactNode } from 'react';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import { ShieldCheck } from 'lucide-react';
-
-import { AuthButton } from '@/components/ui/auth-button';
+import { SignOutButton } from './sign-out-button';
 import { InternalBackground } from '@/components/ui/internal-background';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Typography } from '@/components/ui/typography';
 
 export const ApplicationShell = ({ children }: { children: ReactNode }) => (
   <div className="min-h-svh w-full">
     <InternalBackground />
 
     <div className="flex flex-col min-w-full">
-      <nav className="sticky top-0 z-50 border-b border-cyan-300/[0.08] bg-[#080d14]/10 shadow-[0_1px_20px_rgba(34,211,238,0.04)] backdrop-blur-xl backdrop-saturate-150">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1280px] items-center justify-between gap-4 px-5 sm:px-8">
+      <nav className="sticky top-0 z-50 backdrop-blur-sm">
+        <div className="mx-auto flex min-h-[3.5rem] w-full max-w-[1900px] items-center justify-between gap-4 px-8 lg:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
               <ShieldCheck
@@ -23,13 +23,21 @@ export const ApplicationShell = ({ children }: { children: ReactNode }) => (
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-wide text-zinc-100">
+              <Typography
+                as="p"
+                variant="body-small"
+                className="truncate font-semibold tracking-wide text-zinc-100"
+              >
                 Access Control Demo
-              </p>
+              </Typography>
 
-              <p className="mt-0.5 hidden font-mono text-[10px] uppercase tracking-[0.13em] text-zinc-600 sm:block">
+              <Typography
+                as="p"
+                variant="caption"
+                className="mt-0.5 hidden font-mono text-[10px] uppercase tracking-[0.13em] text-zinc-600 sm:block"
+              >
                 Authenticated application
-              </p>
+              </Typography>
             </div>
           </div>
 
@@ -41,13 +49,15 @@ export const ApplicationShell = ({ children }: { children: ReactNode }) => (
             </span>
           </div>
 
-          <Suspense>
-            <AuthButton />
+          <Suspense
+            fallback={<Skeleton className="h-8 w-[16rem] rounded-md" />}
+          >
+            <SignOutButton />
           </Suspense>
         </div>
       </nav>
 
-      <main className="relative z-0 mx-auto w-full max-w-[1280px] flex-1 flex-col px-5 py-9 sm:px-8 sm:py-12">
+      <main className="relative z-0 mx-auto w-full max-w-[1900px] flex-1 flex-col px-5 py-5">
         {children}
       </main>
     </div>

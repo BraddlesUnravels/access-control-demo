@@ -1,7 +1,9 @@
 import { AdminConsultationsView } from '@/components/admin/admin-consultations-view';
 import { StudentConsultationsView } from '@/components/student/student-consultations-view';
 import { requireAuthContext } from '@/lib/server/auth';
-import { Suspense } from 'react';
+
+// This tells Next.js that this page should be rendered on the server, not the client.
+export const instant = false;
 
 const ProtectedContent = async () => {
   const { role } = await requireAuthContext();
@@ -11,15 +13,7 @@ const ProtectedContent = async () => {
 };
 
 const ProtectedPage = () => {
-  return (
-    <Suspense
-      fallback={
-        <p className="text-sm text-muted-foreground">Loading dashboard...</p>
-      }
-    >
-      <ProtectedContent />
-    </Suspense>
-  );
+  return <ProtectedContent />;
 };
 
 export default ProtectedPage;
