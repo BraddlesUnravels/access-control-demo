@@ -81,7 +81,7 @@
   --text-body-small: clamp(0.78rem, 0.765rem + 0.06vw, 0.8125rem);
 
   /* 12.5px → 13px */
-  --text-label: clamp(0.78rem, 0.765rem + 0.06vw, 0.8125rem);
+  --text-label: clamp(0.8rem, 0.8rem + 0.06vw, 0.9rem);
 
   /* 12.5px → 13px */
   --text-action: clamp(0.78rem, 0.765rem + 0.06vw, 0.8125rem);

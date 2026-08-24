@@ -19,13 +19,31 @@ type AccessGateFormProps = {
   className?: string;
 };
 
+const formatAccessCode = (value: string): string => {
+  const characters = value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 15);
+
+  return [
+    characters.slice(0, 3),
+    characters.slice(3, 7),
+    characters.slice(7, 11),
+    characters.slice(11, 15),
+  ]
+    .filter(Boolean)
+    .join('-');
+};
+
 export function AccessGateForm({
-  initialCode = '',
+  initialCode,
   nextPath = '/auth/login',
   className,
 }: AccessGateFormProps) {
   const router = useRouter();
-  const [code, setCode] = useState(initialCode);
+  const [code, setCode] = useState(
+    initialCode ? formatAccessCode(initialCode) : '',
+  );
   const [error, setError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -80,10 +98,11 @@ export function AccessGateForm({
             name="code"
             autoComplete="one-time-code"
             autoCapitalize="characters"
+            maxLength={18}
             spellCheck={false}
             required
             value={code}
-            onChange={(event) => setCode(event.target.value)}
+            onChange={(event) => setCode(formatAccessCode(event.target.value))}
             placeholder="ACD-XXXX-XXXX-XXXX"
             aria-describedby={error ? 'access-code-error' : undefined}
             aria-invalid={Boolean(error)}

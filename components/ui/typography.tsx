@@ -1,5 +1,6 @@
 import {
   ComponentPropsWithoutRef,
+  type ComponentPropsWithRef,
   type ElementType,
   type ReactNode,
 } from 'react';
@@ -19,9 +20,10 @@ type Variant =
 type TypograghtProps<T extends ElementType = ElementType> = {
   variant?: Variant;
   as?: T;
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
-} & Omit<ComponentPropsWithoutRef<T>, 'variant' | 'as'>;
+  ref?: ComponentPropsWithRef<T>['ref'];
+} & Omit<ComponentPropsWithoutRef<T>, 'variant' | 'as' | 'ref'>;
 
 const variantStyles: Record<Variant, string> = {
   display: 'text-display',
@@ -54,12 +56,17 @@ export const Typography = <T extends ElementType = ElementType>({
   as,
   children,
   className = '',
+  ref,
   ...rest
 }: TypograghtProps<T>) => {
   const Component = as || defaultTag[variant];
 
   return (
-    <Component className={`${variantStyles[variant]} ${className}`} {...rest}>
+    <Component
+      ref={ref}
+      className={`${variantStyles[variant]} ${className}`}
+      {...rest}
+    >
       {children}
     </Component>
   );
