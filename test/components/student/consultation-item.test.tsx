@@ -2,7 +2,7 @@ import { expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { buildConsultation } from '@/test/fixtures/consultation';
 // Test the ConsultationItem component
-import { ConsultationItem } from '@/components/student/consultation-item';
+import { ConsultationItem } from '@/components/consultations/consultation-item';
 
 test('should reschedule a scheduled consultation', async () => {
   const consultation = buildConsultation();

@@ -2,16 +2,16 @@
 
 import type { ReactNode } from 'react';
 import { CalendarDays, ShieldCheck, UserRound } from 'lucide-react';
+import { Typography } from '../ui/typography';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { ConsultationRecord } from '@/lib/validation/types';
 
 type ConsultationSummaryCardProps = {
+  consultation: ConsultationRecord;
   actions?: ReactNode;
   className?: string;
-  consultation: ConsultationRecord;
-  showStudentUserId?: boolean;
 };
 
 const statusVariantByConsultationStatus = {
@@ -24,7 +24,6 @@ export const ConsultationSummaryCard = ({
   actions,
   className,
   consultation,
-  showStudentUserId = false,
 }: ConsultationSummaryCardProps) => {
   return (
     <article
@@ -47,13 +46,16 @@ export const ConsultationSummaryCard = ({
           </div>
 
           <div className="min-w-0">
-            <p className="truncate font-semibold text-zinc-100">
+            <Typography
+              variant="component-title"
+              className="truncate font-semibold text-zinc-100"
+            >
               {consultation.first_name} {consultation.last_name}
-            </p>
+            </Typography>
 
-            <p className="mt-1 text-sm leading-5 text-zinc-500">
+            <Typography variant="body" className="mt-1 leading-5 text-zinc-500">
               {consultation.reason}
-            </p>
+            </Typography>
           </div>
         </div>
 
@@ -69,34 +71,28 @@ export const ConsultationSummaryCard = ({
         <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
           <div className="mb-1.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.13em] text-zinc-600">
             <CalendarDays className="size-3" aria-hidden="true" />
-            Scheduled for
+            <Typography variant="caption" className="-mb-1">
+              Scheduled for
+            </Typography>
           </div>
 
-          <p className="text-sm text-zinc-300">
+          <Typography variant="body" className="text-zinc-300">
             {new Date(consultation.scheduled_for).toLocaleString()}
-          </p>
+          </Typography>
         </div>
 
-        {showStudentUserId ? (
-          <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
-            <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.13em] text-zinc-600">
-              Student user ID
-            </div>
-
-            <p className="truncate font-mono text-xs text-zinc-400">
-              {consultation.student_user_id}
-            </p>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
-            <div className="mb-1.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.13em] text-zinc-600">
-              <ShieldCheck className="size-3" aria-hidden="true" />
+        <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
+          <div className="mb-1.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.13em] text-zinc-600">
+            <ShieldCheck className="size-3" aria-hidden="true" />
+            <Typography variant="caption" className="-mb-1">
               Access scope
-            </div>
-
-            <p className="text-sm text-zinc-400">Authenticated owner</p>
+            </Typography>
           </div>
-        )}
+
+          <Typography variant="body" className="text-zinc-400">
+            {actions ? 'Authenticated owner' : 'Read-only'}
+          </Typography>
+        </div>
       </div>
 
       {actions}
