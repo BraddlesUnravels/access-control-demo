@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { AdminHeader } from './admin-header';
 import { ConsultationListAdmin } from './admin-consultation-list';
@@ -11,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export const AdminConsultationsView = () => (
   <div id="admin-consultation-view" className="flex w-full flex-col gap-7">
@@ -36,9 +34,7 @@ export const AdminConsultationsView = () => (
       </CardHeader>
 
       <CardContent className="pt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <Suspense fallback={<Skeleton className="h-8 w-[16rem] rounded-md" />}>
-          <ConsultationListAdmin />
-        </Suspense>
+        <ConsultationListAdmin />
       </CardContent>
     </Card>
   </div>

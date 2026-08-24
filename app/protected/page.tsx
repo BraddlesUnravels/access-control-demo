@@ -2,7 +2,7 @@ import { AdminConsultationsView } from '@/components/admin/admin-consultations-v
 import { StudentConsultationsView } from '@/components/student/student-consultations-view';
 import { requireAuthContext } from '@/lib/server/auth';
 
-// This tells Next.js that this page should be rendered on the server, not the client.
+// Allow auth-dependent runtime data to block this route rather than prerender.
 export const instant = false;
 
 const ProtectedContent = async () => {

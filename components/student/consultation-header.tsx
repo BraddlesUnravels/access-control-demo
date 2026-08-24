@@ -1,4 +1,4 @@
-import { ShieldCheck, ToyBrick, UserRound } from 'lucide-react';
+import { ShieldCheck, UserRound } from 'lucide-react';
 import { Typography } from '../ui/typography';
 
 export const StudentConsultHeader = () => (

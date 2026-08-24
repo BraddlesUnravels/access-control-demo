@@ -31,9 +31,7 @@ export const StudentConsultationsView = () => (
       </CardHeader>
 
       <CardContent className="pt-6 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <Suspense fallback={<Skeleton className="h-8 w-[16rem] rounded-md" />}>
-          <ConsultationListStudent />
-        </Suspense>
+        <ConsultationListStudent />
       </CardContent>
     </Card>
   </div>

@@ -1,28 +1,31 @@
-import { forwardRef, HTMLAttributes } from 'react';
+import { forwardRef, type HTMLAttributes } from 'react';
 import { Typography } from './typography';
 import { cn } from '@/lib/utils';
 
 /** Text Wrapper */
-const CardTitle = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <Typography
-      variant="component-title"
-      ref={ref}
-      className={cn('font-semibold leading-none tracking-tight', className)}
-      {...props}
-    />
-  ),
-);
+const CardTitle = forwardRef<
+  HTMLHeadingElement,
+  HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <Typography
+    as="h3"
+    variant="component-title"
+    ref={ref}
+    className={cn('font-semibold leading-none tracking-tight', className)}
+    {...props}
+  />
+));
 
 CardTitle.displayName = 'CardTitle';
 
 /** Text Wrapper */
 const CardDescription = forwardRef<
-  HTMLDivElement,
-  HTMLAttributes<HTMLDivElement>
+  HTMLParagraphElement,
+  HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
   <Typography
     ref={ref}
+    as="p"
     variant="body"
     className={cn('leading-6 text-zinc-500', className)}
     {...props}

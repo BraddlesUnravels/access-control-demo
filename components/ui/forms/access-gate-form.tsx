@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
 import { FormMessage } from '@/components/ui/form-message';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
+import { formatInviteCode } from '@/lib/access-gate/code';
 import { Typography } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 
@@ -19,22 +20,6 @@ type AccessGateFormProps = {
   className?: string;
 };
 
-const formatAccessCode = (value: string): string => {
-  const characters = value
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '')
-    .slice(0, 15);
-
-  return [
-    characters.slice(0, 3),
-    characters.slice(3, 7),
-    characters.slice(7, 11),
-    characters.slice(11, 15),
-  ]
-    .filter(Boolean)
-    .join('-');
-};
-
 export function AccessGateForm({
   initialCode,
   nextPath = '/auth/login',
@@ -42,7 +27,7 @@ export function AccessGateForm({
 }: AccessGateFormProps) {
   const router = useRouter();
   const [code, setCode] = useState(
-    initialCode ? formatAccessCode(initialCode) : '',
+    initialCode ? formatInviteCode(initialCode) : '',
   );
   const [error, setError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
@@ -102,7 +87,7 @@ export function AccessGateForm({
             spellCheck={false}
             required
             value={code}
-            onChange={(event) => setCode(formatAccessCode(event.target.value))}
+            onChange={(event) => setCode(formatInviteCode(event.target.value))}
             placeholder="ACD-XXXX-XXXX-XXXX"
             aria-describedby={error ? 'access-code-error' : undefined}
             aria-invalid={Boolean(error)}
