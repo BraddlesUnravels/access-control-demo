@@ -7,9 +7,18 @@ import { useStudentConsultationActions } from './student-consultation-action-hoo
 import { StudentFallback } from './student-loading-error-fallback';
 
 export const ConsultationListStudent = () => {
-  const { consultations, loading, error } = useStudentConsultations();
-  const { cancelConsultation, reschedule, toggleCompleted } =
-    useStudentConsultationActions();
+  const {
+    consultations,
+    loading,
+    error: loadError,
+  } = useStudentConsultations();
+  const {
+    cancelConsultation,
+    reschedule,
+    toggleCompleted,
+    error: actionError,
+  } = useStudentConsultationActions();
+  const error = loadError ?? actionError;
 
   if (consultations.length === 0 || loading || error)
     return <StudentFallback loading={loading} error={error} />;
