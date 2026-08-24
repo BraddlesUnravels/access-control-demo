@@ -8,12 +8,19 @@ import {
 } from '@/lib/consultations/api';
 import { AdminFallback } from './admin-loading-error-fallback';
 
+const getLoadError = (error: unknown): string | undefined => {
+  if (error instanceof Error) return error.message;
+  if (error) return 'Failed to load student consultations';
+  return;
+};
+
 export const ConsultationListAdmin = () => {
   const {
     data: consultations = [],
-    error,
+    error: loadError,
     isLoading: loading,
   } = useSWR(ADMIN_CONSULTATIONS_API_PATH, getAdminConsultations);
+  const error = getLoadError(loadError);
 
   if (consultations.length === 0 || loading || error)
     return <AdminFallback loading={loading} error={error} />;
