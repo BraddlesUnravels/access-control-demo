@@ -24,6 +24,7 @@ export const ConsultationListAdmin = () => {
         <ConsultationSummaryCard
           key={`${consultation.id}:${consultation.scheduled_for}`}
           consultation={consultation}
+          showStudentUserId
         />
       ))}
     </div>
