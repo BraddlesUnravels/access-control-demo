@@ -11,7 +11,7 @@ export const ApplicationShell = ({ children }: { children: ReactNode }) => (
 
     <div className="flex flex-col min-w-full">
       <nav className="sticky top-0 z-50 backdrop-blur-sm">
-        <div className="mx-auto flex min-h-[3.5rem] w-full max-w-[1900px] items-center justify-between gap-4 px-8 lg:px-5">
+        <div className="mx-auto flex min-h-[3.5rem] w-full max-w-[1900px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
               <ShieldCheck
@@ -50,7 +50,7 @@ export const ApplicationShell = ({ children }: { children: ReactNode }) => (
           </div>
 
           <Suspense
-            fallback={<Skeleton className="h-8 w-[16rem] rounded-md" />}
+            fallback={<Skeleton className="h-8 w-8 rounded-md sm:w-40" />}
           >
             <SignOutButton />
           </Suspense>
