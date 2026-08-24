@@ -75,4 +75,9 @@
   input[type='time']::-webkit-calendar-picker-indicator:hover {
     opacity: 0.9;
   }
+
+  input[data-custom-picker='true']::-webkit-calendar-picker-indicator {
+    pointer-events: none;
+    opacity: 0;
+  }
 }

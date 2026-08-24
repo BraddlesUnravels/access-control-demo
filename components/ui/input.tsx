@@ -80,28 +80,47 @@ const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
 PasswordInput.displayName = 'PasswordInput';
 
 const DateTimeInput = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, ...props }, ref) => {
+  (
+    {
+      className,
+      disabled,
+      onClick,
+      'show-button-tab-index': pickerButtonTabIndex,
+      ...props
+    },
+    ref,
+  ) => {
+    const showDateTimePicker = (input: HTMLInputElement) => {
+      if (!input.disabled && typeof input.showPicker === 'function') {
+        input.showPicker();
+      }
+    };
     return (
       <div className="relative">
         <input
-          type="datetime-local"
-          className={cn(inputStyles, 'cursor-pointer', className)}
-          ref={ref}
-          onClick={(event) => event.currentTarget.showPicker()}
           {...props}
+          data-custom-picker="true"
+          type="datetime-local"
+          className={cn(inputStyles, 'cursor-pointer pr-11', className)}
+          ref={ref}
+          disabled={disabled}
+          onClick={(event) => {
+            onClick?.(event);
+          }}
         />
         <button
-          id="show-datetime-picker-button"
-          name="show-datetime-picker-button"
-          tabIndex={props['show-button-tab-index']}
+          tabIndex={pickerButtonTabIndex}
+          disabled={disabled}
           onClick={(event) => {
             const input = event.currentTarget.previousElementSibling;
-
-            if (input instanceof HTMLInputElement) input.showPicker();
+            if (input instanceof HTMLInputElement) {
+              showDateTimePicker(input);
+            }
           }}
           type="button"
-          className="absolute inset-y-0 right-3 flex items-center text-zinc-500 transition-colors hover:cursor-pointer hover:text-zinc-400"
+          className="absolute inset-y-0 right-3 flex items-center text-zinc-500 transition-colors hover:cursor-pointer hover:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Show date and time picker"
+          aria-controls={typeof props.id === 'string' ? props.id : undefined}
         >
           <Calendar className="size-5" aria-hidden="true" />
         </button>

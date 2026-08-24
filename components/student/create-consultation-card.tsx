@@ -128,7 +128,6 @@ export const CreateConsultationCard = () => {
               id="scheduled-for"
               type="datetime-local"
               value={createForm.scheduledFor}
-              onClick={(event) => event.currentTarget.showPicker()}
               onChange={(event) =>
                 setCreateForm((state) => ({
                   ...state,
