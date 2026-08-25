@@ -1,130 +1,132 @@
-import { expect, test, vi } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import {
   CONSULTATION_NAME_MAX_LENGTH,
   CONSULTATION_REASON_MAX_LENGTH,
 } from '@/lib/validation/limits';
-// Component to test
 import { CreateConsultationCard } from '@/components/student/create-consultation-card';
 
-test('should submit the consultation form and clear after success', async () => {
-  const onCreateConsultation = vi.fn().mockResolvedValueOnce(undefined);
+const actionMocks = vi.hoisted(() => ({
+  error: undefined as string | undefined,
+  createConsultation: vi.fn(),
+  toggleCompleted: vi.fn(),
+  reschedule: vi.fn(),
+  cancelConsultation: vi.fn(),
+}));
 
-  const screen = await render(
-    <CreateConsultationCard onCreateConsultation={onCreateConsultation} />,
-  );
+vi.mock('@/components/student/student-consultation-action-hook', () => ({
+  useStudentConsultationActions: () => actionMocks,
+}));
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  actionMocks.error = undefined;
+  actionMocks.createConsultation.mockResolvedValue(undefined);
+});
+
+const FUTURE_SCHEDULED_FOR = '2099-06-01T10:30';
+const CREATE_BUTTON_TEST_ID = 'create-consultation-button';
+const SCHEDULED_FOR_TEST_ID = 'scheduled-for-input';
+
+const createDeferred = () => {
+  let resolve!: () => void;
+
+  const promise = new Promise<void>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+
+  return { promise, resolve };
+};
+
+test('should submit the consultation form and clear after success', async () => {
+  const screen = await render(<CreateConsultationCard />);
 
   const firstName = screen.getByLabelText('First name');
   const lastName = screen.getByLabelText('Last name');
   const reason = screen.getByLabelText('Reason');
-  const scheduledFor = screen.getByLabelText('Date and Time');
+  const scheduledFor = screen.getByTestId(SCHEDULED_FOR_TEST_ID);
+  const submitButton = screen.getByTestId(CREATE_BUTTON_TEST_ID);
 
   await firstName.fill('Pickle');
   await lastName.fill('Rick');
   await reason.fill('I have a question about the multiverse');
-  await scheduledFor.fill('2024-06-01T10:30');
+  await scheduledFor.fill(FUTURE_SCHEDULED_FOR);
+  await submitButton.click();
 
-  await screen.getByRole('button', { name: 'Create Consultation' }).click();
-
-  expect(onCreateConsultation).toHaveBeenCalledOnce();
-  expect(onCreateConsultation).toHaveBeenCalledWith({
+  expect(actionMocks.createConsultation).toHaveBeenCalledOnce();
+  expect(actionMocks.createConsultation).toHaveBeenCalledWith({
     firstName: 'Pickle',
     lastName: 'Rick',
     reason: 'I have a question about the multiverse',
-    scheduledFor: '2024-06-01T10:30',
+    scheduledFor: FUTURE_SCHEDULED_FOR,
   });
 
+  await expect.element(submitButton).toBeEnabled();
   await expect.element(firstName).toHaveValue('');
   await expect.element(lastName).toHaveValue('');
   await expect.element(reason).toHaveValue('');
   await expect.element(scheduledFor).toHaveValue('');
 });
 
-test('preserves the form when consultation creation fails', async () => {
-  const onCreateConsultation = vi
-    .fn()
-    .mockRejectedValue(new Error('Unable to create consultation'));
-
-  const screen = await render(
-    <CreateConsultationCard onCreateConsultation={onCreateConsultation} />,
+test('should preserve the form when consultation creation fails', async () => {
+  actionMocks.createConsultation.mockRejectedValueOnce(
+    new Error('Unable to create consultation'),
   );
+
+  const screen = await render(<CreateConsultationCard />);
 
   const firstName = screen.getByLabelText('First name');
   const lastName = screen.getByLabelText('Last name');
   const reason = screen.getByLabelText('Reason');
-  const scheduledFor = screen.getByLabelText('Date and time');
+  const scheduledFor = screen.getByTestId(SCHEDULED_FOR_TEST_ID);
+  const submitButton = screen.getByTestId(CREATE_BUTTON_TEST_ID);
 
-  await firstName.fill('Taylor');
-  await lastName.fill('Nguyen');
-  await reason.fill('Course planning');
-  await scheduledFor.fill('2026-08-20T14:30');
+  await firstName.fill('Paul');
+  await lastName.fill('Hogan');
+  await reason.fill('Acting classes for Crocodile Dundee or Hogan the Bogan');
+  await scheduledFor.fill(FUTURE_SCHEDULED_FOR);
+  await submitButton.click();
 
-  await screen
-    .getByRole('button', {
-      name: 'Create consultation',
-    })
-    .click();
-
+  await expect.element(submitButton).toBeEnabled();
   await expect
-    .element(
-      screen.getByRole('button', {
-        name: 'Create consultation',
-      }),
-    )
-    .toBeEnabled();
-
-  await expect.element(firstName).toHaveValue('Taylor');
-  await expect.element(lastName).toHaveValue('Nguyen');
-  await expect.element(reason).toHaveValue('Course planning');
-  await expect.element(scheduledFor).toHaveValue('2026-08-20T14:30');
+    .element(screen.getByRole('alert'))
+    .toHaveTextContent('Unable to create consultation');
+  await expect.element(firstName).toHaveValue('Paul');
+  await expect.element(lastName).toHaveValue('Hogan');
+  await expect
+    .element(reason)
+    .toHaveValue('Acting classes for Crocodile Dundee or Hogan the Bogan');
+  await expect.element(scheduledFor).toHaveValue(FUTURE_SCHEDULED_FOR);
 });
 
-test('disables the submit button while creation is in progress', async () => {
-  let resolveCreate!: () => void;
+test('should disable the submit button while creation is in progress', async () => {
+  const deferredCreate = createDeferred();
 
-  const onCreateConsultation = vi.fn(
-    () =>
-      new Promise<void>((resolve) => {
-        resolveCreate = resolve;
-      }),
-  );
+  actionMocks.createConsultation.mockReturnValueOnce(deferredCreate.promise);
 
-  const screen = await render(
-    <CreateConsultationCard onCreateConsultation={onCreateConsultation} />,
-  );
+  const screen = await render(<CreateConsultationCard />);
 
-  await screen.getByLabelText('First name').fill('Taylor');
-  await screen.getByLabelText('Last name').fill('Nguyen');
-  await screen.getByLabelText('Reason').fill('Course planning');
-  await screen.getByLabelText('Date and time').fill('2026-08-20T14:30');
+  const submitButton = screen.getByTestId(CREATE_BUTTON_TEST_ID);
 
-  await screen
-    .getByRole('button', {
-      name: 'Create consultation',
-    })
-    .click();
+  await screen.getByLabelText('First name').fill('Bart');
+  await screen.getByLabelText('Last name').fill('Simpson');
+  await screen.getByLabelText('Reason').fill('I want to be a prankster');
+  await screen.getByTestId(SCHEDULED_FOR_TEST_ID).fill(FUTURE_SCHEDULED_FOR);
+  await submitButton.click();
 
-  const loadingButton = screen.getByRole('button', {
-    name: 'Creating...',
-  });
+  expect(actionMocks.createConsultation).toHaveBeenCalledOnce();
 
-  await expect.element(loadingButton).toBeDisabled();
+  await expect.element(submitButton).toBeDisabled();
+  await expect.element(submitButton).toHaveAttribute('aria-busy', 'true');
 
-  resolveCreate();
+  deferredCreate.resolve();
 
-  await expect
-    .element(
-      screen.getByRole('button', {
-        name: 'Create consultation',
-      }),
-    )
-    .toBeEnabled();
+  await expect.element(submitButton).toBeEnabled();
+  await expect.element(submitButton).toHaveAttribute('aria-busy', 'false');
 });
 
-test('exposes consultation text limits to browser inputs', async () => {
-  const screen = await render(
-    <CreateConsultationCard onCreateConsultation={vi.fn()} />,
-  );
+test('should expose consultation text limits to browser inputs', async () => {
+  const screen = await render(<CreateConsultationCard />);
 
   await expect
     .element(screen.getByLabelText('First name'))
@@ -137,4 +139,14 @@ test('exposes consultation text limits to browser inputs', async () => {
   await expect
     .element(screen.getByLabelText('Reason'))
     .toHaveAttribute('maxlength', String(CONSULTATION_REASON_MAX_LENGTH));
+});
+
+test('should show a create error returned by the student action hook', async () => {
+  actionMocks.error = 'Unable to create consultation';
+
+  const screen = await render(<CreateConsultationCard />);
+
+  await expect
+    .element(screen.getByRole('alert'))
+    .toHaveTextContent('Unable to create consultation');
 });
