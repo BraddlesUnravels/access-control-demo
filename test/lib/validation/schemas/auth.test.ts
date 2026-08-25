@@ -15,7 +15,7 @@ const PASSPHRASE = 'correct horse battery staple';
 
 describe('auth validation schemas', () => {
   describe('LoginInputSchema', () => {
-    it('accepts an existing password that does not meet the current creation policy', () => {
+    it('should accept an existing password that does not meet the current creation policy', () => {
       const result = validateWithSchema(LoginInputSchema, {
         email: EMAIL,
         password: 'legacy',

@@ -140,13 +140,13 @@ describe('lib/server/auth', () => {
 });
 
 describe('assertRole', () => {
-  it('allows a user with the required role', () => {
+  it('should allow a user with the required role', () => {
     expect(() => {
       assertRole('student', 'student');
     }).not.toThrow();
   });
 
-  it('rejects a user with a different role', () => {
+  it('should reject a user with a different role', () => {
     let thrownError: unknown;
 
     try {
