@@ -1,12 +1,10 @@
 import { expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { buildConsultation } from '@/test/fixtures/consultation';
-// Test the ConsultationItem component
 import { ConsultationItem } from '@/components/consultations/consultation-item';
 
 test('should reschedule a scheduled consultation', async () => {
   const consultation = buildConsultation();
-
   const onReschedule = vi.fn().mockResolvedValue(undefined);
 
   const screen = await render(
@@ -40,7 +38,6 @@ test('should reschedule a scheduled consultation', async () => {
 
 test('should mark a scheduled consultation as complete', async () => {
   const consultation = buildConsultation();
-
   const onToggleCompleted = vi.fn().mockResolvedValue(undefined);
 
   const screen = await render(
@@ -64,7 +61,6 @@ test('should mark a scheduled consultation as complete', async () => {
 
 test('should cancel a scheduled consultation', async () => {
   const consultation = buildConsultation();
-
   const onCancel = vi.fn().mockResolvedValue(undefined);
 
   const screen = await render(
@@ -86,7 +82,7 @@ test('should cancel a scheduled consultation', async () => {
   expect(onCancel).toHaveBeenCalledWith(consultation.id);
 });
 
-test('disables all consultation actions when cancelled', async () => {
+test('should disable all consultation actions when cancelled', async () => {
   const consultation = buildConsultation({
     status: 'cancelled',
   });
