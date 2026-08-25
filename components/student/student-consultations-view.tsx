@@ -7,10 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Suspense } from 'react';
 import { StudentConsultHeader } from './consultation-header';
 import { CreateConsultationCard } from './create-consultation-card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ConsultationListStudent } from './consultation-list-student';
 
 export const StudentConsultationsView = () => (

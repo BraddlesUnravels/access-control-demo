@@ -1,6 +1,5 @@
 import { Typography } from '@/components/ui/typography';
 import { CalendarX2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type FallbackProps = {
   loading: boolean;
