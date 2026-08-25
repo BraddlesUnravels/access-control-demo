@@ -25,9 +25,9 @@ export const ConsultationListStudent = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      {consultations.map((consultation: ConsultationRecord) => (
+      {consultations.map((consultation: ConsultationRecord, i) => (
         <ConsultationItem
-          key={`${consultation.id}:${consultation.scheduled_for}`}
+          key={`${consultation.id}:${i}`}
           consultation={consultation}
           onCancel={cancelConsultation}
           onReschedule={reschedule}

@@ -1,8 +1,8 @@
-import {
+import type {
   ComponentPropsWithoutRef,
-  type ComponentPropsWithRef,
-  type ElementType,
-  type ReactNode,
+  ComponentPropsWithRef,
+  ElementType,
+  ReactNode,
 } from 'react';
 
 type Variant =
@@ -17,13 +17,17 @@ type Variant =
   | 'action'
   | 'caption';
 
-type TypograghtProps<T extends ElementType = ElementType> = {
+type TypographyOwnProps<T extends ElementType> = {
   variant?: Variant;
   as?: T;
   children?: ReactNode;
   className?: string;
   ref?: ComponentPropsWithRef<T>['ref'];
-} & Omit<ComponentPropsWithoutRef<T>, 'variant' | 'as' | 'ref'>;
+};
+
+type TypographyProps<T extends ElementType = ElementType> =
+  TypographyOwnProps<T> &
+    Omit<ComponentPropsWithoutRef<T>, keyof TypographyOwnProps<T>>;
 
 const variantStyles: Record<Variant, string> = {
   display: 'text-display',
@@ -58,14 +62,14 @@ export const Typography = <T extends ElementType = ElementType>({
   className = '',
   ref,
   ...rest
-}: TypograghtProps<T>) => {
-  const Component = as || defaultTag[variant];
+}: TypographyProps<T>) => {
+  const Component = as ?? defaultTag[variant];
 
   return (
     <Component
-      ref={ref}
-      className={`${variantStyles[variant]} ${className}`}
       {...rest}
+      ref={ref}
+      className={`${variantStyles[variant]} ${className}`.trim()}
     >
       {children}
     </Component>

@@ -27,9 +27,9 @@ export const ConsultationListAdmin = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      {consultations.map((consultation) => (
+      {consultations.map((consultation, i) => (
         <ConsultationSummaryCard
-          key={`${consultation.id}:${consultation.scheduled_for}`}
+          key={`${consultation.id}:${i}`}
           consultation={consultation}
           showStudentUserId
         />

@@ -7,11 +7,7 @@ import {
 import { CreateConsultationCard } from '@/components/student/create-consultation-card';
 
 const actionMocks = vi.hoisted(() => ({
-  error: undefined as string | undefined,
   createConsultation: vi.fn(),
-  toggleCompleted: vi.fn(),
-  reschedule: vi.fn(),
-  cancelConsultation: vi.fn(),
 }));
 
 vi.mock('@/components/student/student-consultation-action-hook', () => ({
@@ -20,7 +16,6 @@ vi.mock('@/components/student/student-consultation-action-hook', () => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
-  actionMocks.error = undefined;
   actionMocks.createConsultation.mockResolvedValue(undefined);
 });
 
@@ -139,14 +134,4 @@ test('should expose consultation text limits to browser inputs', async () => {
   await expect
     .element(screen.getByLabelText('Reason'))
     .toHaveAttribute('maxlength', String(CONSULTATION_REASON_MAX_LENGTH));
-});
-
-test('should show a create error returned by the student action hook', async () => {
-  actionMocks.error = 'Unable to create consultation';
-
-  const screen = await render(<CreateConsultationCard />);
-
-  await expect
-    .element(screen.getByRole('alert'))
-    .toHaveTextContent('Unable to create consultation');
 });

@@ -32,8 +32,7 @@ export const CreateConsultationCard = () => {
     useState<CreateConsultationForm>(DEFAULT_FORM);
   const [submittingCreate, setSubmittingCreate] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | undefined>();
-  const { createConsultation, error: consultationError } =
-    useStudentConsultationActions();
+  const { createConsultation } = useStudentConsultationActions();
 
   const handleCreateConsultation = async (event: React.SubmitEvent) => {
     event.preventDefault();
@@ -49,11 +48,6 @@ export const CreateConsultationCard = () => {
       setSubmittingCreate(false);
     }
   };
-
-  const displayedError =
-    consultationError === undefined
-      ? submissionError
-      : getErrorMessage(consultationError);
 
   return (
     <Card className="overflow-hidden">
@@ -162,12 +156,12 @@ export const CreateConsultationCard = () => {
             </Button>
           </div>
 
-          {displayedError && (
+          {submissionError && (
             <div
               role="alert"
               className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300 md:col-span-2"
             >
-              {displayedError}
+              {submissionError}
             </div>
           )}
         </form>
