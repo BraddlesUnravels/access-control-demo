@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { accessUnlockInputSchema } from './access';
 import {
   consultationStatusSchema,
@@ -11,6 +12,7 @@ import {
   profileCreateInputSchema,
   profileUpdateInputSchema,
 } from './profiles';
+import { demoAccountResponseSchema } from './demo-accounts';
 
 export {
   accessUnlockInputSchema,
@@ -22,4 +24,5 @@ export {
   profileSchema,
   profileCreateInputSchema,
   profileUpdateInputSchema,
+  demoAccountResponseSchema,
 };
