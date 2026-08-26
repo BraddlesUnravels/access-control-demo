@@ -40,7 +40,7 @@ export const AuthPageShell = ({ children }: { children: React.ReactNode }) => (
             <Typography
               as="p"
               variant="body-small"
-              className="text-xs font-semibold tracking-wide text-zinc-200"
+              className="font-semibold tracking-wide text-zinc-200"
             >
               Access Control Demo
             </Typography>
@@ -48,7 +48,7 @@ export const AuthPageShell = ({ children }: { children: React.ReactNode }) => (
             <Typography
               as="p"
               variant="caption"
-              className="mt-0.5 text-[10px] text-zinc-600"
+              className="mt-0.5 text-zinc-600"
             >
               Full-stack security portfolio
             </Typography>

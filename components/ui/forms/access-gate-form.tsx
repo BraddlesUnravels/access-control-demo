@@ -102,7 +102,7 @@ export function AccessGateForm({
             )}
           />
 
-          <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-300/0 to-transparent transition-all peer-focus:via-cyan-300/40" />
+          <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-linear-to-r from-transparent via-cyan-300/0 to-transparent transition-all peer-focus:via-cyan-300/40" />
         </div>
       </FormField>
 
@@ -114,7 +114,7 @@ export function AccessGateForm({
         size="lg"
         disabled={isLoading}
         className={cn(
-          'group h-10 w-full rounded-xl bg-gradient-to-r from-cyan-300 to-cyan-200',
+          'group h-10 w-full rounded-xl bg-linear-to-r from-cyan-300 to-cyan-200',
           'font-semibold text-slate-950 shadow-[0_8px_28px_rgba(34,211,238,0.12)]',
           'transition-all duration-200',
           'hover:from-cyan-200 hover:to-cyan-100',

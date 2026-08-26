@@ -24,7 +24,7 @@ export const HeroSection = () => (
       <Typography
         as="span"
         variant="display"
-        className="block bg-gradient-to-r from-zinc-400 via-zinc-300 to-zinc-600 bg-clip-text text-transparent"
+        className="block bg-linear-to-r from-zinc-400 via-zinc-300 to-zinc-600 bg-clip-text text-transparent"
       >
         every boundary.
       </Typography>
