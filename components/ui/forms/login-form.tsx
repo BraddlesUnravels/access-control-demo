@@ -53,7 +53,6 @@ export function LoginForm({
       </FormField>
 
       <FormField
-        id="password"
         label="Password"
         htmlFor="password"
         className="gap-2.5"

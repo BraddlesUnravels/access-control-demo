@@ -1,4 +1,5 @@
-import { DemoAccount } from './validation/types/demo-account';
+import type { DemoAccount } from './validation/types/demo-account';
+
 export const DEMO_ACCOUNTS = [
   {
     id: 'student-1',

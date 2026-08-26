@@ -1,4 +1,3 @@
-import * as v from 'valibot';
 import { accessUnlockInputSchema } from './access';
 import {
   consultationStatusSchema,

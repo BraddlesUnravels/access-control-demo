@@ -54,11 +54,7 @@ export const Architecture = () => (
           Request lifecycle
         </Typography>
 
-        <Typography
-          as="p"
-          variant="body-small"
-          className="mt-1 text-zinc-400"
-        >
+        <Typography as="p" variant="body-small" className="mt-1 text-zinc-400">
           Independent enforcement across four boundaries
         </Typography>
       </div>

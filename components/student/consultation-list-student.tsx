@@ -31,7 +31,7 @@ export const ConsultationListStudent = () => {
           {error}
         </FormMessage>
       )}
-      {consultations.map((consultation: ConsultationRecord, i) => (
+      {consultations.map((consultation: ConsultationRecord) => (
         <ConsultationItem
           key={consultation.id}
           consultation={consultation}
