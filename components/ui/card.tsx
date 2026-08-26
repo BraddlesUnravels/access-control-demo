@@ -8,7 +8,6 @@ const CardTitle = forwardRef<
   HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
   <Typography
-    as="h3"
     variant="component-title"
     ref={ref}
     className={cn('font-semibold leading-none tracking-tight', className)}

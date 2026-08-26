@@ -2,9 +2,9 @@ import { ShieldCheck, UserRound } from 'lucide-react';
 import { Typography } from '../ui/typography';
 
 export const StudentConsultHeader = () => (
-  <div
+  <header
     id="student-view-header"
-    className="flex items-end flex-col md:justify-between mb-5 xl:mb-10"
+    className="mb-5 flex flex-col items-end xl:mb-10"
   >
     <div className="flex w-full mb-3 gap-2 justify-between xl:mb-5">
       <div className="flex w-fit items-center gap-2">
@@ -47,5 +47,5 @@ export const StudentConsultHeader = () => (
         authenticated account.
       </Typography>
     </div>
-  </div>
+  </header>
 );
