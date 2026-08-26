@@ -5,6 +5,7 @@ import { ConsultationItem } from '../consultations/consultation-item';
 import { useStudentConsultations } from './student-consultation-hook';
 import { useStudentConsultationActions } from './student-consultation-action-hook';
 import { StudentFallback } from './student-loading-error-fallback';
+import { FormMessage } from '../ui/form-message';
 
 export const ConsultationListStudent = () => {
   const {
@@ -20,14 +21,19 @@ export const ConsultationListStudent = () => {
   } = useStudentConsultationActions();
   const error = loadError ?? actionError;
 
-  if (consultations.length === 0 || loading || error)
+  if (consultations.length === 0 || loading)
     return <StudentFallback loading={loading} error={error} />;
 
   return (
     <div className="flex flex-col gap-4">
-      {consultations.map((consultation: ConsultationRecord, i) => (
+      {error && (
+        <FormMessage id="form-error" variant="error">
+          {error}
+        </FormMessage>
+      )}
+      {consultations.map((consultation: ConsultationRecord) => (
         <ConsultationItem
-          key={`${consultation.id}:${i}`}
+          key={consultation.id}
           consultation={consultation}
           onCancel={cancelConsultation}
           onReschedule={reschedule}

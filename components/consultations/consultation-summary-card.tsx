@@ -83,38 +83,38 @@ export const ConsultationSummaryCard = ({
           </Typography>
         </div>
 
-        <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
-          {showStudentUserId ? (
-            <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
-              <Typography
-                variant="caption"
-                className="mb-1.5 font-mono uppercase tracking-[0.13em] text-zinc-600"
-              >
-                Student user ID
-              </Typography>
+        {showStudentUserId ? (
+          <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
+            <Typography
+              as="p"
+              variant="caption"
+              className="mb-1.5 font-mono uppercase tracking-[0.13em] text-zinc-600"
+            >
+              Student user ID
+            </Typography>
 
-              <Typography
-                variant="caption"
-                className="truncate font-mono text-zinc-400"
-              >
-                {consultation.student_user_id}
+            <Typography
+              as="p"
+              variant="caption"
+              className="truncate font-mono text-zinc-400"
+            >
+              {consultation.student_user_id}
+            </Typography>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
+            <div className="mb-1.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.13em] text-zinc-600">
+              <ShieldCheck className="size-3" aria-hidden="true" />
+              <Typography variant="caption" className="-mb-1">
+                Access scope
               </Typography>
             </div>
-          ) : (
-            <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
-              <div className="mb-1.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.13em] text-zinc-600">
-                <ShieldCheck className="size-3" aria-hidden="true" />
-                <Typography variant="caption" className="-mb-1">
-                  Access scope
-                </Typography>
-              </div>
 
-              <Typography variant="body" className="text-zinc-400">
-                {actions ? 'Authenticated owner' : 'Read-only'}
-              </Typography>
-            </div>
-          )}
-        </div>
+            <Typography variant="body" className="text-zinc-400">
+              {actions ? 'Authenticated owner' : 'Read-only'}
+            </Typography>
+          </div>
+        )}
       </div>
 
       {actions}

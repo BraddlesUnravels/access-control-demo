@@ -1,16 +1,17 @@
 'use client';
 
 import { Check, KeyRound, LogIn, ShieldCheck, UserRound } from 'lucide-react';
-import type { DemoAccount, DemoAccountId } from '@/lib/demo-accounts';
+import type { DemoAccountId } from '@/lib/demo-accounts';
+import type { DemoAccountWithPassword } from '@/lib/validation/types/demo-account';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Typography } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 
 type DemoAccountsPanelProps = {
-  accounts: readonly DemoAccount[];
+  accounts: readonly DemoAccountWithPassword[];
   selectedAccountId?: DemoAccountId;
-  onAccountSelect: (account: DemoAccount) => void;
+  onAccountSelect: (account: DemoAccountWithPassword) => void;
   className?: string;
 };
 

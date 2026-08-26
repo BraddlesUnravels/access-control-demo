@@ -53,7 +53,6 @@ export function ForgotPasswordForm({
             <form action={formAction}>
               <div className="flex flex-col gap-6">
                 <FormField
-                  id="email"
                   label="Email"
                   htmlFor="email"
                   className="gap-1"

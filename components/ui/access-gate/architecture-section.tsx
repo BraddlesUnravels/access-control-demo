@@ -54,11 +54,7 @@ export const Architecture = () => (
           Request lifecycle
         </Typography>
 
-        <Typography
-          as="p"
-          variant="body"
-          className="mt-1 text-sm text-zinc-400"
-        >
+        <Typography as="p" variant="body-small" className="mt-1 text-zinc-400">
           Independent enforcement across four boundaries
         </Typography>
       </div>
@@ -84,16 +80,16 @@ export const Architecture = () => (
               'sm:[&:nth-child(odd)]:border-r',
               'sm:[&:nth-child(-n+2)]:border-b',
               'overflow-y-clip',
-              'lg: border-b-0',
-              'lg: border-r',
+              'lg:border-b-0',
+              'lg:border-r',
               'lg:last:border-r-0',
             ].join(' ')}
           >
             <div className="flex items-start justify-between">
               <Typography
                 as="span"
-                variant="body"
-                className="font-mono text-xs font-medium text-cyan-300/80"
+                variant="caption"
+                className="font-mono font-medium text-cyan-300/80"
               >
                 {number}
               </Typography>

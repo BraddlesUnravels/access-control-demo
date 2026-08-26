@@ -11,6 +11,7 @@ import {
   profileCreateInputSchema,
   profileUpdateInputSchema,
 } from './profiles';
+import { demoAccountResponseSchema } from './demo-accounts';
 
 export {
   accessUnlockInputSchema,
@@ -22,4 +23,5 @@ export {
   profileSchema,
   profileCreateInputSchema,
   profileUpdateInputSchema,
+  demoAccountResponseSchema,
 };

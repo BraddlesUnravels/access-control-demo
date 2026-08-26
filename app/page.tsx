@@ -50,7 +50,7 @@ export default function AccessPage({ searchParams }: AccessPageProps) {
         <section className="relative flex items-center border-white/[0.08] px-6 py-[2rem] sm:px-10 lg:border-t lg:min-h-svh lg:border-l lg:px-12">
           <div
             aria-hidden="true"
-            className="absolute inset-0 hidden bg-gradient-to-b from-white/[0.035] via-transparent to-transparent lg:block"
+            className="absolute inset-0 hidden bg-linear-to-b from-white/[0.035] via-transparent to-transparent lg:block"
           />
           <AccessGate searchParams={searchParams} />
         </section>

@@ -7,6 +7,7 @@ import {
   getAdminConsultations,
 } from '@/lib/consultations/api';
 import { AdminFallback } from './admin-loading-error-fallback';
+import { FormMessage } from '../ui/form-message';
 
 const getLoadError = (error: unknown): string | undefined => {
   if (error instanceof Error) return error.message;
@@ -22,14 +23,19 @@ export const ConsultationListAdmin = () => {
   } = useSWR(ADMIN_CONSULTATIONS_API_PATH, getAdminConsultations);
   const error = getLoadError(loadError);
 
-  if (consultations.length === 0 || loading || error)
+  if (consultations.length === 0 || loading)
     return <AdminFallback loading={loading} error={error} />;
 
   return (
     <div className="flex flex-col gap-4">
-      {consultations.map((consultation, i) => (
+      {error && (
+        <FormMessage id="form-error" variant="error">
+          {error}
+        </FormMessage>
+      )}
+      {consultations.map((consultation) => (
         <ConsultationSummaryCard
-          key={`${consultation.id}:${i}`}
+          key={consultation.id}
           consultation={consultation}
           showStudentUserId
         />

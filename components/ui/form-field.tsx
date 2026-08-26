@@ -2,7 +2,10 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { Typography } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 
-type FormFieldProps = Omit<ComponentPropsWithoutRef<'div'>, 'children'> & {
+type FormFieldProps = Omit<
+  ComponentPropsWithoutRef<'div'>,
+  'children' | 'id'
+> & {
   htmlFor: string;
   label: ReactNode;
   action?: ReactNode;
