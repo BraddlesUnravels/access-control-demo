@@ -6,7 +6,7 @@ import {
 
 describe('lib/access-gate/paths', () => {
   describe('isAccessGatePublicPath', () => {
-    it('allows the root gate and public infrastructure routes', () => {
+    it('should allow the root gate and public infrastructure routes', () => {
       expect(isAccessGatePublicPath('/')).toBe(true);
 
       expect(isAccessGatePublicPath('/api/access')).toBe(true);
@@ -20,13 +20,13 @@ describe('lib/access-gate/paths', () => {
       expect(isAccessGatePublicPath('/auth/confirm-email')).toBe(true);
     });
 
-    it('normalizes case and surrounding whitespace before matching', () => {
+    it('should normalize case and surrounding whitespace before matching', () => {
       expect(isAccessGatePublicPath('  /API/ACCESS/UNLOCK  ')).toBe(true);
 
       expect(isAccessGatePublicPath('  /AUTH/CONFIRM-EMAIL  ')).toBe(true);
     });
 
-    it('does not treat similarly named or legacy routes as public', () => {
+    it('should not treat similarly named or legacy routes as public', () => {
       expect(isAccessGatePublicPath('/access')).toBe(false);
 
       expect(isAccessGatePublicPath('/api/accessory')).toBe(false);
@@ -36,7 +36,7 @@ describe('lib/access-gate/paths', () => {
       expect(isAccessGatePublicPath('/auth/confirmation')).toBe(false);
     });
 
-    it('denies protected application routes', () => {
+    it('should deny protected application routes', () => {
       expect(isAccessGatePublicPath('/auth/login')).toBe(false);
 
       expect(isAccessGatePublicPath('/protected')).toBe(false);
@@ -46,13 +46,13 @@ describe('lib/access-gate/paths', () => {
   });
 
   describe('getSafeAccessGateDestination', () => {
-    it('preserves safe internal destinations, query strings, and fragments', () => {
+    it('should preserve safe internal destinations, query strings, and fragments', () => {
       expect(
         getSafeAccessGateDestination('/protected?tab=consultations#upcoming'),
       ).toBe('/protected?tab=consultations#upcoming');
     });
 
-    it('defaults when no destination is supplied', () => {
+    it('should default when no destination is supplied', () => {
       expect(getSafeAccessGateDestination(undefined)).toBe('/auth/login');
 
       expect(getSafeAccessGateDestination(null)).toBe('/auth/login');
@@ -60,7 +60,7 @@ describe('lib/access-gate/paths', () => {
       expect(getSafeAccessGateDestination('')).toBe('/auth/login');
     });
 
-    it('rejects external and protocol-relative destinations', () => {
+    it('should reject external and protocol-relative destinations', () => {
       expect(getSafeAccessGateDestination('https://example.com')).toBe(
         '/auth/login',
       );
@@ -68,7 +68,7 @@ describe('lib/access-gate/paths', () => {
       expect(getSafeAccessGateDestination('//example.com')).toBe('/auth/login');
     });
 
-    it('rejects destinations that loop back to the gate or target APIs', () => {
+    it('should reject destinations that loop back to the gate or target APIs', () => {
       expect(getSafeAccessGateDestination('/')).toBe('/auth/login');
 
       expect(getSafeAccessGateDestination('/api')).toBe('/auth/login');

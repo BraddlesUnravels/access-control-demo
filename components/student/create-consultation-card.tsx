@@ -14,9 +14,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Input, DateTimeInput } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { CreateConsultationForm } from '@/lib/validation/types';
+import { useStudentConsultationActions } from './student-consultation-action-hook';
+import { getErrorMessage } from '@/lib/utils';
 
 const DEFAULT_FORM: CreateConsultationForm = {
   firstName: '',
@@ -25,26 +27,23 @@ const DEFAULT_FORM: CreateConsultationForm = {
   scheduledFor: '',
 };
 
-type CreateConsultationCardProps = {
-  onCreateConsultation: (createForm: CreateConsultationForm) => Promise<void>;
-};
-
-export const CreateConsultationCard = ({
-  onCreateConsultation,
-}: CreateConsultationCardProps) => {
+export const CreateConsultationCard = () => {
   const [createForm, setCreateForm] =
     useState<CreateConsultationForm>(DEFAULT_FORM);
   const [submittingCreate, setSubmittingCreate] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | undefined>();
+  const { createConsultation } = useStudentConsultationActions();
 
   const handleCreateConsultation = async (event: React.SubmitEvent) => {
     event.preventDefault();
+    setSubmissionError(undefined);
     setSubmittingCreate(true);
 
     try {
-      await onCreateConsultation(createForm);
+      await createConsultation(createForm);
       setCreateForm(DEFAULT_FORM);
-    } catch {
-      return;
+    } catch (caughtError) {
+      setSubmissionError(getErrorMessage(caughtError));
     } finally {
       setSubmittingCreate(false);
     }
@@ -125,10 +124,11 @@ export const CreateConsultationCard = ({
             />
           </div>
 
-          <div className="grid gap-2">
+          <div className="grid gap-2 lg:justify-start">
             <Label htmlFor="scheduled-for">Date and time</Label>
 
-            <Input
+            <DateTimeInput
+              data-testid="scheduled-for-input"
               id="scheduled-for"
               type="datetime-local"
               value={createForm.scheduledFor}
@@ -142,17 +142,28 @@ export const CreateConsultationCard = ({
             />
           </div>
 
-          <div className="flex items-end md:justify-end">
+          <div className="flex justify-end items-end">
             <Button
+              data-testid="create-consultation-button"
               type="submit"
               className="w-full md:w-auto"
               disabled={submittingCreate}
+              aria-busy={submittingCreate}
             >
               <CalendarPlus aria-hidden="true" />
 
               {submittingCreate ? 'Creating...' : 'Create consultation'}
             </Button>
           </div>
+
+          {submissionError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300 md:col-span-2"
+            >
+              {submissionError}
+            </div>
+          )}
         </form>
       </CardContent>
     </Card>

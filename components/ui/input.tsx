@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Eye, EyeClosed } from 'lucide-react';
+import { useState, forwardRef, ComponentProps } from 'react';
+import type { ReactNode } from 'react';
+import { Eye, EyeClosed, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type InputProps = React.ComponentProps<'input'> & {
-  endIcon?: React.ReactNode;
+type InputProps = ComponentProps<'input'> & {
+  endIcon?: ReactNode;
   'show-button-tab-index'?: number;
 };
 
@@ -17,7 +18,7 @@ const inputStyles = [
   'md:text-sm',
 ].join(' ');
 
-const Input = React.forwardRef<HTMLInputElement, InputProps>(
+const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, endIcon, ...props }, ref) => {
     return (
       <div className="relative">
@@ -42,9 +43,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = 'Input';
 
-export { Input };
-
-const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
+const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
   ({ className, ...props }, ref) => {
     const [hidden, setHidden] = useState(true);
 
@@ -80,4 +79,56 @@ const PasswordInput = React.forwardRef<HTMLInputElement, InputProps>(
 
 PasswordInput.displayName = 'PasswordInput';
 
-export { PasswordInput };
+const DateTimeInput = forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      className,
+      disabled,
+      onClick,
+      'show-button-tab-index': pickerButtonTabIndex,
+      ...props
+    },
+    ref,
+  ) => {
+    const showDateTimePicker = (input: HTMLInputElement) => {
+      if (!input.disabled && typeof input.showPicker === 'function') {
+        input.showPicker();
+      }
+    };
+    return (
+      <div className="relative">
+        <input
+          {...props}
+          data-custom-picker="true"
+          type="datetime-local"
+          className={cn(inputStyles, 'cursor-pointer pr-11', className)}
+          ref={ref}
+          disabled={disabled}
+          onClick={(event) => {
+            onClick?.(event);
+          }}
+        />
+        <button
+          tabIndex={pickerButtonTabIndex}
+          disabled={disabled}
+          onClick={(event) => {
+            const input = event.currentTarget.previousElementSibling;
+            if (input instanceof HTMLInputElement) {
+              showDateTimePicker(input);
+            }
+          }}
+          type="button"
+          className="absolute inset-y-0 right-3 flex items-center text-zinc-500 transition-colors hover:cursor-pointer hover:text-zinc-400 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Show date and time picker"
+          aria-controls={typeof props.id === 'string' ? props.id : undefined}
+        >
+          <Calendar className="size-5" aria-hidden="true" />
+        </button>
+      </div>
+    );
+  },
+);
+
+DateTimeInput.displayName = 'DateTimeInput';
+
+export { Input, PasswordInput, DateTimeInput };

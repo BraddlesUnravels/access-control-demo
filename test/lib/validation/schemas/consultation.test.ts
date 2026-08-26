@@ -14,7 +14,7 @@ const VALID_INPUT = {
 };
 
 describe('consultationCreateInputSchema', () => {
-  it('accepts text at the configured limits after trimming', () => {
+  it('should accept text at the configured limits after trimming', () => {
     const result = validateWithSchema(consultationCreateInputSchema, {
       ...VALID_INPUT,
       firstName: `  ${'a'.repeat(CONSULTATION_NAME_MAX_LENGTH)}  `,
@@ -47,16 +47,19 @@ describe('consultationCreateInputSchema', () => {
       value: 'c'.repeat(CONSULTATION_REASON_MAX_LENGTH + 1),
       message: `Reason must be no more than ${CONSULTATION_REASON_MAX_LENGTH} characters long`,
     },
-  ] as const)('rejects an oversized $field', ({ field, value, message }) => {
-    const result = validateWithSchema(consultationCreateInputSchema, {
-      ...VALID_INPUT,
-      [field]: value,
-    });
+  ] as const)(
+    'should reject an oversized $field',
+    ({ field, value, message }) => {
+      const result = validateWithSchema(consultationCreateInputSchema, {
+        ...VALID_INPUT,
+        [field]: value,
+      });
 
-    expect(result.success).toBe(false);
+      expect(result.success).toBe(false);
 
-    if (result.success) return;
+      if (result.success) return;
 
-    expect(result.fieldErrors[field]).toEqual([message]);
-  });
+      expect(result.fieldErrors[field]).toEqual([message]);
+    },
+  );
 });

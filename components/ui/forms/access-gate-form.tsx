@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
 import { FormMessage } from '@/components/ui/form-message';
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
+import { formatInviteCode } from '@/lib/access-gate/code';
 import { Typography } from '@/components/ui/typography';
 import { cn } from '@/lib/utils';
 
@@ -20,12 +21,14 @@ type AccessGateFormProps = {
 };
 
 export function AccessGateForm({
-  initialCode = '',
+  initialCode,
   nextPath = '/auth/login',
   className,
 }: AccessGateFormProps) {
   const router = useRouter();
-  const [code, setCode] = useState(initialCode);
+  const [code, setCode] = useState(
+    initialCode ? formatInviteCode(initialCode) : '',
+  );
   const [error, setError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -80,10 +83,11 @@ export function AccessGateForm({
             name="code"
             autoComplete="one-time-code"
             autoCapitalize="characters"
+            maxLength={18}
             spellCheck={false}
             required
             value={code}
-            onChange={(event) => setCode(event.target.value)}
+            onChange={(event) => setCode(formatInviteCode(event.target.value))}
             placeholder="ACD-XXXX-XXXX-XXXX"
             aria-describedby={error ? 'access-code-error' : undefined}
             aria-invalid={Boolean(error)}
@@ -98,7 +102,7 @@ export function AccessGateForm({
             )}
           />
 
-          <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-300/0 to-transparent transition-all peer-focus:via-cyan-300/40" />
+          <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-linear-to-r from-transparent via-cyan-300/0 to-transparent transition-all peer-focus:via-cyan-300/40" />
         </div>
       </FormField>
 
@@ -110,7 +114,7 @@ export function AccessGateForm({
         size="lg"
         disabled={isLoading}
         className={cn(
-          'group h-10 w-full rounded-xl bg-gradient-to-r from-cyan-300 to-cyan-200',
+          'group h-10 w-full rounded-xl bg-linear-to-r from-cyan-300 to-cyan-200',
           'font-semibold text-slate-950 shadow-[0_8px_28px_rgba(34,211,238,0.12)]',
           'transition-all duration-200',
           'hover:from-cyan-200 hover:to-cyan-100',

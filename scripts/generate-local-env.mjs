@@ -1,10 +1,10 @@
 import { execSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import {
-  STUDENT1_PASSWORD,
-  STUDENT2_PASSWORD,
-  ADMIN_PASSWORD,
-} from '../src/lib/constants';
+  STUDENT_1_DEMO_PASSWORD,
+  STUDENT_2_DEMO_PASSWORD,
+  ADMIN_DEMO_PASSWORD,
+} from '../lib/demo-account-passwords.ts';
 
 const stripOuterQuotes = (value) => {
   if (!value) return value;
@@ -81,15 +81,15 @@ const main = () => {
       '',
       'Student login:',
       '  Email: student1@lms.com',
-      `  Password: ${STUDENT1_PASSWORD}`,
+      `  Password: ${STUDENT_1_DEMO_PASSWORD}`,
       '',
       'Student login:',
       '  Email: student2@lms.com',
-      `  Password: ${STUDENT2_PASSWORD}`,
+      `  Password: ${STUDENT_2_DEMO_PASSWORD}`,
       '',
       'Admin login:',
       '  Email: admin@lms.com',
-      `  Password: ${ADMIN_PASSWORD}`,
+      `  Password: ${ADMIN_DEMO_PASSWORD}`,
       '',
       '============================================================',
     ].join('\n'),

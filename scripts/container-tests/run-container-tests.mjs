@@ -23,7 +23,7 @@ import {
   STUDENT_1_DEMO_PASSWORD,
   STUDENT_2_DEMO_PASSWORD,
   ADMIN_DEMO_PASSWORD,
-} from '../../lib/demo-accounts.ts';
+} from '../../lib/demo-account-passwords.ts';
 
 const imageName = process.env.CONTAINER_IMAGE ?? 'access-control-demo:stage';
 const containerName = process.env.CONTAINER_NAME ?? 'access-control-demo-stage';

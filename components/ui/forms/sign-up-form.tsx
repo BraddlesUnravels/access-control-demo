@@ -39,7 +39,7 @@ export function SignUpForm({
         <CardContent>
           <form action={formAction}>
             <div className="flex flex-col gap-6">
-              <FormField label="Email" id="email" htmlFor="email">
+              <FormField label="Email" htmlFor="email">
                 <Input
                   id="email"
                   name="email"
@@ -49,7 +49,7 @@ export function SignUpForm({
                 />
               </FormField>
 
-              <FormField label="Password" id="password" htmlFor="password">
+              <FormField label="Password" htmlFor="password">
                 <PasswordInput
                   id="password"
                   name="password"
@@ -58,11 +58,7 @@ export function SignUpForm({
                 />
               </FormField>
 
-              <FormField
-                label="Repeat Password"
-                id="repeat-password"
-                htmlFor="repeat-password"
-              >
+              <FormField label="Repeat Password" htmlFor="repeat-password">
                 <PasswordInput
                   id="repeat-password"
                   name="repeat-password"

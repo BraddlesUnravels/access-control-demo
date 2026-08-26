@@ -16,6 +16,6 @@ export const BackgroundStyles = () => (
       }}
     />
 
-    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/50 to-transparent" />
+    <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-cyan-300/50 to-transparent" />
   </div>
 );
