@@ -8,9 +8,9 @@ type FormMessageProps = ComponentPropsWithoutRef<'div'> & {
 };
 
 const variantStyles: Record<FormMessageVariant, string> = {
-  error: 'border-destructive/15 bg-destructive/[0.06] text-red-300',
-  success: 'border-emerald-400/15 bg-emerald-400/[0.06] text-emerald-300',
-  info: 'border-white/[0.08] bg-white/[0.025] text-zinc-400',
+  error: 'border-destructive/15 bg-destructive/6 text-red-300',
+  success: 'border-emerald-400/15 bg-emerald-400/6 text-emerald-300',
+  info: 'border-white/8 bg-white/2.5 text-zinc-400',
 };
 
 export const FormMessage = ({

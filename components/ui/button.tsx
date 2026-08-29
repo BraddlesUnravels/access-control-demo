@@ -13,15 +13,15 @@ const buttonVariants = cva(
           'bg-linear-to-r from-cyan-300 to-cyan-200 text-slate-950 shadow-[0_8px_28px_rgba(34,211,238,0.12)] hover:from-cyan-200 hover:to-cyan-100 hover:shadow-[0_10px_34px_rgba(34,211,238,0.2)]',
 
         destructive:
-          'border border-red-400/15 bg-red-400/[0.08] text-red-300 hover:bg-red-400/[0.13]',
+          'border border-red-400/15 bg-red-400/8 text-red-300 hover:bg-red-400/13',
 
         outline:
-          'border border-white/[0.1] bg-white/[0.025] text-zinc-300 shadow-sm hover:border-cyan-300/20 hover:bg-cyan-300/[0.055] hover:text-cyan-100',
+          'border border-white/10 bg-white/2.5 text-zinc-300 shadow-sm hover:border-cyan-300/20 hover:bg-cyan-300/5.5 hover:text-cyan-100',
 
         secondary:
-          'border border-white/[0.07] bg-white/[0.055] text-zinc-300 hover:bg-white/[0.09] hover:text-zinc-100',
+          'border border-white/[0.07] bg-white/5.5 text-zinc-300 hover:bg-white/9 hover:text-zinc-100',
 
-        ghost: 'text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-100',
+        ghost: 'text-zinc-400 hover:bg-white/5 hover:text-zinc-100',
 
         link: 'text-cyan-300 underline-offset-4 hover:text-cyan-200 hover:underline',
       },

@@ -9,24 +9,24 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          'border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-200 hover:bg-cyan-300/[0.1]',
+          'border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-200 hover:bg-cyan-300/10',
 
         secondary:
-          'border-white/[0.07] bg-white/[0.04] text-zinc-400 hover:bg-white/[0.07]',
+          'border-white/[0.07] bg-white/4 text-zinc-400 hover:bg-white/[0.07]',
 
         destructive:
-          'border-red-400/15 bg-red-400/[0.07] text-red-300 hover:bg-red-400/[0.1]',
+          'border-red-400/15 bg-red-400/[0.07] text-red-300 hover:bg-red-400/10',
 
-        outline: 'border-white/[0.1] bg-transparent text-zinc-300',
+        outline: 'border-white/10 bg-transparent text-zinc-300',
 
         scheduled:
-          'border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-200 hover:bg-cyan-300/[0.1]',
+          'border-cyan-300/15 bg-cyan-300/[0.07] text-cyan-200 hover:bg-cyan-300/10',
 
         cancelled:
-          'border-red-400/15 bg-red-400/[0.07] text-red-300 hover:bg-red-400/[0.1]',
+          'border-red-400/15 bg-red-400/[0.07] text-red-300 hover:bg-red-400/10',
 
         completed:
-          'border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300 hover:bg-emerald-400/[0.1]',
+          'border-emerald-400/15 bg-emerald-400/[0.07] text-emerald-300 hover:bg-emerald-400/10',
       },
     },
 

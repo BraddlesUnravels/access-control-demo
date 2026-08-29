@@ -4,8 +4,8 @@ export const BackgroundStyles = () => (
     aria-hidden="true"
     className="pointer-events-none absolute inset-0"
   >
-    <div className="absolute -left-40 -top-40 size-[38rem] rounded-full bg-cyan-400/[0.08] blur-[120px]" />
-    <div className="absolute -bottom-48 left-[42%] size-[36rem] rounded-full bg-indigo-500/[0.08] blur-[130px]" />
+    <div className="absolute -left-40 -top-40 size-152 rounded-full bg-cyan-400/8 blur-[120px]" />
+    <div className="absolute -bottom-48 left-[42%] size-144 rounded-full bg-indigo-500/8 blur-[130px]" />
 
     <div
       className="absolute inset-0 opacity-[0.035]"

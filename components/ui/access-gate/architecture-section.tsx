@@ -43,8 +43,8 @@ const chipName = [
 ];
 
 export const Architecture = () => (
-  <div id="architecture" className="max-w-[80rem] pb-[2rem]">
-    <div className="mb-[1.5rem] flex items-end justify-between">
+  <div id="architecture" className="max-w-7xl pb-8">
+    <div className="mb-6 flex items-end justify-between">
       <div>
         <Typography
           as="p"
@@ -68,17 +68,17 @@ export const Architecture = () => (
       </Typography>
     </div>
 
-    <ol className="relative grid grid-cols-2 overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] shadow-2xl shadow-black/20 backdrop-blur-sm lg:grid-cols-4 lg:overflow-y-visible">
+    <ol className="relative grid grid-cols-2 overflow-hidden rounded-xl border border-white/8 bg-white/2.5 shadow-2xl shadow-black/20 backdrop-blur-sm lg:grid-cols-4 lg:overflow-y-visible">
       {securityLayers.map(
         ({ number, icon: Icon, title, description }, index) => (
           <li
             key={title}
             className={[
-              'group relative min-h-[13rem] border-white/[0.07] p-5',
-              'transition-colors duration-300 hover:bg-white/[0.035]',
+              'group relative min-h-52 border-white/7 p-5',
+              'transition-colors duration-300 hover:bg-white/3.5',
               'hover:cursor-default',
-              'sm:[&:nth-child(odd)]:border-r',
-              'sm:[&:nth-child(-n+2)]:border-b',
+              'sm:odd:border-r',
+              'sm:nth-[-n+2]:border-b',
               'overflow-y-clip',
               'lg:border-b-0',
               'lg:border-r',
@@ -94,7 +94,7 @@ export const Architecture = () => (
                 {number}
               </Typography>
 
-              <div className="flex size-8.5 items-center justify-center rounded-lg border border-white/[0.08] bg-black/20">
+              <div className="flex size-8.5 items-center justify-center rounded-lg border border-white/8 bg-black/20">
                 <Icon
                   className="size-4.5 text-zinc-500 transition-colors duration-300 group-hover:text-cyan-200"
                   aria-hidden="true"
@@ -114,14 +114,14 @@ export const Architecture = () => (
               <Typography
                 as="p"
                 variant="body-large"
-                className="mt-[1rem] leading-6 text-zinc-500"
+                className="mt-4 leading-6 text-zinc-500"
               >
                 {description}
               </Typography>
             </div>
 
             {index < securityLayers.length - 1 && (
-              <div className="absolute right-[-0.8rem] top-1/2 z-20 hidden size-[1.5rem] -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#0c1018] lg:flex">
+              <div className="absolute right-[-0.8rem] top-1/2 z-20 hidden size-6 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-[#0c1018] lg:flex">
                 <ArrowRight
                   className="size-4 text-zinc-600"
                   aria-hidden="true"
@@ -132,7 +132,7 @@ export const Architecture = () => (
             <Typography
               as="span"
               variant="display"
-              className="absolute -bottom-[1.125rem] -right-[0.09rem] font-mono font-semibold tracking-tighter text-white/[0.018] transition-colors group-hover:text-cyan-300/[0.035]"
+              className="absolute -bottom-4.5 right-[-0.09rem] font-mono font-semibold tracking-tighter text-white/[0.018] transition-colors group-hover:text-cyan-300/3.5"
             >
               {number}
             </Typography>
@@ -141,13 +141,13 @@ export const Architecture = () => (
       )}
     </ol>
 
-    <div className="mt-[1.5rem] hidden sm:gap-4 sm:flex sm:flex-wrap sm:justify-center lg:gap-4 lg:justify-start pointer-events-none">
+    <div className="mt-6 hidden gap-4 sm:flex sm:flex-wrap sm:justify-center lg:gap-4 lg:justify-start pointer-events-none">
       {chipName.map((item) => (
         <Typography
           as="span"
           variant="caption"
           key={item}
-          className="rounded-full border border-white/[0.07] bg-white/[0.025] px-[1rem] py-[0.4rem] font-mono uppercase tracking-[0.08em] text-zinc-500"
+          className="rounded-full border border-white/7 bg-white/2.5 px-4 py-[0.4rem] font-mono uppercase tracking-[0.08em] text-zinc-500"
         >
           {item}
         </Typography>

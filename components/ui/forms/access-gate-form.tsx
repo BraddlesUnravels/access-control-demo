@@ -92,8 +92,8 @@ export function AccessGateForm({
             aria-describedby={error ? 'access-code-error' : undefined}
             aria-invalid={Boolean(error)}
             className={cn(
-              'h-13 rounded-xl border-white/[0.1] bg-black/25 px-4 font-mono',
-              'text-sm tracking-[0.1em] text-zinc-100 shadow-inner',
+              'h-13 rounded-xl border-white/10 bg-black/25 px-4 font-mono',
+              'text-sm tracking-widest text-zinc-100 shadow-inner',
               'placeholder:text-zinc-700',
               'focus-visible:border-cyan-300/40 focus-visible:ring-2',
               'focus-visible:ring-cyan-300/10',
@@ -130,7 +130,7 @@ export function AccessGateForm({
       </FormSubmitButton>
 
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-white/[0.06]" />
+        <div className="h-px flex-1 bg-white/6" />
         <Typography
           as="span"
           variant="caption"
@@ -138,7 +138,7 @@ export function AccessGateForm({
         >
           Invite only
         </Typography>
-        <div className="h-px flex-1 bg-white/[0.06]" />
+        <div className="h-px flex-1 bg-white/6" />
       </div>
 
       <Typography

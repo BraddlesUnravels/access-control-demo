@@ -32,7 +32,7 @@ export const AdminFallback = ({ loading, error }: FallbackProps) => {
       id="admin-fallback"
       role={error ? 'alert' : loading ? 'status' : undefined}
       aria-live={error ? 'assertive' : loading ? 'polite' : undefined}
-      className="flex flex-col items-center rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-10 text-center"
+      className="flex flex-col items-center rounded-xl border border-dashed border-white/8 bg-white/2 px-4 py-10 text-center"
     >
       <Typography variant="body" className="font-medium">
         {fallback.title}

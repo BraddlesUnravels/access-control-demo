@@ -51,9 +51,9 @@ export const CreateConsultationCard = () => {
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="border-b border-white/[0.06] bg-white/[0.015]">
+      <CardHeader className="border-b border-white/6 bg-white/1.5">
         <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06]">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/6">
             <CalendarPlus className="size-4 text-cyan-300" aria-hidden="true" />
           </div>
 
@@ -159,7 +159,7 @@ export const CreateConsultationCard = () => {
           {submissionError && (
             <div
               role="alert"
-              className="rounded-xl border border-red-400/15 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300 md:col-span-2"
+              className="rounded-xl border border-red-400/15 bg-red-400/6 px-4 py-3 text-sm text-red-300 md:col-span-2"
             >
               {submissionError}
             </div>

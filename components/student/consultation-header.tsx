@@ -19,7 +19,7 @@ export const StudentConsultHeader = () => (
         </Typography>
       </div>
 
-      <div className="hidden lg:flex w-fit items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/[0.06] px-3 py-1.5">
+      <div className="hidden w-fit items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/6 px-3 py-1.5 lg:flex">
         <ShieldCheck className="size-3.5 text-emerald-300" aria-hidden="true" />
 
         <Typography

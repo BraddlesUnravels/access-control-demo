@@ -24,7 +24,7 @@ export const DemoAccountsPanel = ({
   <section
     aria-labelledby="demo-accounts-title"
     className={cn(
-      'w-full rounded-[2rem] border border-white/[0.08]',
+      'w-full rounded-4xl border border-white/8',
       'bg-[#0d1119]/80 p-7 shadow-[0_24px_70px_rgba(0,0,0,0.3)]',
       'backdrop-blur-xl lg:p-6',
       className,
@@ -76,13 +76,13 @@ export const DemoAccountsPanel = ({
               isSelected
                 ? [
                     'border-cyan-300/25',
-                    'bg-cyan-300/[0.035]',
+                    'bg-cyan-300/3.5',
                     'shadow-[inset_0_0_0_1px_rgba(103,232,249,0.03)]',
                   ]
                 : [
-                    'border-white/[0.07]',
-                    'hover:border-white/[0.12]',
-                    'hover:bg-white/[0.015]',
+                    'border-white/7',
+                    'hover:border-white/12',
+                    'hover:bg-white/1.5',
                   ],
             )}
           >
@@ -91,8 +91,8 @@ export const DemoAccountsPanel = ({
                 className={cn(
                   'flex size-9 shrink-0 items-center justify-center rounded-xl border',
                   account.role === 'admin'
-                    ? 'border-cyan-300/15 bg-cyan-300/[0.06]'
-                    : 'border-white/[0.07] bg-white/[0.035]',
+                    ? 'border-cyan-300/15 bg-cyan-300/6'
+                    : 'border-white/7 bg-white/3.5',
                 )}
               >
                 <Icon
@@ -172,8 +172,8 @@ export const DemoAccountsPanel = ({
       })}
     </div>
 
-    <div className="mt-5 flex items-start gap-3 border-t border-white/[0.06] pt-5">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.035]">
+    <div className="mt-5 flex items-start gap-3 border-t border-white/6 pt-5">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/3.5">
         <KeyRound className="size-3.5 text-zinc-500" aria-hidden="true" />
       </div>
 
