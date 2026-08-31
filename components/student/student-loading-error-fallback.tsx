@@ -32,9 +32,9 @@ export const StudentFallback = ({ loading, error }: FallbackProps) => {
       id="student-fallback"
       role={error ? 'alert' : loading ? 'status' : undefined}
       aria-live={error ? 'assertive' : loading ? 'polite' : undefined}
-      className="flex flex-col items-center rounded-xl border border-dashed border-white/[0.08] bg-white/[0.02] px-4 py-10 text-center"
+      className="flex flex-col items-center rounded-xl border border-dashed border-white/8 bg-white/2 px-4 py-10 text-center"
     >
-      <div className="mb-3 flex size-10 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.03]">
+      <div className="mb-3 flex size-10 items-center justify-center rounded-xl border border-white/[0.07] bg-white/3">
         <CalendarX2
           className="size-4 text-muted-foreground"
           aria-hidden="true"

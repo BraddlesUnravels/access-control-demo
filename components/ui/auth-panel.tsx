@@ -27,14 +27,14 @@ export const AuthPanel = ({
 }: AccessPanelProps) => (
   <div
     id="auth-gate-layout"
-    className={cn('mx-auto w-full max-w-[460px]', className)}
+    className={cn('mx-auto w-full max-w-115', className)}
   >
     <div
       id="auth-gate-inner-wrap"
       className={cn(
-        'border border-white/[0.1]',
-        'bg-white/[0.055]',
-        'p-[0.25rem] sm:p-[0.375rem]',
+        'border border-white/10',
+        'bg-white/5.5',
+        'p-1 sm:p-1.5',
         'rounded-[clamp(1.375rem,5vw,2rem)]',
         'shadow-[0_2rem_5.625rem_rgba(0,0,0,0.45)]',
         'backdrop-blur-xl',
@@ -61,7 +61,7 @@ export const AuthPanel = ({
                 'size-[clamp(2.5rem,10vw,3rem)]',
                 'rounded-[clamp(0.75rem,3vw,1rem)]',
                 'border border-cyan-300/15',
-                'bg-cyan-300/[0.07]',
+                'bg-cyan-300/7',
               )}
             >
               {icon}
@@ -73,9 +73,9 @@ export const AuthPanel = ({
                 variant="caption"
                 className={cn(
                   'rounded-full',
-                  'border border-white/[0.07]',
-                  'bg-white/[0.035]',
-                  'px-[0.625rem] py-[0.25rem]',
+                  'border border-white/7',
+                  'bg-white/3.5',
+                  'px-2.5 py-1',
                   'font-mono uppercase',
                   'tracking-[0.12em] sm:tracking-[0.15em]',
                   'text-zinc-600',
@@ -133,7 +133,7 @@ export const AuthPanel = ({
         {footer && (
           <div
             className={cn(
-              'border-t border-white/[0.07]',
+              'border-t border-white/7',
               'mt-[clamp(1.25rem,4vw,2rem)]',
               'pt-[clamp(1rem,4vw,1.5rem)]',
             )}
@@ -149,7 +149,7 @@ export const AuthPanel = ({
         as="p"
         variant="caption"
         className={cn(
-          'mt-[1.25rem]',
+          'mt-5',
           'hidden sm:block',
           'text-center',
           'font-mono uppercase',

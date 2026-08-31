@@ -17,8 +17,8 @@ export const AuthPageShell = ({ children }: { children: React.ReactNode }) => (
             className="
               relative flex size-9 items-center justify-center
               rounded-xl
-              border border-white/[0.08]
-              bg-white/[0.04]
+              border border-white/8
+              bg-white/4
               shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]
             "
           >
@@ -57,10 +57,7 @@ export const AuthPageShell = ({ children }: { children: React.ReactNode }) => (
       </div>
     </header>
 
-    <div
-      id="shell-inner-wrapper"
-      className="flex flex-1 p-[1rem] lg:pr-[2rem] lg:-mt-[2.5rem]"
-    >
+    <div id="shell-inner-wrapper" className="flex flex-1 p-4 lg:pr-8 lg:-mt-10">
       {children}
     </div>
   </main>

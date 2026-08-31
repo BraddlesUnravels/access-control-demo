@@ -3,9 +3,9 @@ export const InternalBackground = () => (
     aria-hidden="true"
     className="pointer-events-none absolute inset-0 overflow-hidden"
   >
-    <div className="absolute -left-48 -top-48 size-[36rem] rounded-full bg-cyan-400/[0.06] blur-[120px]" />
+    <div className="absolute -left-48 -top-48 size-144 rounded-full bg-cyan-400/6 blur-[120px]" />
 
-    <div className="absolute -bottom-56 left-[46%] size-[34rem] rounded-full bg-indigo-500/[0.055] blur-[130px]" />
+    <div className="absolute -bottom-56 left-[46%] size-136 rounded-full bg-indigo-500/5.5 blur-[130px]" />
 
     <div
       className="absolute inset-0 opacity-[0.025]"

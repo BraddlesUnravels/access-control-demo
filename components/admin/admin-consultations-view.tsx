@@ -15,8 +15,8 @@ export const AdminConsultationsView = () => (
   <div id="admin-consultation-view" className="flex w-full flex-col gap-7">
     <AdminHeader />
 
-    <Card className="col-span-1 2xl:col-span-2 overflow-hidden flex flex-col lg:max-h-[calc(100svh-11rem)]">
-      <CardHeader className="border-b border-white/[0.06] bg-white/[0.012]">
+    <Card className="col-span-1 overflow-hidden flex flex-col lg:max-h-[calc(100svh-11rem)] 2xl:col-span-2">
+      <CardHeader className="border-b border-white/6 bg-white/12">
         <div className="flex items-start justify-between gap-4">
           <div>
             <CardTitle className="text-zinc-100">All consultations</CardTitle>
@@ -27,7 +27,7 @@ export const AdminConsultationsView = () => (
             </CardDescription>
           </div>
 
-          <div className="hidden size-9 items-center justify-center rounded-xl border border-white/[0.07] bg-black/20 sm:flex">
+          <div className="hidden size-9 items-center justify-center rounded-xl border border-white/7 bg-black/20 sm:flex">
             <ShieldCheck className="size-4 text-zinc-500" aria-hidden="true" />
           </div>
         </div>

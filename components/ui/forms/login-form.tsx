@@ -96,7 +96,7 @@ export function LoginForm({
       </FormSubmitButton>
 
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-white/[0.06]" />
+        <div className="h-px flex-1 bg-white/6" />
 
         <Typography
           as="span"
@@ -106,7 +106,7 @@ export function LoginForm({
           Authenticated users
         </Typography>
 
-        <div className="h-px flex-1 bg-white/[0.06]" />
+        <div className="h-px flex-1 bg-white/6" />
       </div>
 
       <Typography

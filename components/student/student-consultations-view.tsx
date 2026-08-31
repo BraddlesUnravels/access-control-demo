@@ -19,8 +19,8 @@ export const StudentConsultationsView = () => (
       <CreateConsultationCard />
     </div>
 
-    <Card className="col-span-1 2xl:col-span-2 overflow-hidden flex flex-col lg:max-h-[calc(100svh-8rem)]">
-      <CardHeader className="shrink-0 border-b border-white/[0.06]">
+    <Card className="col-span-1 overflow-hidden flex flex-col lg:max-h-[calc(100svh-8rem)] 2xl:col-span-2">
+      <CardHeader className="shrink-0 border-b border-white/6">
         <CardTitle>Your consultations</CardTitle>
 
         <CardDescription>

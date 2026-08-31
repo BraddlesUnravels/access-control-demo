@@ -11,7 +11,7 @@ const technologies = [
 ];
 
 export const Footer = () => (
-  <footer className="flex gap-2 border-t border-white/[0.06] pt-5 flex-row justify-between">
+  <footer className="flex gap-2 border-t border-white/6 pt-5 flex-row justify-between">
     <div className="flex flex-wrap gap-2 md:gap-x-6 hover:cursor-default">
       {technologies.map((technology) => (
         <Typography
@@ -27,7 +27,7 @@ export const Footer = () => (
     </div>
 
     <div className="flex items-center justify-end gap-2 text-zinc-700 pointer-events-none">
-      <div className="flex size-6 items-center justify-center rounded-md border border-white/[0.06] bg-white/[0.025]">
+      <div className="flex size-6 items-center justify-center rounded-md border border-white/6 bg-white/2.5">
         <LockKeyhole className="size-3 text-zinc-600" aria-hidden="true" />
       </div>
 

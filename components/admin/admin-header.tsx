@@ -2,7 +2,7 @@ import { Eye } from 'lucide-react';
 import { Typography } from '../ui/typography';
 
 export const AdminHeader = () => (
-  <header className="flex flex-col border-b border-white/[0.06] pb-2">
+  <header className="flex flex-col border-b border-white/6 pb-2">
     <div className="flex w-full flex-row justify-between gap-2">
       <div className="flex items-center gap-2">
         <span className="h-px w-7 bg-cyan-300/70" />
@@ -25,7 +25,7 @@ export const AdminHeader = () => (
         </Typography>
       </div>
 
-      <div className="flex w-fit items-center gap-2 rounded-full border border-cyan-300/15 bg-cyan-300/[0.06] px-3.5 py-2">
+      <div className="flex w-fit items-center gap-2 rounded-full border border-cyan-300/15 bg-cyan-300/6 px-3.5 py-2">
         <Eye className="size-3.5 text-cyan-200" aria-hidden="true" />
 
         <Typography

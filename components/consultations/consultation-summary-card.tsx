@@ -32,7 +32,7 @@ export const ConsultationSummaryCard = ({
       className={cn(
         'group rounded-xl border border-white/[0.07] bg-black/15 p-4',
         'transition-[border-color,background-color,box-shadow,transform] duration-200',
-        'hover:-translate-y-0.5 hover:border-cyan-300/15 hover:bg-white/[0.03]',
+        'hover:-translate-y-0.5 hover:border-cyan-300/15 hover:bg-white/3',
         'hover:shadow-[0_16px_44px_rgba(0,0,0,0.2)]',
         'sm:p-5',
         className,
@@ -40,7 +40,7 @@ export const ConsultationSummaryCard = ({
     >
       <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.035] transition-colors group-hover:border-cyan-300/15">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/7 bg-white/3.5 transition-colors group-hover:border-cyan-300/15">
             <UserRound
               className="size-4 text-zinc-500 transition-colors group-hover:text-cyan-200"
               aria-hidden="true"
@@ -69,8 +69,8 @@ export const ConsultationSummaryCard = ({
         </Badge>
       </div>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
+      <div className="mb-4 grid gap-3 grid-cols-2">
+        <div className="rounded-lg border border-white/5.5 bg-black/20 px-3.5 py-3">
           <div className="mb-1.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.13em] text-zinc-600">
             <CalendarDays className="size-3" aria-hidden="true" />
             <Typography variant="caption" className="-mb-1">
@@ -84,7 +84,7 @@ export const ConsultationSummaryCard = ({
         </div>
 
         {showStudentUserId ? (
-          <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
+          <div className="rounded-lg border border-white/5.5 bg-black/20 px-3.5 py-3">
             <Typography
               as="p"
               variant="caption"
@@ -102,7 +102,7 @@ export const ConsultationSummaryCard = ({
             </Typography>
           </div>
         ) : (
-          <div className="rounded-lg border border-white/[0.055] bg-black/20 px-3.5 py-3">
+          <div className="rounded-lg border border-white/5.5 bg-black/20 px-3.5 py-3">
             <div className="mb-1.5 flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.13em] text-zinc-600">
               <ShieldCheck className="size-3" aria-hidden="true" />
               <Typography variant="caption" className="-mb-1">

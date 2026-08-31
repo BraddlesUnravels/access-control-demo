@@ -9,7 +9,7 @@ type InputProps = ComponentProps<'input'> & {
 };
 
 const inputStyles = [
-  'flex h-11 w-full rounded-xl border border-white/[0.1] bg-black/25 px-3.5 py-1 text-base text-zinc-100 shadow-inner',
+  'flex h-11 w-full rounded-xl border border-white/10 bg-black/25 px-3.5 py-1 text-base text-zinc-100 shadow-inner',
   'transition-[border-color,box-shadow,background-color]',
   'placeholder:text-zinc-700',
   'focus-visible:border-cyan-300/40 focus-visible:bg-black/30 focus-visible:outline-hidden',
