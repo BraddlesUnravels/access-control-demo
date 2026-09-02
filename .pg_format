@@ -1,0 +1,32 @@
+# Repository-wide pgFormatter configuration.
+# Case values: 0 = unchanged, 1 = lowercase, 2 = uppercase, 3 = capitalize.
+
+# Indentation
+spaces=2
+tabs=0
+
+# Line length management
+wrap-limit = 80
+wrap-comment = 1
+
+# Identifier casing
+keyword-case=1
+type-case=1
+function-case=1
+
+# Lists and function calls
+comma=end
+comma-break = 1
+no-space-function=1
+nogrouping = 1
+
+# Preserve comments and avoid an additional blank line at EOF
+nocomment=0
+no-extra-line=1
+
+# Indentation settings
+spaces = 2
+tabs = 0
+
+
+

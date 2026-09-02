@@ -3,136 +3,143 @@
 -- - student1@lms.com / ReviewStudent**01
 -- - student2@lms.com / ReviewStudent**02
 -- - admin@lms.com / ReviewAdmin**00
-
 do $$
-declare 
+declare
   student1_passowrd text := 'ReviewStudent**01';
   student2_passowrd text := 'ReviewStudent**02';
   admin_passowrd text := 'ReviewAdmin**00';
-
 begin
   if not exists (
-    select 1
-    from auth.users
-    where email = 'student1@lms.com'
-  ) then
-    insert into auth.users (
-      instance_id,
-      id,
-      aud,
-      role,
-      email,
-      encrypted_password,
-      confirmation_token,
-      email_confirmed_at,
-      raw_app_meta_data,
-      raw_user_meta_data,
-      created_at,
-      updated_at
-    )
-    values (
-      '00000000-0000-0000-0000-000000000000',
-      gen_random_uuid(),
-      'authenticated',
-      'authenticated',
-      'student1@lms.com',
-      extensions.crypt(student1_passowrd, extensions.gen_salt('bf')),
-      '',
-      now(),
-      '{"provider":"email","providers":["email"]}',
-      '{}',
-      now(),
-      now()
-    );
-  end if;
-
+    select
+      1
+    from
+      auth.users
+    where
+      email = 'student1@lms.com') then
+  insert into auth.users(
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    confirmation_token,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at)
+  values (
+    '00000000-0000-0000-0000-000000000000',
+    gen_random_uuid(),
+    'authenticated',
+    'authenticated',
+    'student1@lms.com',
+    extensions.crypt(
+      student1_passowrd, extensions.gen_salt(
+        'bf')),
+    '',
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    '{}',
+    now(),
+    now());
+end if;
   if not exists (
-    select 1
-    from auth.users
-    where email = 'student2@lms.com'
-  ) then
-    insert into auth.users (
-      instance_id,
-      id,
-      aud,
-      role,
-      email,
-      encrypted_password,
-      confirmation_token,
-      email_confirmed_at,
-      raw_app_meta_data,
-      raw_user_meta_data,
-      created_at,
-      updated_at
-    )
-    values (
-      '00000000-0000-0000-0000-000000000000',
-      gen_random_uuid(),
-      'authenticated',
-      'authenticated',
-      'student2@lms.com',
-      extensions.crypt(student2_passowrd, extensions.gen_salt('bf')),
-      '',
-      now(),
-      '{"provider":"email","providers":["email"]}',
-      '{}',
-      now(),
-      now()
-    );
-  end if;
-
+    select
+      1
+    from
+      auth.users
+    where
+      email = 'student2@lms.com') then
+  insert into auth.users(
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    confirmation_token,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at)
+  values (
+    '00000000-0000-0000-0000-000000000000',
+    gen_random_uuid(),
+    'authenticated',
+    'authenticated',
+    'student2@lms.com',
+    extensions.crypt(
+      student2_passowrd, extensions.gen_salt(
+        'bf')),
+    '',
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    '{}',
+    now(),
+    now());
+end if;
   if not exists (
-    select 1
-    from auth.users
-    where email = 'admin@lms.com'
-  ) then
-    insert into auth.users (
-      instance_id,
-      id,
-      aud,
-      role,
-      email,
-      encrypted_password,
-      confirmation_token,
-      email_confirmed_at,
-      raw_app_meta_data,
-      raw_user_meta_data,
-      created_at,
-      updated_at
-    )
-    values (
-      '00000000-0000-0000-0000-000000000000',
-      gen_random_uuid(),
-      'authenticated',
-      'authenticated',
-      'admin@lms.com',
-      extensions.crypt(admin_passowrd, extensions.gen_salt('bf')),
-      '',
-      now(),
-      '{"provider":"email","providers":["email"]}',
-      '{}',
-      now(),
-      now()
-    );
-  end if;
-end $$;
+    select
+      1
+    from
+      auth.users
+    where
+      email = 'admin@lms.com') then
+  insert into auth.users(
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    confirmation_token,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at)
+  values (
+    '00000000-0000-0000-0000-000000000000',
+    gen_random_uuid(),
+    'authenticated',
+    'authenticated',
+    'admin@lms.com',
+    extensions.crypt(
+      admin_passowrd, extensions.gen_salt(
+        'bf')),
+    '',
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    '{}',
+    now(),
+    now());
+end if;
+end
+$$;
 
-update auth.users
+update
+  auth.users
 set
   confirmation_token = coalesce(confirmation_token, ''),
   recovery_token = coalesce(recovery_token, ''),
   email_change = coalesce(email_change, ''),
   email_change_token_new = coalesce(email_change_token_new, '')
-where
-  (
-    confirmation_token is null
-    or recovery_token is null
-    or email_change is null
-    or email_change_token_new is null
-  )
-  and email in ('student1@lms.com', 'student2@lms.com', 'admin@lms.com');
+where (confirmation_token is null
+  or recovery_token is null
+  or email_change is null
+  or email_change_token_new is null)
+and email in ('student1@lms.com', 'student2@lms.com', 'admin@lms.com');
 
-insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at)
+insert into auth.identities(
+  provider_id,
+  user_id,
+  identity_data,
+  provider,
+  created_at,
+  updated_at)
 select
   users.id::text,
   users.id,
@@ -140,27 +147,35 @@ select
   'email',
   now(),
   now()
-from auth.users as users
-where users.email in ('student1@lms.com', 'student2@lms.com', 'admin@lms.com')
-on conflict (provider, provider_id) do nothing;
+from
+  auth.users as users
+where
+  users.email in ('student1@lms.com', 'student2@lms.com', 'admin@lms.com')
+on conflict (provider,
+  provider_id)
+  do nothing;
 
-update public.profiles
-set role = 'admin'
-where id = (
-  select id
-  from auth.users
-  where email = 'admin@lms.com'
-);
+update
+  public.profiles
+set
+  role = 'admin'
+where
+  id =(
+    select
+      id
+    from
+      auth.users
+    where
+      email = 'admin@lms.com');
 
-insert into public.consultations (
+insert into public.consultations(
   student_user_id,
   first_name,
   last_name,
   reason,
   scheduled_for,
   status,
-  completed_at
-)
+  completed_at)
 select
   student.id,
   consultations.first_name,
@@ -170,46 +185,42 @@ select
   consultations.status,
   consultations.completed_at
 from (
-  values
-    (
-      'Sam',
-      'Student',
-      'Review assignment feedback',
-      timezone('utc', now()) + interval '2 days',
-      'scheduled'::public.consultation_status,
-      null::timestamptz
-    ),
-    (
-      'Sam',
-      'Student',
-      'Discuss course progression',
-      timezone('utc', now()) - interval '1 day',
-      'completed'::public.consultation_status,
-      timezone('utc', now()) - interval '20 hours'
-    )
-) as consultations(first_name, last_name, reason, scheduled_for, status, completed_at)
-cross join (
-  select id
-  from auth.users
-  where email = 'student1@lms.com'
-) as student
-where not exists (
-  select 1
-  from public.consultations as existing
-  where existing.student_user_id = student.id
-    and existing.reason = consultations.reason
-    and existing.status = consultations.status
-);
+values ('Sam', 'Student', 'Review assignment feedback',
+  timezone('utc', now()) + interval '2 days',
+    'scheduled'::public.consultation_status,
+    null::timestamptz),
+('Sam', 'Student', 'Discuss course progression', timezone('utc',
+  now()) - interval '1 day',
+    'completed'::public.consultation_status,
+    timezone('utc', now()) - interval '20 hours')) as
+      consultations(first_name, last_name, reason, scheduled_for, status,
+      completed_at)
+  cross join (
+    select
+      id
+    from
+      auth.users
+    where
+      email = 'student1@lms.com') as student
+where
+  not exists (
+    select
+      1
+    from
+      public.consultations as existing
+    where
+      existing.student_user_id = student.id
+      and existing.reason = consultations.reason
+      and existing.status = consultations.status);
 
-insert into public.consultations (
+insert into public.consultations(
   student_user_id,
   first_name,
   last_name,
   reason,
   scheduled_for,
   status,
-  completed_at
-)
+  completed_at)
 select
   student.id,
   consultations.first_name,
@@ -219,33 +230,30 @@ select
   consultations.status,
   consultations.completed_at
 from (
-  values
-    (
-      'Brad',
-      'Student',
-      'Review assignment feedback',
-      timezone('utc', now()) + interval '2 days',
-      'scheduled'::public.consultation_status,
-      null::timestamptz
-    ),
-    (
-      'Brad',
-      'Student',
-      'Discuss course progression',
-      timezone('utc', now()) - interval '1 day',
-      'completed'::public.consultation_status,
-      timezone('utc', now()) - interval '20 hours'
-    )
-) as consultations(first_name, last_name, reason, scheduled_for, status, completed_at)
-cross join (
-  select id
-  from auth.users
-  where email = 'student2@lms.com'
-) as student
-where not exists (
-  select 1
-  from public.consultations as existing
-  where existing.student_user_id = student.id
-    and existing.reason = consultations.reason
-    and existing.status = consultations.status
-);
+values ('Brad', 'Student', 'Review assignment feedback',
+  timezone('utc', now()) + interval '2 days',
+    'scheduled'::public.consultation_status,
+    null::timestamptz),
+('Brad', 'Student', 'Discuss course progression', timezone('utc',
+  now()) - interval '1 day',
+    'completed'::public.consultation_status,
+    timezone('utc', now()) - interval '20 hours')) as
+      consultations(first_name, last_name, reason, scheduled_for, status,
+      completed_at)
+  cross join (
+    select
+      id
+    from
+      auth.users
+    where
+      email = 'student2@lms.com') as student
+where
+  not exists (
+    select
+      1
+    from
+      public.consultations as existing
+    where
+      existing.student_user_id = student.id
+      and existing.reason = consultations.reason
+      and existing.status = consultations.status);

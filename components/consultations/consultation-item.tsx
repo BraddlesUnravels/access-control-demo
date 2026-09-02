@@ -62,7 +62,7 @@ export const ConsultationItem = ({
       actions={
         showActions && (
           <div className="grid gap-3 border-t border-white/6 pt-4 lg:grid-cols-3">
-            <div className="grid gap-2 xl:col-span-full 2xl:col-span-1">
+            <div className="grid grid-cols-1 gap-2 xl:col-span-full 2xl:col-span-1">
               <Label htmlFor={`reschedule-${consultation.id}`}>
                 Reschedule
               </Label>
