@@ -25,15 +25,15 @@ export const isRedeemAccessInviteReason = (
 
 export const getAccessExpiryMs = (
   expiresAt: string | null,
+  nowMs: number = Date.now(),
 ): number | undefined => {
   if (!expiresAt) return;
 
-  const expiresAtDateMs = Date.parse(expiresAt);
+  const expiresAtMs = Date.parse(expiresAt);
 
-  if (!Number.isFinite(expiresAtDateMs) || expiresAtDateMs <= Date.now())
-    return;
+  if (!Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) return;
 
-  return expiresAtDateMs;
+  return expiresAtMs;
 };
 
 export const rateLimitExceededResponse = (retryAfter: string) =>
@@ -68,7 +68,7 @@ export const validationFailureResponse = (fail: ValidationFailure) =>
     },
   );
 
-export const invalidReasonResponse = (reason: RedeemAccessInviteReason) => {
+export const invalidReasonResponse = (reason: string) => {
   const status = reason === 'expired' || reason === 'revoked' ? 403 : 401;
 
   const message =

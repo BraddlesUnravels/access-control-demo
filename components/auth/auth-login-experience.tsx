@@ -6,18 +6,15 @@ import {
   type DemoAccountWithPassword,
   type DemoAccountId,
 } from '@/lib/demo-accounts';
-import { safeParse } from 'valibot';
-import { AuthPanel } from '@/components/ui/auth-panel';
-import { AuthPanelNote } from '@/components/ui/auth-panel-note';
-import { LoginForm } from '@/components/ui/forms/login-form';
+import { loadDemoAccounts } from '@/lib/load-demo-accounts';
+import { AuthPanel } from '../ui/auth-panel';
+import { AuthPanelNote } from '../ui/auth-panel-note';
+import { LoginForm } from '../ui/forms/login-form';
 import { DemoAccountsPanel } from './demo-account-panel';
-import { demoAccountResponseSchema } from '@/lib/validation/schemas';
 import { FormMessage } from '../ui/form-message';
 
 export const LoginExperience = () => {
-  const [accounts, setAccounts] = useState<
-    DemoAccountWithPassword[] | undefined
-  >();
+  const [accounts, setAccounts] = useState<DemoAccountWithPassword[]>([]);
   const [accountsError, setAccountsError] = useState<string | undefined>();
   const [selectedAccountId, setSelectedAccountId] = useState<
     DemoAccountId | undefined
@@ -26,41 +23,11 @@ export const LoginExperience = () => {
   useEffect(() => {
     const controller = new AbortController();
 
-    const loadDemoAccounts = async () => {
-      setAccounts(undefined);
-      try {
-        const response = await fetch('/api/demo-accounts', {
-          cache: 'no-store',
-          credentials: 'same-origin',
-          signal: controller.signal,
-        });
-
-        if (!response.ok)
-          return setAccountsError(
-            response.status === 401
-              ? 'Your portfolio access has expired.'
-              : 'Unable to load demo accounts.',
-          );
-
-        const json: unknown = await response.json();
-        const result = safeParse(demoAccountResponseSchema, json);
-
-        if (!result.success)
-          return setAccountsError('The demo accounts response was invalid.');
-
-        if (controller.signal.aborted) return;
-
-        setAccounts(result.output.accounts);
-        setAccountsError(undefined);
-      } catch {
-        // fetch() and response.json() can still reject.
-        if (controller.signal.aborted) return;
-
-        setAccountsError('Unable to load demo accounts.');
-      }
-    };
-
-    void loadDemoAccounts();
+    void (async () => {
+      const { accounts, error } = await loadDemoAccounts(controller);
+      setAccounts(accounts);
+      setAccountsError(error);
+    })();
 
     return () => {
       controller.abort();

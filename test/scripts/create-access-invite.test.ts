@@ -223,7 +223,7 @@ describe('scripts/create-access-invite.mjs', () => {
 
         ACCESS_GATE_CODE_SECRET: CODE_SECRET,
 
-        NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
+        NEXT_SUPABASE_URL: supabaseUrl,
 
         SUPABASE_SECRET_KEY: ADMIN_KEY,
 

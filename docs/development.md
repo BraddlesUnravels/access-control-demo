@@ -140,8 +140,8 @@ MailPit keeps local authentication testing deterministic and avoids requiring an
 The application uses:
 
 ```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+NEXT_SUPABASE_URL
+NEXT_SUPABASE_PUBLISHABLE_KEY
 ACCESS_GATE_CODE_SECRET
 ACCESS_GATE_COOKIE_SECRET
 ```

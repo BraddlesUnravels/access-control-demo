@@ -58,9 +58,9 @@ describe('lib/supabase/proxy', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost:54321');
+    vi.stubEnv('NEXT_SUPABASE_URL', 'http://localhost:54321');
 
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'test-key');
+    vi.stubEnv('NEXT_SUPABASE_PUBLISHABLE_KEY', 'test-key');
 
     /*
      * Default to local/non-Azure behaviour.

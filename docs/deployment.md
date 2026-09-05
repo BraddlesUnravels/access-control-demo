@@ -99,8 +99,8 @@ Configure these GitHub production Environment secrets:
 AZURE_CLIENT_ID
 AZURE_TENANT_ID
 AZURE_SUBSCRIPTION_ID
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+NEXT_SUPABASE_URL
+NEXT_SUPABASE_PUBLISHABLE_KEY
 ```
 
 Configure these GitHub production Environment variables:

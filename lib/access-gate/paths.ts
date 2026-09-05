@@ -2,12 +2,10 @@ import {
   ACCESS_GATE_DEFAULT_DESTINATION,
   ACCESS_GATE_ENTRY_PATH,
   ACCESS_GATE_PUBLIC_PATH_PREFIXES,
-} from '@/lib/access-gate/constants';
-
-const INTERNAL_ORIGIN = 'http://access-gate.internal';
+} from './constants';
+import { INTERNAL_ORIGIN } from '../validation/shared-constants';
 
 export const isAccessGatePublicPath = (pathname: string): boolean => {
-  // 1. Normalise to lowercase for safety
   const cleanPath = pathname.trim().toLowerCase();
   if (cleanPath === ACCESS_GATE_ENTRY_PATH) return true;
 

@@ -230,7 +230,7 @@ describe('app/api/access/unlock/route', () => {
     setupRpcMock({
       data: [
         {
-          invite_id: 'invite-1',
+          invite_id: '11111111-1111-4111-8111-111111111111',
           visit_id: null,
           label: 'Expired invite',
           access_expires_at: '2026-08-01T00:00:00.000Z',
@@ -261,7 +261,7 @@ describe('app/api/access/unlock/route', () => {
     setupRpcMock({
       data: [
         {
-          invite_id: 'invite-1',
+          invite_id: '11111111-1111-4111-8111-111111111111',
           visit_id: null,
           label: 'Revoked invite',
           access_expires_at: null,
@@ -369,8 +369,8 @@ describe('app/api/access/unlock/route', () => {
     setupRpcMock({
       data: [
         {
-          invite_id: 'invite-1',
-          visit_id: 'visit-1',
+          invite_id: '11111111-1111-4111-8111-111111111111',
+          visit_id: '22222222-2222-4222-8222-222222222222',
           label: 'Acme recruiter',
           access_expires_at: null,
           reason: 'ok',
@@ -400,8 +400,8 @@ describe('app/api/access/unlock/route', () => {
     setupRpcMock({
       data: [
         {
-          invite_id: 'invite-1',
-          visit_id: 'visit-1',
+          invite_id: '11111111-1111-4111-8111-111111111111',
+          visit_id: '22222222-2222-4222-8222-222222222222',
           label: 'Acme recruiter',
           access_expires_at: '2020-01-01T00:00:00.000Z',
           reason: 'ok',
@@ -431,8 +431,8 @@ describe('app/api/access/unlock/route', () => {
     setupRpcMock({
       data: [
         {
-          invite_id: 'invite-1',
-          visit_id: 'visit-1',
+          invite_id: '11111111-1111-4111-8111-111111111111',
+          visit_id: '22222222-2222-4222-8222-222222222222',
           label: 'Acme recruiter',
           access_expires_at: EXPIRES_AT,
           reason: 'ok',
@@ -472,8 +472,9 @@ describe('app/api/access/unlock/route', () => {
         Date.parse('2099-08-21T00:00:00.000Z'),
       ),
     ).toEqual({
-      version: 1,
-      inviteId: 'invite-1',
+      version: 2,
+      inviteId: '11111111-1111-4111-8111-111111111111',
+      visitId: '22222222-2222-4222-8222-222222222222',
       exp: Math.floor(Date.parse(EXPIRES_AT) / 1000),
     });
   });
@@ -489,8 +490,8 @@ describe('app/api/access/unlock/route', () => {
     setupRpcMock({
       data: [
         {
-          invite_id: 'invite-1',
-          visit_id: 'visit-1',
+          invite_id: '11111111-1111-4111-8111-111111111111',
+          visit_id: '22222222-2222-4222-8222-222222222222',
           label: 'Acme recruiter',
           access_expires_at: EXPIRES_AT,
           reason: 'ok',

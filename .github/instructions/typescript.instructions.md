@@ -524,13 +524,6 @@ Access environment variables through server-safe boundaries.
 
 Do not expose server-only values using the `NEXT_PUBLIC_` prefix.
 
-Only the following public values are expected for the browser-facing Supabase client:
-
-```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-```
-
 Validate required environment variables before use.
 
 Throw a clear startup or configuration error when required values are missing.

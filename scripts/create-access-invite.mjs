@@ -203,7 +203,7 @@ const getSupabaseAdminKey = () => {
 };
 
 const createSupabaseAdminClient = () => {
-  const supabaseUrl = requireEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const supabaseUrl = requireEnv('NEXT_SUPABASE_URL');
   const adminKey = getSupabaseAdminKey();
 
   return createClient(supabaseUrl, adminKey, {
