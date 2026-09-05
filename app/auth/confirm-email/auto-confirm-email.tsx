@@ -119,7 +119,7 @@ export const AutoConfirmEmail = () => {
          */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -left-[10000px] top-auto h-px w-px overflow-hidden"
+          className="pointer-events-none absolute left-[-10000px] top-auto h-px w-px overflow-hidden"
         >
           <label htmlFor="website">Website</label>
 

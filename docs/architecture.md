@@ -59,6 +59,40 @@ These boundaries do not replace authentication or authorization. Route
 Handlers, Server Actions, server data access, and PostgreSQL RLS must still
 validate and authorize every request independently.
 
+## Supabase session and response boundaries
+
+The Supabase SSR session flow uses three request-scoped server client variants:
+
+- `serverRequestClient()` reads request cookies for Server Components and
+  read-only server operations.
+- `serverActionClient()` reads and writes cookies for Server Actions that can
+  update the authentication session.
+- `serverResponseClient()` collects cookie updates so Route Handlers can apply
+  them to the returned `NextResponse`, which is required by authentication
+  callbacks such as `/auth/confirm`.
+
+The root `proxy.ts` creates its own request-scoped Supabase client and calls
+`supabase.auth.getClaims()` immediately. Refreshed cookies are copied to both
+the request and response, and Supabase's `Cache-Control`, `Expires`, and
+`Pragma` headers are preserved when the proxy returns an auth redirect.
+
+Authenticated JSON API handlers are wrapped with `withApiHandler()`. That
+boundary applies:
+
+```text
+Cache-Control: private, no-store, max-age=0, must-revalidate
+```
+
+to successful responses and error responses alike, preventing consultation
+data or authenticated error responses from being shared by a CDN or reverse
+proxy. Public health and access-gate responses use their own explicit cache
+policies.
+
+The protected page remains request-dynamic because `requireAuthContext()` reads
+the authenticated user from server cookies and resolves the profile role. The
+proxy is responsible for session refresh, while the page, route handlers,
+Server Actions, and PostgreSQL RLS remain responsible for authorization.
+
 ## Authenticated consultation flow
 
 ```text

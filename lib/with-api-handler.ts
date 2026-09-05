@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAppError } from '@/lib/errors';
+import { markPrivateResponse } from '@/lib/http/cache';
 import { logger } from '@/lib/logger';
 
 type RouteContext = { params: Promise<Record<string, string>> };
@@ -9,7 +10,7 @@ export function withApiHandler<TContext = RouteContext>(
 ) {
   return async (request: Request, context: TContext) => {
     try {
-      return await handler(request, context);
+      return markPrivateResponse(await handler(request, context));
     } catch (error) {
       const requestMeta = {
         method: request.method,
@@ -29,9 +30,11 @@ export function withApiHandler<TContext = RouteContext>(
           'Handled application error',
         );
 
-        return NextResponse.json(
-          { error: error.safeMessage },
-          { status: error.status },
+        return markPrivateResponse(
+          NextResponse.json(
+            { error: error.safeMessage },
+            { status: error.status },
+          ),
         );
       }
 
@@ -41,9 +44,8 @@ export function withApiHandler<TContext = RouteContext>(
         'Unhandled error at API boundary',
       );
 
-      return NextResponse.json(
-        { error: 'Internal server error' },
-        { status: 500 },
+      return markPrivateResponse(
+        NextResponse.json({ error: 'Internal server error' }, { status: 500 }),
       );
     }
   };

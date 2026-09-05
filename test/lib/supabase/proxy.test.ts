@@ -18,10 +18,12 @@ type CookiesToSet = Parameters<SetAllCookies>[0];
 const setupSupabaseMock = ({
   claims,
   cookiesToSet = [],
+  cacheHeaders = {},
 }: {
   claims: Record<string, unknown> | null;
 
   cookiesToSet?: CookiesToSet;
+  cacheHeaders?: Record<string, string>;
 }) => {
   const getClaims = vi.fn();
 
@@ -34,7 +36,7 @@ const setupSupabaseMock = ({
 
     getClaims.mockImplementation(async () => {
       if (cookiesToSet.length > 0) {
-        await setAll(cookiesToSet, {});
+        await setAll(cookiesToSet, cacheHeaders);
       }
 
       return {
@@ -92,6 +94,9 @@ describe('lib/supabase/proxy', () => {
     expect(response.status).toBe(200);
 
     expect(response.headers.get('location')).toBeNull();
+    expect(response.headers.get('cache-control')).toBe(
+      'private, no-store, max-age=0, must-revalidate',
+    );
   });
 
   it('should redirect an unauthenticated page request to login', async () => {
@@ -178,6 +183,35 @@ describe('lib/supabase/proxy', () => {
     expect(response.cookies.get('sb-refresh-token')?.value).toBe(
       'refreshed-token',
     );
+  });
+
+  it('should preserve Supabase cache headers on an unauthenticated redirect', async () => {
+    setupSupabaseMock({
+      claims: null,
+      cookiesToSet: [
+        {
+          name: 'sb-refresh-token',
+          value: 'refreshed-token',
+          options: {
+            httpOnly: true,
+            path: '/',
+          },
+        },
+      ],
+      cacheHeaders: {
+        'cache-control': 'private, no-store',
+        expires: '0',
+        pragma: 'no-cache',
+      },
+    });
+
+    const response = await updateSession(
+      new NextRequest('http://localhost/protected'),
+    );
+
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('expires')).toBe('0');
+    expect(response.headers.get('pragma')).toBe('no-cache');
   });
 
   it('should not redirect unauthenticated auth routes', async () => {
