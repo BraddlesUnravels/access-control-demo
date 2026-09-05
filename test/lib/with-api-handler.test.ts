@@ -38,6 +38,9 @@ describe('withApiHandler', () => {
     const response = await handler(buildRequest(), ROUTE_CONTEXT);
 
     expect(response.status).toBe(401);
+    expect(response.headers.get('cache-control')).toBe(
+      'private, no-store, max-age=0, must-revalidate',
+    );
 
     await expect(response.json()).resolves.toEqual({
       error: 'Unauthorized',
@@ -69,6 +72,9 @@ describe('withApiHandler', () => {
     );
 
     expect(response.status).toBe(500);
+    expect(response.headers.get('cache-control')).toBe(
+      'private, no-store, max-age=0, must-revalidate',
+    );
 
     await expect(response.json()).resolves.toEqual({
       error: 'Internal server error',
@@ -94,6 +100,9 @@ describe('withApiHandler', () => {
     const response = await handler(buildRequest(), ROUTE_CONTEXT);
 
     expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe(
+      'private, no-store, max-age=0, must-revalidate',
+    );
 
     await expect(response.json()).resolves.toEqual({
       data: 'ok',
