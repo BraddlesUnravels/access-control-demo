@@ -51,6 +51,8 @@ The Vitest suites cover:
 
 - invite-code normalization and HMAC hashing;
 - access-cookie signing and malformed-cookie rejection;
+- access-session cache expiry, bounded eviction, LRU behavior, concurrency, and stale-validation races;
+- access-session RPC success, rejection, malformed-result, and fail-closed behavior;
 - safe access-gate redirects;
 - local versus Azure gate configuration;
 - proxy gate behaviour;
@@ -62,6 +64,7 @@ The Vitest suites cover:
 - access-unlock API outcomes;
 - rate-limited requests;
 - Supabase proxy cookie and session handling;
+- protected-route access-session validation and cookie clearing;
 - root Proxy orchestration;
 - authentication context and role resolution;
 - authentication Server Actions;
@@ -124,6 +127,7 @@ The database suite verifies:
 - table and column privileges;
 - database-managed consultation lifecycle timestamps;
 - RPC execution privileges;
+- access-session validation RPC privileges and valid, missing, expired, and revoked outcomes;
 - invite-state constraints;
 - invalid redemption;
 - expired redemption;

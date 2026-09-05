@@ -271,7 +271,7 @@ components/
 ├── admin/
 ├── student/
 │   ├── consultation-item.tsx
-│   ├── consultation-list.tsx
+│   ├── consultation-list-student.tsx
 │   ├── create-consultation-card.tsx
 │   ├── student-consultation-action-hook.ts
 │   ├── student-consultation-hook.ts
@@ -287,7 +287,9 @@ lib/
 │   ├── env.ts
 │   ├── hash.ts
 │   ├── paths.ts
-│   └── proxy.ts
+│   ├── proxy.ts
+│   ├── session-cache.ts
+│   └── session-validation.ts
 ├── consultations/
 │   ├── api.ts
 │   └── schemas.ts
@@ -351,9 +353,11 @@ deploy/
 docs/
 ├── images/
 ├── access-control.md
+├── api.md
 ├── architecture.md
 ├── deployment.md
 ├── development.md
+├── secrets-management.md
 └── testing.md
 
 .github/
@@ -372,7 +376,7 @@ proxy.ts
 
 - `app/page.tsx` — public invite-gate entry screen
 - `app/api/access/unlock/**` — rate-limited invite validation and access-cookie issuance
-- `lib/access-gate/**` — invite hashing, cookie signing, safe redirects, environment validation, and proxy gate logic
+- `lib/access-gate/**` — invite hashing, cookie signing, safe redirects, environment validation, RPC validation, session caching, and proxy gate logic
 - `lib/rate-limiter/**` — client identification and bounded in-memory rate limiting
 - `proxy.ts` — access-gate and Supabase session orchestration
 - `app/auth/**` — authentication screens, Server Actions, and callback routes
@@ -396,3 +400,11 @@ proxy.ts
 - `docker/Dockerfile` — production standalone Next.js container
 - `deploy/azure/**` — Azure Container Apps infrastructure and OIDC bootstrap
 - `.github/workflows/**` — CI, staging, dependency review, deployment, and production operations
+
+# HTTP API overview
+
+The complete endpoint contract is documented in [API reference](api.md).
+
+All application API routes are protected by the outer access gate unless they
+are explicit operational or callback exceptions. Consultation routes then add
+Supabase authentication, role, ownership, and RLS checks of their own.
