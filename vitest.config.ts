@@ -1,9 +1,17 @@
 import react from '@vitejs/plugin-react';
 import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
+
+const serverOnlyTestStub = fileURLToPath(
+  new URL('./test/server-only.ts', import.meta.url),
+);
 
 export default defineConfig({
   resolve: {
+    alias: {
+      'server-only': serverOnlyTestStub,
+    },
     tsconfigPaths: true,
   },
 

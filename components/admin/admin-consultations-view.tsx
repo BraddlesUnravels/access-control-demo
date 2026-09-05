@@ -1,5 +1,3 @@
-'use client';
-
 import { ShieldCheck } from 'lucide-react';
 import { AdminHeader } from './admin-header';
 import { ConsultationListAdmin } from './admin-consultation-list';

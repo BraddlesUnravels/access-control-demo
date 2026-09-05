@@ -24,6 +24,41 @@ Sign-in, sign-out, account registration, password-recovery requests, and passwor
 
 Authentication callbacks remain Route Handlers because they receive external redirects or token exchanges from Supabase.
 
+## Server and client module boundaries
+
+The application keeps the React server/client boundary narrow and explicit:
+
+- `use client` is present only on direct client entry points that use state,
+  effects, browser APIs, event handlers, SWR, or interactive form behavior.
+- Login, sign-up, password, and access-gate forms are Client Components because
+  they own browser interaction state and submit events.
+- Consultation hooks, lists, items, and the consultation creation form are
+  Client Components because they use SWR, mutation state, event handlers, or
+  controlled inputs.
+- Browser-only email confirmation behavior is a Client Component because it
+  uses browser APIs.
+- `admin-consultations-view.tsx`, `student-consultations-view.tsx`, and the
+  presentational `label.tsx` wrapper do not need their own `use client`
+  directive. They can be Server Components while rendering client descendants.
+
+The only file-level `use server` module is `app/auth/actions.ts`. Its exported
+functions are callable Server Functions used by client-side authentication
+forms. Ordinary Server Components, layouts, Route Handlers, `proxy.ts`, and
+server-only utility modules do not need `use server` because their framework
+entry point or import graph already keeps them on the server.
+
+Server-only Supabase and authorization utilities import `server-only` to make
+the boundary fail closed if a Client Component attempts to import them:
+
+- `lib/supabase/server.ts` creates request-scoped Supabase clients using
+  server cookies.
+- `lib/server/auth.ts` reads the authenticated server user and profile role and
+  may redirect from protected server-rendered routes.
+
+These boundaries do not replace authentication or authorization. Route
+Handlers, Server Actions, server data access, and PostgreSQL RLS must still
+validate and authorize every request independently.
+
 ## Authenticated consultation flow
 
 ```text
