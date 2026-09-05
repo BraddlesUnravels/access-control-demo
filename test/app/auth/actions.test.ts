@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { redirect } from 'next/navigation';
-import { signInAction, signOutAction, signUpAction } from '@/app/auth/actions';
+import {
+  requestPasswordResetAction,
+  signInAction,
+  signOutAction,
+  signUpAction,
+  updatePasswordAction,
+} from '@/app/auth/actions';
 import { serverActionClient } from '@/lib/supabase/server';
 
 vi.mock('next/navigation', () => ({
@@ -14,6 +20,9 @@ vi.mock('@/lib/supabase/server', () => ({
 type AuthClientMocks = {
   signInWithPassword: ReturnType<typeof vi.fn>;
   signOut: ReturnType<typeof vi.fn>;
+  resetPasswordForEmail: ReturnType<typeof vi.fn>;
+  getUser: ReturnType<typeof vi.fn>;
+  updateUser: ReturnType<typeof vi.fn>;
   signUp: ReturnType<typeof vi.fn>;
 };
 
@@ -26,6 +35,23 @@ const setupServerActionClientMock = (): AuthClientMocks => {
     error: null,
   });
 
+  const resetPasswordForEmail = vi.fn().mockResolvedValue({
+    error: null,
+  });
+
+  const getUser = vi.fn().mockResolvedValue({
+    data: {
+      user: {
+        id: 'user-1',
+      },
+    },
+    error: null,
+  });
+
+  const updateUser = vi.fn().mockResolvedValue({
+    error: null,
+  });
+
   const signUp = vi.fn().mockResolvedValue({
     error: null,
   });
@@ -34,6 +60,9 @@ const setupServerActionClientMock = (): AuthClientMocks => {
     auth: {
       signInWithPassword,
       signOut,
+      resetPasswordForEmail,
+      getUser,
+      updateUser,
       signUp,
     },
   } as never);
@@ -41,6 +70,9 @@ const setupServerActionClientMock = (): AuthClientMocks => {
   return {
     signInWithPassword,
     signOut,
+    resetPasswordForEmail,
+    getUser,
+    updateUser,
     signUp,
   };
 };
@@ -64,6 +96,18 @@ const buildSignUpFormData = (
   formData.set('email', email);
   formData.set('password', password);
   formData.set('repeat-password', repeatPassword);
+
+  return formData;
+};
+
+const buildPasswordResetFormData = (
+  password: string,
+  repeatPassword: string,
+): FormData => {
+  const formData = new FormData();
+
+  formData.set('new-password', password);
+  formData.set('confirm-password', repeatPassword);
 
   return formData;
 };
@@ -223,5 +267,57 @@ describe('signUpAction', () => {
     });
 
     expect(redirect).not.toHaveBeenCalled();
+  });
+});
+
+describe('requestPasswordResetAction', () => {
+  it('rejects invalid email input before creating a Supabase client', async () => {
+    const formData = new FormData();
+    formData.set('email', 'not-an-email');
+
+    const result = await requestPasswordResetAction({}, formData);
+
+    expect(result).toEqual({
+      error: 'Please enter a valid email address',
+    });
+
+    expect(serverActionClient).not.toHaveBeenCalled();
+  });
+});
+
+describe('updatePasswordAction', () => {
+  it('rejects an expired password reset session before updating the password', async () => {
+    const { getUser, updateUser } = setupServerActionClientMock();
+    getUser.mockResolvedValue({
+      data: { user: null },
+      error: new Error('Auth session missing'),
+    });
+
+    const result = await updatePasswordAction(
+      {},
+      buildPasswordResetFormData('UpdatedPassword**1', 'UpdatedPassword**1'),
+    );
+
+    expect(result).toEqual({
+      error:
+        'Your password reset session is invalid or has expired. Request a new reset link.',
+    });
+    expect(updateUser).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
+  it('updates the password only after confirming the authenticated user', async () => {
+    const { getUser, updateUser } = setupServerActionClientMock();
+
+    await updatePasswordAction(
+      {},
+      buildPasswordResetFormData('UpdatedPassword**1', 'UpdatedPassword**1'),
+    );
+
+    expect(getUser).toHaveBeenCalledOnce();
+    expect(updateUser).toHaveBeenCalledWith({
+      password: 'UpdatedPassword**1',
+    });
+    expect(redirect).toHaveBeenCalledWith('/auth/login');
   });
 });

@@ -93,6 +93,37 @@ the authenticated user from server cookies and resolves the profile role. The
 proxy is responsible for session refresh, while the page, route handlers,
 Server Actions, and PostgreSQL RLS remain responsible for authorization.
 
+## Authorization entry points
+
+The protected page keeps its authentication and role decision in
+`app/protected/page.tsx`. The page calls `requireAuthContext()` before choosing
+the administrator or student view. `app/auth/layout.tsx` and
+`app/protected/layout.tsx` remain presentation shells; neither layout is used
+as the sole security boundary.
+
+Every consultation Route Handler performs its own authentication, role, input,
+and ownership checks. Student ownership is derived from the authenticated user
+and is also enforced by PostgreSQL RLS. The administrator endpoint remains
+read-only and is independently restricted to administrators.
+
+Authentication Server Actions are callable server entry points and therefore
+validate their inputs on every invocation:
+
+- `signInAction()` and `signUpAction()` are intentionally unauthenticated
+  entry points and validate credentials before calling Supabase Auth.
+- `requestPasswordResetAction()` is intentionally unauthenticated and
+  validates the email before requesting a reset message.
+- `updatePasswordAction()` validates both passwords and calls `getUser()`
+  before changing the password, so an expired or missing reset session cannot
+  perform the mutation.
+- `signOutAction()` is idempotent session cleanup. It uses the server action
+  client and does not mutate protected application data, so it does not need a
+  separate role or ownership check.
+
+These checks are required even when the action is only called by a visible UI
+form. Hidden controls, layouts, and proxy redirects are not authorization
+boundaries.
+
 ## Authenticated consultation flow
 
 ```text
