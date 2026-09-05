@@ -182,6 +182,10 @@ export type Database = {
           visit_id: string;
         }[];
       };
+      validate_access_gate_session: {
+        Args: { p_invite_id: string; p_visit_id: string };
+        Returns: boolean;
+      };
     };
     Enums: {
       app_role: 'student' | 'admin';

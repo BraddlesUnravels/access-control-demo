@@ -1,9 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET, POST } from '@/app/api/consultations/route';
 import { AppError } from '@/lib/errors';
-import { requireAuthContext } from '@/lib/server/auth';
+import { requireAuthContext, type AuthContext } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
 import { buildConsultation } from '@/test/fixtures/consultation';
+
+const createAuthContext = (
+  overrides: Pick<AuthContext, 'role' | 'userId'>,
+): AuthContext => ({
+  supabase: {} as AuthContext['supabase'],
+  ...overrides,
+});
 
 vi.mock('@/lib/server/auth', async () => {
   const actual =
@@ -28,10 +35,10 @@ vi.mock('@/lib/logger', () => ({
   },
 }));
 
-const STUDENT_AUTH = {
-  role: 'student' as const,
+const STUDENT_AUTH = createAuthContext({
+  role: 'student',
   userId: 'student-1',
-};
+});
 
 const EMPTY_CONTEXT = {
   params: Promise.resolve({}),
@@ -160,10 +167,12 @@ describe('app/api/consultations', () => {
     });
 
     it('should return 403 for an administrator without querying consultations', async () => {
-      vi.mocked(requireAuthContext).mockResolvedValue({
-        role: 'admin',
-        userId: 'admin-1',
-      });
+      vi.mocked(requireAuthContext).mockResolvedValue(
+        createAuthContext({
+          role: 'admin',
+          userId: 'admin-1',
+        }),
+      );
 
       const response = await GET(buildGetRequest(), EMPTY_CONTEXT);
 
@@ -321,10 +330,12 @@ describe('app/api/consultations', () => {
     });
 
     it('should return 403 for an administrator without creating a consultation', async () => {
-      vi.mocked(requireAuthContext).mockResolvedValue({
-        role: 'admin',
-        userId: 'admin-1',
-      });
+      vi.mocked(requireAuthContext).mockResolvedValue(
+        createAuthContext({
+          role: 'admin',
+          userId: 'admin-1',
+        }),
+      );
 
       const response = await POST(
         buildPostRequest(JSON.stringify(VALID_CREATE_INPUT)),

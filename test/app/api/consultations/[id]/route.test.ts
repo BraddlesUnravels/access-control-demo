@@ -1,9 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DELETE, PATCH } from '@/app/api/consultations/[id]/route';
-import { requireAuthContext } from '@/lib/server/auth';
+import { requireAuthContext, type AuthContext } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
 import { buildConsultation } from '@/test/fixtures/consultation';
 import type { ConsultationRecord } from '@/lib/validation/types';
+
+const createAuthContext = (
+  overrides: Pick<AuthContext, 'role' | 'userId'>,
+): AuthContext => ({
+  supabase: {} as AuthContext['supabase'],
+  ...overrides,
+});
 
 vi.mock('@/lib/server/auth', async () => {
   const actual =
@@ -22,7 +29,10 @@ vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn() },
 }));
 
-const STUDENT_AUTH = { role: 'student' as const, userId: 'student-1' };
+const STUDENT_AUTH = createAuthContext({
+  role: 'student',
+  userId: 'student-1',
+});
 const ROUTE_CONTEXT = {
   params: Promise.resolve({ id: 'consultation-1' }),
 };

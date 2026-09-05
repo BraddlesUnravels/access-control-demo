@@ -59,8 +59,8 @@ const main = () => {
   const envFileContent = [
     '# Generated from local Supabase status output.',
     '# Re-run `npm run infra:env` after restarting local Supabase if values change.',
-    `NEXT_PUBLIC_SUPABASE_URL=${apiUrl}`,
-    `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${publishableKey}`,
+    `NEXT_SUPABASE_URL=${apiUrl}`,
+    `NEXT_SUPABASE_PUBLISHABLE_KEY=${publishableKey}`,
     serviceRoleKey ? `SUPABASE_SERVICE_ROLE_KEY=${serviceRoleKey}` : undefined,
     'ACCESS_GATE_DISABLED=false',
     'ACCESS_GATE_CODE_SECRET=local-access-gate-secret-that-meets-length-requirements',

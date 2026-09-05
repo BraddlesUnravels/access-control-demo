@@ -1,15 +1,21 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { ACCESS_GATE_COOKIE_NAME } from '@/lib/access-gate/constants';
+import { ACCESS_GATE_COOKIE_NAME } from './constants';
+import { isAzureEnv } from '../utils';
+import { isUuid } from '../validation/helpers';
 
-const ACCESS_GATE_COOKIE_VERSION = 1;
+const ACCESS_GATE_COOKIE_VERSION = 2;
 
 export type AccessGateCookiePayload = {
   version: typeof ACCESS_GATE_COOKIE_VERSION;
   inviteId: string;
+  visitId: string;
   exp: number;
 };
 
-type AccessGateCookieInput = Pick<AccessGateCookiePayload, 'inviteId'>;
+type AccessGateCookieInput = Pick<
+  AccessGateCookiePayload,
+  'inviteId' | 'visitId'
+>;
 
 const toBase64Url = (value: string): string => {
   return Buffer.from(value, 'utf8').toString('base64url');
@@ -36,12 +42,13 @@ const signaturesMatch = (left: string, right: string): boolean => {
   } catch {
     return false;
   }
+
   if (leftBuffer.length !== rightBuffer.length) return false;
 
   return timingSafeEqual(leftBuffer, rightBuffer);
 };
 
-const isAccessGateCookiePayload = (
+export const isAccessGateCookiePayload = (
   value: unknown,
 ): value is AccessGateCookiePayload => {
   if (typeof value !== 'object' || value === null) return false;
@@ -52,6 +59,8 @@ const isAccessGateCookiePayload = (
     payload.version === ACCESS_GATE_COOKIE_VERSION &&
     typeof payload.inviteId === 'string' &&
     payload.inviteId.length > 0 &&
+    typeof payload.visitId === 'string' &&
+    payload.visitId.length > 0 &&
     typeof payload.exp === 'number' &&
     Number.isSafeInteger(payload.exp)
   );
@@ -62,13 +71,16 @@ export const createAccessGateCookieValue = (
   secret: string,
   expiresAtMs: number,
 ): string => {
-  if (!Number.isFinite(expiresAtMs)) {
+  if (!Number.isFinite(expiresAtMs))
     throw new Error('Access gate cookie expiry must be a valid timestamp.');
-  }
+
+  if (!isUuid(payload.inviteId) || !isUuid(payload.visitId))
+    throw new Error('Access gate cookie payload must contain valid UUIDs.');
 
   const fullPayload: AccessGateCookiePayload = {
     version: ACCESS_GATE_COOKIE_VERSION,
     inviteId: payload.inviteId,
+    visitId: payload.visitId,
     exp: Math.floor(expiresAtMs / 1000),
   };
   const encodedPayload = toBase64Url(JSON.stringify(fullPayload));
@@ -78,47 +90,42 @@ export const createAccessGateCookieValue = (
 };
 
 export const verifyAccessGateCookieValue = (
-  cookieValue: string,
+  cookieValue: string = '',
   secret: string,
   nowMs: number = Date.now(),
 ): AccessGateCookiePayload | undefined => {
   const parts = cookieValue.split('.');
 
-  if (parts.length !== 2) return undefined;
+  if (parts.length !== 2) return;
 
   const [encodedPayload, signature] = parts;
 
-  if (!encodedPayload || !signature) return undefined;
+  if (!encodedPayload || !signature) return;
 
   const expectedSignature = signPayload(encodedPayload, secret);
 
-  if (!signaturesMatch(signature, expectedSignature)) return undefined;
+  if (!signaturesMatch(signature, expectedSignature)) return;
 
   let parsed: unknown;
 
   try {
     parsed = JSON.parse(fromBase64Url(encodedPayload));
   } catch {
-    return undefined;
+    return;
   }
 
-  if (!isAccessGateCookiePayload(parsed)) return undefined;
+  if (!isAccessGateCookiePayload(parsed)) return;
 
-  if (parsed.exp * 1000 <= nowMs) return undefined;
+  if (parsed.exp * 1000 <= nowMs) return;
 
   return parsed;
 };
 
-export const getAccessGateCookieOptions = (
-  isSecure: boolean,
-  expiresAtMs: number,
-) => {
-  return {
-    name: ACCESS_GATE_COOKIE_NAME,
-    httpOnly: true,
-    sameSite: 'lax' as const,
-    secure: isSecure,
-    path: '/',
-    expires: new Date(expiresAtMs),
-  };
-};
+export const getAccessGateCookieOptions = (expiresAtMs: number) => ({
+  name: ACCESS_GATE_COOKIE_NAME,
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: isAzureEnv(),
+  path: '/',
+  expires: new Date(expiresAtMs),
+});

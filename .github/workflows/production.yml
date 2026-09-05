@@ -44,8 +44,8 @@ jobs:
       AZURE_KEY_VAULT: ${{ vars.AZURE_KEY_VAULT }}
       AZURE_SECRET_READER_IDENTITY: ${{ vars.AZURE_SECRET_READER_IDENTITY }}
 
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_SUPABASE_URL: ${{ secrets.NEXT_SUPABASE_URL }}
+      NEXT_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
       - name: Check out repository
@@ -68,8 +68,8 @@ jobs:
             AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID
             AZURE_KEY_VAULT
             AZURE_SECRET_READER_IDENTITY
-            NEXT_PUBLIC_SUPABASE_URL
-            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+            NEXT_SUPABASE_URL
+            NEXT_SUPABASE_PUBLISHABLE_KEY
           )
 
           for value_name in "${required_values[@]}"; do
@@ -106,8 +106,8 @@ jobs:
           docker build \
             --file docker/Dockerfile \
             --progress plain \
-            --build-arg "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" \
-            --build-arg "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            --build-arg "NEXT_SUPABASE_URL=${NEXT_SUPABASE_URL}" \
+            --build-arg "NEXT_SUPABASE_PUBLISHABLE_KEY=${NEXT_SUPABASE_PUBLISHABLE_KEY}" \
             --build-arg "SOURCE_REPOSITORY=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --tag "${{ steps.image.outputs.sha }}" \
             --tag "${{ steps.image.outputs.latest }}" \
@@ -203,8 +203,8 @@ jobs:
             --detach \
             --name "${container_name}" \
             --publish 3200:3000 \
-            --env "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}" \
-            --env "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+            --env "NEXT_SUPABASE_URL=${NEXT_SUPABASE_URL}" \
+            --env "NEXT_SUPABASE_PUBLISHABLE_KEY=${NEXT_SUPABASE_PUBLISHABLE_KEY}" \
             --env "ACCESS_GATE_DISABLED=false" \
             --env "ACCESS_GATE_CODE_SECRET=${test_access_gate_code_secret}" \
             --env "ACCESS_GATE_COOKIE_SECRET=${test_access_gate_cookie_secret}" \
@@ -352,8 +352,8 @@ jobs:
               keyVaultName="${AZURE_KEY_VAULT}" \
               secretReaderIdentityName="${AZURE_SECRET_READER_IDENTITY}" \
               image="${{ steps.image.outputs.sha }}" \
-              supabaseUrl="${NEXT_PUBLIC_SUPABASE_URL}" \
-              supabasePublishableKey="${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" \
+              supabaseUrl="${NEXT_SUPABASE_URL}" \
+              supabasePublishableKey="${NEXT_SUPABASE_PUBLISHABLE_KEY}" \
               customDomainName="${AZURE_CUSTOM_DOMAIN}" \
               customDomainCertificateId="${AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID}" \
             --output none

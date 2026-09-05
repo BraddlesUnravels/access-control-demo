@@ -16,6 +16,10 @@ type ServerAuthMocks = {
   eq: ReturnType<typeof vi.fn>;
   getUser: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
+  supabase: {
+    auth: { getUser: ReturnType<typeof vi.fn> };
+    from: ReturnType<typeof vi.fn>;
+  };
 };
 
 const setupserverRequestClientMock = (): ServerAuthMocks => {
@@ -24,16 +28,18 @@ const setupserverRequestClientMock = (): ServerAuthMocks => {
   const eq = vi.fn(() => ({ maybeSingle }));
   const select = vi.fn(() => ({ eq }));
   const from = vi.fn(() => ({ select }));
-
-  vi.mocked(serverRequestClient).mockResolvedValue({
+  const supabase = {
     auth: { getUser },
     from,
-  } as never);
+  };
+
+  vi.mocked(serverRequestClient).mockResolvedValue(supabase as never);
 
   return {
     eq,
     getUser,
     maybeSingle,
+    supabase,
   };
 };
 
@@ -43,7 +49,8 @@ describe('lib/server/auth', () => {
   });
 
   it('should return user id and role when user and profile are available', async () => {
-    const { eq, getUser, maybeSingle } = setupserverRequestClientMock();
+    const { eq, getUser, maybeSingle, supabase } =
+      setupserverRequestClientMock();
     getUser.mockResolvedValue({
       data: { user: { id: 'user-1' } },
       error: null,
@@ -55,7 +62,11 @@ describe('lib/server/auth', () => {
     });
 
     expect(eq).toHaveBeenCalledWith('id', 'user-1');
-    expect(authContext).toEqual({ role: 'admin', userId: 'user-1' });
+    expect(authContext).toEqual({
+      supabase,
+      role: 'admin',
+      userId: 'user-1',
+    });
   });
 
   it('should throw a 401 AppError when user is missing and redirect is disabled', async () => {

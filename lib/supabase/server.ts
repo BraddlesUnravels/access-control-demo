@@ -14,8 +14,8 @@ export const serverRequestClient = async () => {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_SUPABASE_URL!,
+    process.env.NEXT_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -30,8 +30,8 @@ export const serverActionClient = async () => {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_SUPABASE_URL!,
+    process.env.NEXT_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {
@@ -51,8 +51,8 @@ export const serverResponseClient = async () => {
   const cookieStore = await cookies();
   const cookiesToSet: ResponseCookie[] = [];
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_SUPABASE_URL!,
+    process.env.NEXT_SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
         getAll() {

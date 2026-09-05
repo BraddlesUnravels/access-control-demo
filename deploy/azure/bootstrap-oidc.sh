@@ -193,8 +193,8 @@ AZURE_CONTAINER_APP=aca-access-control-demo
 AZURE_KEY_VAULT=${AZURE_KEY_VAULT}
 AZURE_SECRET_READER_IDENTITY=${AZURE_SECRET_READER_IDENTITY}
 
-NEXT_PUBLIC_SUPABASE_URL=<hosted Supabase project URL>
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<hosted Supabase publishable key>
+NEXT_SUPABASE_URL=<hosted Supabase project URL>
+NEXT_SUPABASE_PUBLISHABLE_KEY=<hosted Supabase publishable key>
 
 
 Key Vault setup

@@ -191,11 +191,11 @@ resource containerApp 'Microsoft.App/containerApps@2026-01-01' = {
               value: customDomainName
             }
             {
-              name: 'NEXT_PUBLIC_SUPABASE_URL'
+              name: 'NEXT_SUPABASE_URL'
               value: supabaseUrl
             }
             {
-              name: 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'
+              name: 'NEXT_SUPABASE_PUBLISHABLE_KEY'
               secretRef: 'supabase-publishable-key'
             }
             {

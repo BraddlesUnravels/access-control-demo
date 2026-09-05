@@ -1,13 +1,19 @@
 import { redirect } from 'next/navigation';
-import { AppError } from '@/lib/errors';
-import { serverRequestClient } from '@/lib/supabase/server';
-import type { Enums } from '@/lib/supabase/database.types';
+import { AppError } from '../errors';
+import { serverRequestClient } from '../supabase/server';
+import type { Enums } from '../supabase/database.types';
+import type { PostgrestError } from '@supabase/supabase-js';
 
 export type AppRole = Enums<'app_role'>;
 
 export type AuthContext = {
+  supabase: Awaited<ReturnType<typeof serverRequestClient>>;
   userId: string;
   role: AppRole;
+};
+
+type RequireAuthOptions = {
+  redirectOnUnauthenticated?: boolean;
 };
 
 /**
@@ -33,7 +39,7 @@ export const assertRole = (
 };
 
 export const requireAuthContext = async (
-  options: { redirectOnUnauthenticated?: boolean } = {},
+  options: RequireAuthOptions = {},
 ): Promise<AuthContext> => {
   const redirectOnUnauthenticated = options.redirectOnUnauthenticated ?? true;
   const supabase = await serverRequestClient();
@@ -41,6 +47,7 @@ export const requireAuthContext = async (
 
   if (error || !data.user) {
     if (redirectOnUnauthenticated) redirect('/auth/login');
+
     throw new AppError('Authentication required', {
       status: 401,
       safeMessage: 'Unauthorized',
@@ -53,25 +60,35 @@ export const requireAuthContext = async (
     .eq('id', data.user.id)
     .maybeSingle();
 
+  if (!profile || profileError)
+    return checkAndThrowProfileErrors(data.user.id, profileError);
+
+  return {
+    supabase,
+    userId: data.user.id,
+    role: profile.role,
+  };
+};
+
+const checkAndThrowProfileErrors = (
+  userId: string,
+  profileError: PostgrestError | null,
+): never => {
   if (profileError)
     throw new AppError('Failed to load user profile', {
       status: 500,
       safeMessage: 'Internal server error',
       meta: {
-        userId: data.user.id,
+        userId,
         code: profileError.code,
       },
     });
 
-  if (!profile)
-    throw new AppError('User profile was not found', {
-      status: 500,
-      safeMessage: 'Internal server error',
-      meta: { userId: data.user.id },
-    });
-
-  return {
-    userId: data.user.id,
-    role: profile.role,
-  };
+  throw new AppError('User profile was not found', {
+    status: 500,
+    safeMessage: 'Internal server error',
+    meta: {
+      userId,
+    },
+  });
 };

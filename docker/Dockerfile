@@ -14,21 +14,8 @@ FROM cgr.dev/chainguard/node:latest-dev AS builder
 USER root
 WORKDIR /app
 
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-
-ENV NEXT_TELEMETRY_DISABLED=1 \
-    NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL} \
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
-
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-
-RUN test -n "${NEXT_PUBLIC_SUPABASE_URL}" || \
-    (echo "NEXT_PUBLIC_SUPABASE_URL build argument is missing" >&2 && exit 1)
-
-RUN test -n "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" || \
-    (echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY build argument is missing" >&2 && exit 1)
 
 RUN mkdir -p public
 

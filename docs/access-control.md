@@ -202,7 +202,7 @@ For production invites, run the operator script locally while pointing it at the
 A local file such as `.env.production.local` can contain:
 
 ```text
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_SECRET_KEY=sb_secret_...
 ACCESS_GATE_CODE_SECRET=your-production-access-gate-code-secret
 ```

@@ -1,35 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { buildAppUrl } from '@/lib/app-url';
-import {
-  ACCESS_GATE_COOKIE_NAME,
-  ACCESS_GATE_ENTRY_PATH,
-} from '@/lib/access-gate/constants';
-import { verifyAccessGateCookieValue } from '@/lib/access-gate/cookie';
-import {
-  isAccessGateDisabled,
-  tryGetAccessGateCookieSecret,
-} from '@/lib/access-gate/env';
-import {
-  getSafeAccessGateDestination,
-  isAccessGatePublicPath,
-} from '@/lib/access-gate/paths';
-import { isAzureEnv } from '@/lib/utils';
+import { buildAppUrl } from '../app-url';
+import { ACCESS_GATE_COOKIE_NAME, ACCESS_GATE_ENTRY_PATH } from './constants';
+import { verifyAccessGateCookieValue } from './cookie';
+import { isAccessGateDisabled, tryGetAccessGateCookieSecret } from './env';
+import { getSafeAccessGateDestination, isAccessGatePublicPath } from './paths';
 
-const clearAccessGateCookie = (response: NextResponse): NextResponse => {
-  response.cookies.set({
-    name: ACCESS_GATE_COOKIE_NAME,
-    value: '',
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: isAzureEnv(),
-    path: '/',
-    expires: new Date(0),
-  });
+const clearAccessGateCookie = (response: NextResponse): NextResponse => (
+  response.cookies.delete(ACCESS_GATE_COOKIE_NAME),
+  response
+);
 
-  return response;
-};
-
-const hasValidAccessGateCookie = (request: NextRequest): boolean => {
+export const hasValidAccessGateCookie = (request: NextRequest): boolean => {
   const secret = tryGetAccessGateCookieSecret();
 
   if (!secret) return false;
