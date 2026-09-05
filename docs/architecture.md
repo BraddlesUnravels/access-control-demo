@@ -246,7 +246,11 @@ The root `proxy.ts` performs two lightweight request-boundary operations:
 1. Outer invite access-gate validation.
 2. Supabase SSR session refresh for requests allowed through the gate.
 
-The gate performs optimistic verification using the signed cookie and does not query PostgreSQL on every request.
+The gate verifies the signed cookie locally first. Protected requests then use
+the bounded, process-local access-session cache and synchronously call
+`validate_access_gate_session()` on a cache miss or after one hour. RPC errors
+and rejected sessions fail closed. Health probes, `/api/access/unlock`, and
+Supabase authentication callbacks remain explicit public exceptions.
 
 Public access-gate and health routes remain reachable without the cookie.
 
@@ -524,13 +528,15 @@ ACCESS_GATE_COOKIE_SECRET
 
 The same key is therefore not reused for two cryptographic purposes.
 
-## Stateless access cookie
+## Signed access cookie and RPC revalidation
 
-Protected requests validate the signed access cookie without querying PostgreSQL.
+Protected requests validate the signed access cookie locally and then use the
+`validate_access_gate_session()` RPC on a cache miss or after one hour.
 
-This keeps Next.js Proxy lightweight and avoids a database lookup on every asset or page request.
-
-The trade-off is that database revocation does not immediately invalidate an already-issued cookie.
+The bounded process-local cache avoids a database lookup on every request while
+still enforcing database expiry and revocation within the revalidation window.
+Validation failures fail closed. The trade-off is that revocation may remain
+effective for up to one hour on a warm cache entry.
 
 ## Process-local rate limiting
 

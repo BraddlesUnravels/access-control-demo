@@ -350,7 +350,7 @@ Before considering a substantial change complete, run:
 
 ```bash
 npm test
-npm run test:rls
+npm run test:db
 ```
 
 Run the complete repository quality checks when appropriate:
@@ -360,7 +360,7 @@ npm run format:check
 npm run typecheck
 npm run lint
 npm test
-npm run test:rls
+npm run test:db
 npm run build
 ```
 

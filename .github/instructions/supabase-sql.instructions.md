@@ -415,7 +415,7 @@ After database, migration, seed, or policy changes, run the applicable commands:
 ```bash
 npm run infra:reset
 npm run db:types
-npm run test:rls
+npm run test:db
 npm run typecheck
 npm test
 npm run build

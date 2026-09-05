@@ -36,26 +36,6 @@ The LMS domain is intentionally small so the authentication, authorization, data
 
 ## Access-control model
 
-The hosted application has two separate access boundaries:
-
-```text
-Visitor
-   |
-   v
-Invite access gate
-   |
-   v
-Supabase authentication
-   |
-   v
-Application authorization
-   |
-   v
-PostgreSQL row-level security
-```
-
-## Access-control model
-
 The hosted application has separate visitor-access, authentication, authorization, and database-security boundaries:
 
 ```text
@@ -162,6 +142,9 @@ The local seed data creates:
 
 These credentials are intended only for the demonstration environment.
 
+They are for local manual testing through the web UI. Automated tests use
+isolated fixtures and should not depend on these passwords.
+
 Invite codes are not seeded into the database. Create them after resetting the local database with:
 
 ```bash
@@ -206,8 +189,10 @@ npm run invite:create -- --label "Local demo" --days 14
 Detailed project documentation is split by responsibility:
 
 - [Access control and API](docs/access-control.md) — invite access, authentication, authorization, RLS, consultation lifecycle, API routes, and database model
+- [API reference](docs/api.md) — HTTP routes, request requirements, response behavior, and cache policy
 - [Architecture](docs/architecture.md) — application boundaries, SWR, runtime validation, generated types, and design decisions
 - [Development](docs/development.md) — local setup, environment variables, MailPit, project structure, and npm scripts
+- [Secrets management](docs/secrets-management.md) — secret separation, storage, rotation, and incident response
 - [Testing](docs/testing.md) — Node, browser, database, and production-container integration testing
 - [Deployment](docs/deployment.md) — GitHub Actions, production configuration, Azure Container Apps, and OIDC
 
@@ -247,7 +232,7 @@ The domain remains deliberately small so the important behaviours are easy to in
 Possible future improvements include:
 
 1. Browser-level end-to-end tests for the complete invite and authentication flows.
-2. Bounded server-side revalidation so revoking an invite can invalidate already-issued access cookies before their natural expiry.
+2. Shared access-session cache state if the application is horizontally scaled.
 3. Narrowly scoped operator commands for listing and revoking invites.
 4. Pagination, search, and filtering for the administrator dashboard.
 5. An audit log for consultation status changes.

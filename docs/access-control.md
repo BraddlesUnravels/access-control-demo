@@ -18,7 +18,10 @@ The invite gate determines whether a browser may reach the demonstration applica
 6. PostgreSQL validates the invite and atomically establishes its access window on first successful redemption.
 7. A successful redemption creates an `access_visits` record.
 8. The server issues a signed `httpOnly` access-gate cookie using the database-controlled absolute expiry.
-9. Subsequent requests carrying a valid access cookie proceed to Supabase authentication.
+9. Subsequent requests carrying a valid access cookie pass local HMAC and expiry
+   checks. Protected requests also require a cached or fresh successful
+   `validate_access_gate_session(invite_id, visit_id)` RPC result before
+   proceeding to Supabase authentication.
 
 The root route is the gate entry point:
 
@@ -151,6 +154,7 @@ Its payload contains only:
 ```text
 version
 inviteId
+visitId
 exp
 ```
 
@@ -173,11 +177,15 @@ revoked_at
 
 This prevents further redemption.
 
-The access cookie is currently stateless.
+The cookie remains self-contained for the fast local check, but protected
+requests use a process-local validation cache. A cache entry is revalidated
+through the database RPC at most once per hour and expires no later than the
+cookie's own `exp` value. Revocation can therefore take effect within the
+one-hour revalidation window rather than waiting for the full cookie lifetime.
 
-A cookie issued before an invite is revoked therefore remains valid until its existing absolute expiry.
-
-Immediate invalidation would require additional server-side revalidation.
+Validation failures fail closed. The cache is bounded to 1,000 sessions and is
+local to the running application process; a horizontally scaled deployment
+would need shared cache state or per-instance revalidation.
 
 # Creating invites
 
@@ -203,16 +211,18 @@ A local file such as `.env.production.local` can contain:
 
 ```text
 NEXT_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_SECRET_KEY=sb_secret_...
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
 ACCESS_GATE_CODE_SECRET=your-production-access-gate-code-secret
+ACCESS_GATE_COOKIE_SECRET=your-production-access-gate-cookie-secret
 ```
 
-`SUPABASE_SECRET_KEY` is preferred for trusted server-side/operator tooling.
+`SUPABASE_SERVICE_ROLE_KEY` is the current Supabase variable name for trusted
+server-side/operator tooling.
 
-The script also supports:
+The script also supports the legacy fallback:
 
 ```text
-SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_SECRET_KEY
 ```
 
 as a legacy fallback.

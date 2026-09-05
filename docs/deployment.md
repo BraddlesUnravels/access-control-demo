@@ -276,6 +276,32 @@ If the application is later scaled horizontally, rate-limit state should move to
 - another shared data store;
 - an upstream gateway or rate-limiting layer.
 
+# Access-session revalidation
+
+Protected application requests use a signed `access_gate` cookie as a fast
+local check and then consult the existing `validate_access_gate_session()` RPC
+through a process-local cache.
+
+Successful validation is cached for up to one hour and no longer than the
+cookie's absolute expiry. Rejected sessions and RPC failures are not cached;
+they fail closed and the supplied access cookie is cleared where the response
+can modify cookies.
+
+The cache is bounded to 1,000 sessions and is held in the application process.
+The current Container App uses one active replica, so all requests share that
+cache. If the application is horizontally scaled, each replica can have a
+different validation view unless the cache is moved to shared infrastructure or
+each request revalidates directly against the database.
+
+The only public application access-gate route is:
+
+```text
+POST /api/access/unlock
+```
+
+Health probes and Supabase authentication callbacks remain public operational
+exceptions.
+
 # Health probes
 
 The application exposes:
