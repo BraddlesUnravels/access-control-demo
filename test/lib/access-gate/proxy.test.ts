@@ -30,7 +30,7 @@ describe('root proxy orchestration', () => {
       },
     );
 
-    vi.mocked(handleAccessGateRequest).mockReturnValue(accessGateResponse);
+    vi.mocked(handleAccessGateRequest).mockResolvedValue(accessGateResponse);
 
     const response = await proxy(request);
 
@@ -46,7 +46,7 @@ describe('root proxy orchestration', () => {
     const request = new NextRequest('http://localhost/protected');
     const supabaseResponse = NextResponse.next();
 
-    vi.mocked(handleAccessGateRequest).mockReturnValue(undefined);
+    vi.mocked(handleAccessGateRequest).mockResolvedValue(undefined);
     vi.mocked(updateSession).mockResolvedValue(supabaseResponse);
 
     const response = await proxy(request);

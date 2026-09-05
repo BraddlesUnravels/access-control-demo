@@ -5,6 +5,7 @@ begin;
 do $$
 declare
   redeem_function_count integer;
+  validate_function_count integer;
 begin
   if not exists (
     select
@@ -96,6 +97,39 @@ end if;
         and functions.prosecdef
         and pg_get_function_identity_arguments(functions.oid) = 'p_code_hash text') then
     raise exception 'redeem_access_invite must be SECURITY DEFINER with only p_code_hash';
+end if;
+    if not has_function_privilege('anon', 'public.validate_access_gate_session(uuid, uuid)',
+      'EXECUTE') or not has_function_privilege('authenticated',
+      'public.validate_access_gate_session(uuid, uuid)', 'EXECUTE') or not
+      has_function_privilege('service_role', 'public.validate_access_gate_session(uuid, uuid)', 'EXECUTE')
+      then
+      raise exception 'All application roles must be able to execute validate_access_gate_session(uuid, uuid)';
+    end if;
+    select
+      count(*)
+    into
+      validate_function_count
+    from
+      pg_proc as functions
+      join pg_namespace as schemas on schemas.oid = functions.pronamespace
+    where
+      schemas.nspname = 'public'
+      and functions.proname = 'validate_access_gate_session';
+    if validate_function_count <> 1 then
+      raise exception 'Expected exactly one validate_access_gate_session overload. count=%', validate_function_count;
+    end if;
+    if not exists (
+      select
+        1
+      from
+        pg_proc as functions
+        join pg_namespace as schemas on schemas.oid = functions.pronamespace
+      where
+        schemas.nspname = 'public'
+        and functions.proname = 'validate_access_gate_session'
+        and functions.prosecdef
+        and pg_get_function_identity_arguments(functions.oid) = 'p_invite_id uuid, p_visit_id uuid') then
+    raise exception 'validate_access_gate_session must be SECURITY DEFINER with invite and visit UUID arguments';
 end if;
     raise notice 'PASS: access-gate schema and privileges are correct';
 end
@@ -426,7 +460,107 @@ $$;
 
 reset role;
 
-\echo 'ACCESS GATE CHECK 6/6: Verifying app roles cannot directly read gate tables'
+\echo 'ACCESS GATE CHECK 7/7: Verifying access-session validation outcomes'
+do $$
+declare
+  valid_invite_id uuid := gen_random_uuid();
+  expired_invite_id uuid := gen_random_uuid();
+  revoked_invite_id uuid := gen_random_uuid();
+  valid_visit_id uuid := gen_random_uuid();
+  expired_visit_id uuid := gen_random_uuid();
+  revoked_visit_id uuid := gen_random_uuid();
+  missing_invite_id uuid := gen_random_uuid();
+  missing_visit_id uuid := gen_random_uuid();
+  valid_result boolean;
+  missing_result boolean;
+  expired_result boolean;
+  revoked_result boolean;
+begin
+  insert into public.access_invites(
+    id,
+    code_hash,
+    label,
+    access_duration_days,
+    first_accessed_at,
+    expires_at)
+  values
+    (
+      valid_invite_id,
+      'validate-valid-hash',
+      'Validation valid invite',
+      14,
+      now(),
+      now() + interval '1 hour'),
+(
+      expired_invite_id,
+      'validate-expired-hash',
+      'Validation expired invite',
+      14,
+      now() - interval '2 days',
+      now() - interval '1 hour'),
+(
+      revoked_invite_id,
+      'validate-revoked-hash',
+      'Validation revoked invite',
+      14,
+      now(),
+      now() + interval '1 hour');
+  update
+    public.access_invites
+  set
+    revoked_at = now()
+  where
+    id = revoked_invite_id;
+  insert into public.access_visits(
+    id,
+    invite_id)
+  values
+    (
+      valid_visit_id,
+      valid_invite_id),
+(
+      expired_visit_id,
+      expired_invite_id),
+(
+      revoked_visit_id,
+      revoked_invite_id);
+  execute 'set local role anon';
+  select
+    public.validate_access_gate_session(valid_invite_id, valid_visit_id)
+  into
+    valid_result;
+  select
+    public.validate_access_gate_session(missing_invite_id, missing_visit_id)
+  into
+    missing_result;
+  select
+    public.validate_access_gate_session(expired_invite_id, expired_visit_id)
+  into
+    expired_result;
+  select
+    public.validate_access_gate_session(revoked_invite_id, revoked_visit_id)
+  into
+    revoked_result;
+  reset role;
+  if valid_result is distinct from true then
+    raise exception 'A valid access session must be accepted';
+  end if;
+  if missing_result is distinct from false then
+    raise exception 'A missing access session must be rejected';
+  end if;
+  if expired_result is distinct from false then
+    raise exception 'An expired access session must be rejected';
+  end if;
+  if revoked_result is distinct from false then
+    raise exception 'A revoked access session must be rejected';
+  end if;
+  raise notice 'PASS: valid, missing, expired, and revoked access sessions are handled correctly';
+end
+$$;
+
+reset role;
+
+\echo 'ACCESS GATE CHECK 8/8: Verifying app roles cannot directly read gate tables'
 do $$
 begin
   execute 'set local role anon';
@@ -460,5 +594,5 @@ $$;
 
 reset role;
 
-\echo 'ACCESS GATE CHECK RESULT: ALL 6 CHECKS PASSED (transaction rolled back)'
+\echo 'ACCESS GATE CHECK RESULT: ALL 8 CHECKS PASSED (transaction rolled back)'
 rollback;
