@@ -9,8 +9,6 @@ describe('lib/access-gate/paths', () => {
     it('should allow the root gate and public infrastructure routes', () => {
       expect(isAccessGatePublicPath('/')).toBe(true);
 
-      expect(isAccessGatePublicPath('/api/access')).toBe(true);
-
       expect(isAccessGatePublicPath('/api/access/unlock')).toBe(true);
 
       expect(isAccessGatePublicPath('/api/health')).toBe(true);
@@ -28,6 +26,10 @@ describe('lib/access-gate/paths', () => {
 
     it('should not treat similarly named or legacy routes as public', () => {
       expect(isAccessGatePublicPath('/access')).toBe(false);
+
+      expect(isAccessGatePublicPath('/api/access')).toBe(false);
+
+      expect(isAccessGatePublicPath('/api/access/other')).toBe(false);
 
       expect(isAccessGatePublicPath('/api/accessory')).toBe(false);
 

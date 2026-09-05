@@ -1,6 +1,7 @@
 import {
   ACCESS_GATE_DEFAULT_DESTINATION,
   ACCESS_GATE_ENTRY_PATH,
+  ACCESS_GATE_PUBLIC_PATHS,
   ACCESS_GATE_PUBLIC_PATH_PREFIXES,
 } from './constants';
 import { INTERNAL_ORIGIN } from '../validation/shared-constants';
@@ -8,6 +9,8 @@ import { INTERNAL_ORIGIN } from '../validation/shared-constants';
 export const isAccessGatePublicPath = (pathname: string): boolean => {
   const cleanPath = pathname.trim().toLowerCase();
   if (cleanPath === ACCESS_GATE_ENTRY_PATH) return true;
+
+  if (ACCESS_GATE_PUBLIC_PATHS.some((path) => path === cleanPath)) return true;
 
   return ACCESS_GATE_PUBLIC_PATH_PREFIXES.some((prefix) => {
     return cleanPath === prefix || cleanPath.startsWith(`${prefix}/`);
