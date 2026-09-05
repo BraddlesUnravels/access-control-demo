@@ -3,7 +3,7 @@ import { updateSession } from '@/lib/supabase/proxy';
 import { type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
-  const accessGateResponse = handleAccessGateRequest(request);
+  const accessGateResponse = await handleAccessGateRequest(request);
 
   if (accessGateResponse) return accessGateResponse;
 

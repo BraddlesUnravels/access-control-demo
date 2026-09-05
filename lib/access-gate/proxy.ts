@@ -4,23 +4,27 @@ import { ACCESS_GATE_COOKIE_NAME, ACCESS_GATE_ENTRY_PATH } from './constants';
 import { verifyAccessGateCookieValue } from './cookie';
 import { isAccessGateDisabled, tryGetAccessGateCookieSecret } from './env';
 import { getSafeAccessGateDestination, isAccessGatePublicPath } from './paths';
+import { accessGateSessionCache } from './session-cache';
 
 const clearAccessGateCookie = (response: NextResponse): NextResponse => (
   response.cookies.delete(ACCESS_GATE_COOKIE_NAME),
   response
 );
 
-export const hasValidAccessGateCookie = (request: NextRequest): boolean => {
+const getAccessGateCookiePayload = (request: NextRequest) => {
   const secret = tryGetAccessGateCookieSecret();
 
-  if (!secret) return false;
+  if (!secret) return;
 
   const cookieValue = request.cookies.get(ACCESS_GATE_COOKIE_NAME)?.value;
 
-  if (!cookieValue) return false;
+  if (!cookieValue) return;
 
-  return Boolean(verifyAccessGateCookieValue(cookieValue, secret));
+  return verifyAccessGateCookieValue(cookieValue, secret);
 };
+
+export const hasValidAccessGateCookie = (request: NextRequest): boolean =>
+  Boolean(getAccessGateCookiePayload(request));
 
 const buildEntryRedirect = (request: NextRequest): NextResponse => {
   const requestedPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
@@ -38,9 +42,9 @@ const buildDestinationRedirect = (request: NextRequest): NextResponse => {
   return NextResponse.redirect(buildAppUrl(request, destination));
 };
 
-export const handleAccessGateRequest = (
+export const handleAccessGateRequest = async (
   request: NextRequest,
-): NextResponse | undefined => {
+): Promise<NextResponse | undefined> => {
   const pathname = request.nextUrl.pathname.trim().toLowerCase();
 
   if (isAccessGateDisabled()) {
@@ -51,10 +55,10 @@ export const handleAccessGateRequest = (
   }
 
   const hasCookie = request.cookies.has(ACCESS_GATE_COOKIE_NAME);
-  const hasValidCookie = hasValidAccessGateCookie(request);
+  const cookiePayload = getAccessGateCookiePayload(request);
 
   if (pathname === ACCESS_GATE_ENTRY_PATH) {
-    if (hasValidCookie) return buildDestinationRedirect(request);
+    if (cookiePayload) return buildDestinationRedirect(request);
 
     const response = NextResponse.next({ request });
 
@@ -63,7 +67,12 @@ export const handleAccessGateRequest = (
 
   if (isAccessGatePublicPath(pathname)) return NextResponse.next({ request });
 
-  if (hasValidCookie) return;
+  if (cookiePayload) {
+    const hasValidSession =
+      await accessGateSessionCache.hasValidSession(cookiePayload);
+
+    if (hasValidSession) return;
+  }
 
   const response = pathname.startsWith('/api/')
     ? NextResponse.json(
