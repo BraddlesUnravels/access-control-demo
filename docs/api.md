@@ -73,11 +73,12 @@ Supported status transitions are:
 ```text
 scheduled -> completed
 completed -> scheduled
+scheduled/completed -> cancelled (via DELETE)
 ```
 
 Cancellation is handled by `DELETE`, not by PATCH. The API and database both
 enforce these lifecycle rules, so callers cannot bypass the UI by sending a
-direct request.
+direct request. Cancelled consultations remain terminal and cannot be updated.
 
 ### `DELETE /api/consultations/:id`
 

@@ -234,6 +234,26 @@ describe('app/api/consultations/[id]', () => {
       expect(update).not.toHaveBeenCalled();
     });
 
+    it('should cancel a completed consultation', async () => {
+      const completed = buildConsultation({ status: 'completed' });
+      const cancelled = buildConsultation({ status: 'cancelled' });
+      const { update, updateIdEq, updateStudentEq } = setupSupabaseMock({
+        existing: completed,
+        updated: cancelled,
+      });
+
+      const response = await DELETE(buildRequest('DELETE'), ROUTE_CONTEXT);
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ data: cancelled });
+      expect(update).toHaveBeenCalledWith({ status: 'cancelled' });
+      expect(updateIdEq).toHaveBeenCalledWith('id', 'consultation-1');
+      expect(updateStudentEq).toHaveBeenCalledWith(
+        'student_user_id',
+        'student-1',
+      );
+    });
+
     it('should cancel an owned consultation without writing lifecycle timestamps in the API', async () => {
       const cancelled = buildConsultation({
         status: 'cancelled',
