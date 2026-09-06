@@ -11,7 +11,7 @@ const getRequiredSecret = (name: string): string => {
 
   if ((secret && secret.length < MINIMUM_PRODUCTION_SECRET_LENGTH) || !secret)
     throw new Error(
-      `Environment variable ${name} is missing or does not meet legth requirements \
+      `Environment variable ${name} is missing or does not meet length requirements \
       (minimum ${MINIMUM_PRODUCTION_SECRET_LENGTH} characters).`,
     );
 

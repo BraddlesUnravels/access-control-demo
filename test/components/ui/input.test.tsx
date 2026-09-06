@@ -41,9 +41,14 @@ test('Input should respect its disabled state', async () => {
 });
 
 test('PasswordInput should toggle visibility without clearing its value', async () => {
-  const screen = await render(<PasswordInput id="password" />);
+  const screen = await render(
+    <>
+      <label htmlFor="password">Password</label>
+      <PasswordInput id="password" />
+    </>,
+  );
 
-  const passwordInput = screen.getByLabelText('Password input field', {
+  const passwordInput = screen.getByLabelText('Password', {
     exact: true,
   });
 

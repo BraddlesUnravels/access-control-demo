@@ -25,7 +25,7 @@ test('should follow the intended login keyboard focus order', async () => {
     exact: true,
   });
 
-  const passwordInput = screen.getByLabelText('Password input field', {
+  const passwordInput = screen.getByLabelText('Password', {
     exact: true,
   });
 

@@ -1,5 +1,4 @@
-# chainguard have images designed to have 0 vulnerabilites
-FROM cgr.dev/chainguard/node:latest-dev AS dependencies
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS dependencies
 
 USER root
 WORKDIR /app
@@ -9,10 +8,13 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 
-FROM cgr.dev/chainguard/node:latest-dev AS builder
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS builder
 
 USER root
 WORKDIR /app
+
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NODE_OPTIONS=--max_old_space_size=1024
 
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
@@ -21,7 +23,7 @@ RUN mkdir -p public
 
 RUN npm run build
 
-FROM cgr.dev/chainguard/node:latest AS runner
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS runner
 
 WORKDIR /app
 
@@ -58,8 +60,6 @@ HEALTHCHECK \
     --timeout=5s \
     --start-period=15s \
     --retries=3 \
-    CMD ["/usr/bin/node", "-e", "fetch('http://127.0.0.1:3000/api/health', { signal: AbortSignal.timeout(4000) }).then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"]
+    CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health', { signal: AbortSignal.timeout(4000) }).then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"]
 
-# Chainguard already defines ENTRYPOINT ["/usr/bin/node"].
-# Supplying only the script produces: /usr/bin/node server.js
-CMD ["server.js"]
+CMD ["node", "server.js"]

@@ -14,6 +14,34 @@ const VALID_INPUT = {
 };
 
 describe('consultationCreateInputSchema', () => {
+  it.each([
+    '2026-08-20T02:00:00.000Z',
+    '2026-08-20T12:00:00+10:00',
+    '2026-08-20T02:00:00.123456789-05:30',
+  ])('accepts an RFC 3339 timestamp: %s', (scheduledFor) => {
+    const result = validateWithSchema(consultationCreateInputSchema, {
+      ...VALID_INPUT,
+      scheduledFor,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    '2026-08-20T02:00:00',
+    '2026-02-31T10:00:00.000Z',
+    '2026-02-29T10:00:00.000Z',
+    '2026-08-20T24:00:00.000Z',
+    '2026-08-20T02:00:00.000',
+  ])('rejects an invalid RFC 3339 timestamp: %s', (scheduledFor) => {
+    const result = validateWithSchema(consultationCreateInputSchema, {
+      ...VALID_INPUT,
+      scheduledFor,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('should accept text at the configured limits after trimming', () => {
     const result = validateWithSchema(consultationCreateInputSchema, {
       ...VALID_INPUT,
