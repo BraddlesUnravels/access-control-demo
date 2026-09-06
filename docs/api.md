@@ -64,7 +64,20 @@ Request fields:
 
 ### `PATCH /api/consultations/:id`
 
-Updates an owned consultation's supported scheduled date or lifecycle status. Cancelled consultations cannot be modified.
+Updates an owned consultation's supported scheduled date or lifecycle status.
+Cancelled consultations cannot be modified. A scheduled date can be changed
+only while the consultation is scheduled.
+
+Supported status transitions are:
+
+```text
+scheduled -> completed
+completed -> scheduled
+```
+
+Cancellation is handled by `DELETE`, not by PATCH. The API and database both
+enforce these lifecycle rules, so callers cannot bypass the UI by sending a
+direct request.
 
 ### `DELETE /api/consultations/:id`
 
