@@ -29,16 +29,18 @@ vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn() },
 }));
 
+const CONSULTATION_ID = '0197d2ee-6242-7616-8ef5-474ad0ecff0f';
+
 const STUDENT_AUTH = createAuthContext({
   role: 'student',
   userId: 'student-1',
 });
 const ROUTE_CONTEXT = {
-  params: Promise.resolve({ id: 'consultation-1' }),
+  params: Promise.resolve({ id: CONSULTATION_ID }),
 };
 
 const buildRequest = (method: 'PATCH' | 'DELETE', body?: string) =>
-  new Request('http://localhost/api/consultations/consultation-1', {
+  new Request(`http://localhost/api/consultations/${CONSULTATION_ID}`, {
     method,
     body,
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
@@ -120,7 +122,7 @@ describe('app/api/consultations/[id]', () => {
       await expect(response.json()).resolves.toEqual({
         error: 'Consultation was not found',
       });
-      expect(ownedIdEq).toHaveBeenCalledWith('id', 'consultation-1');
+      expect(ownedIdEq).toHaveBeenCalledWith('id', CONSULTATION_ID);
       expect(ownedStudentEq).toHaveBeenCalledWith(
         'student_user_id',
         'student-1',
@@ -184,7 +186,7 @@ describe('app/api/consultations/[id]', () => {
 
         expect(response.status).toBe(200);
         expect(update).toHaveBeenCalledWith({ status });
-        expect(updateIdEq).toHaveBeenCalledWith('id', 'consultation-1');
+        expect(updateIdEq).toHaveBeenCalledWith('id', CONSULTATION_ID);
         expect(updateStudentEq).toHaveBeenCalledWith(
           'student_user_id',
           'student-1',
@@ -247,7 +249,7 @@ describe('app/api/consultations/[id]', () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ data: cancelled });
       expect(update).toHaveBeenCalledWith({ status: 'cancelled' });
-      expect(updateIdEq).toHaveBeenCalledWith('id', 'consultation-1');
+      expect(updateIdEq).toHaveBeenCalledWith('id', CONSULTATION_ID);
       expect(updateStudentEq).toHaveBeenCalledWith(
         'student_user_id',
         'student-1',
@@ -267,7 +269,7 @@ describe('app/api/consultations/[id]', () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ data: cancelled });
       expect(update).toHaveBeenCalledWith({ status: 'cancelled' });
-      expect(updateIdEq).toHaveBeenCalledWith('id', 'consultation-1');
+      expect(updateIdEq).toHaveBeenCalledWith('id', CONSULTATION_ID);
       expect(updateStudentEq).toHaveBeenCalledWith(
         'student_user_id',
         'student-1',

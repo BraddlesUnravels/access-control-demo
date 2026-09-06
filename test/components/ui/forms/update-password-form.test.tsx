@@ -18,11 +18,12 @@ test('submits a replacement password from the recovery form', async () => {
 
   const screen = await render(<UpdatePasswordForm />);
 
-  const passwordInputs = screen.getByLabelText('Password input field', {
+  const newPasswordInput = screen.getByLabelText('New Password', {
     exact: true,
   });
-  const newPasswordInput = passwordInputs.nth(0);
-  const confirmPasswordInput = passwordInputs.nth(1);
+  const confirmPasswordInput = screen.getByLabelText('Confirm Password', {
+    exact: true,
+  });
   const submitButton = screen.getByRole('button', {
     name: 'Update password',
     exact: true,

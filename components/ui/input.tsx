@@ -50,7 +50,6 @@ const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="relative">
         <input
-          aria-label="Password input field"
           type={hidden ? 'password' : 'text'}
           className={cn(inputStyles, className)}
           ref={ref}

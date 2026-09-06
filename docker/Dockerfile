@@ -1,5 +1,5 @@
-# chainguard have images designed to have 0 vulnerabilites
-FROM cgr.dev/chainguard/node:latest-dev AS dependencies
+# Pin the base image so the runtime remains reproducible and does not float on latest tags.
+FROM cgr.dev/chainguard/node:20.18.0-dev AS dependencies
 
 USER root
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 
-FROM cgr.dev/chainguard/node:latest-dev AS builder
+FROM cgr.dev/chainguard/node:20.18.0-dev AS builder
 
 USER root
 WORKDIR /app
@@ -21,7 +21,7 @@ RUN mkdir -p public
 
 RUN npm run build
 
-FROM cgr.dev/chainguard/node:latest AS runner
+FROM cgr.dev/chainguard/node:20.18.0 AS runner
 
 WORKDIR /app
 

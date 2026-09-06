@@ -65,11 +65,16 @@ export function ForgotPasswordForm({
                     placeholder="example@lms.com"
                     required
                     aria-invalid={state.error ? true : undefined}
-                    aria-describedby={state.error ?? undefined}
+                    aria-describedby={state.error ? 'forgot-password-error' : undefined}
                   />
                 </FormField>
                 {state.error && (
-                  <Typography as="p" variant="caption" className="text-red-500">
+                  <Typography
+                    id="forgot-password-error"
+                    as="p"
+                    variant="caption"
+                    className="text-red-500"
+                  >
                     {state.error}
                   </Typography>
                 )}
