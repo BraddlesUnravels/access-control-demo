@@ -144,6 +144,26 @@ describe('app/api/consultations/[id]', () => {
       expect(update).not.toHaveBeenCalled();
     });
 
+    it('should reject rescheduling a completed consultation', async () => {
+      const { update } = setupSupabaseMock({
+        existing: buildConsultation({ status: 'completed' }),
+      });
+
+      const response = await PATCH(
+        buildRequest(
+          'PATCH',
+          JSON.stringify({ scheduledFor: '2026-08-21T04:00:00.000Z' }),
+        ),
+        ROUTE_CONTEXT,
+      );
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({
+        error: 'Completed consultations cannot be rescheduled',
+      });
+      expect(update).not.toHaveBeenCalled();
+    });
+
     it.each([
       ['completed', '2026-08-12T01:23:45.000Z'],
       ['scheduled', null],
