@@ -387,7 +387,8 @@ Requirements:
 
 ### `PATCH /api/consultations/:id`
 
-Updates the scheduled date or status of an owned consultation.
+Updates the scheduled date or status of an owned consultation. A scheduled date
+can be changed only while the consultation is scheduled.
 
 Supported operations include:
 

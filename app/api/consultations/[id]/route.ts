@@ -50,7 +50,7 @@ export const PATCH = withApiHandler(
       id,
       userId,
     );
-    assertConsultationCanBeUpdated(consultation);
+    assertConsultationCanBeUpdated(consultation, validation.data);
     const patch = buildConsultationUpdatePatch(validation.data);
 
     const { data, error } = await supabase

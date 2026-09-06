@@ -163,7 +163,6 @@ declare
   other_consultation_id uuid;
   probe_id uuid;
   completed_time timestamptz;
-  persisted_completed_time timestamptz;
   cancelled_time timestamptz;
   updated_rows integer;
 begin
@@ -288,41 +287,35 @@ end if;
         raise exception 'Database should set completed_at when status becomes completed';
         end if;
         raise notice 'PASS: database records consultation completion time';
-        -- Other permitted updates must not regenerate completed_at.
+        -- Completed consultations cannot be rescheduled.
+        begin
+          update
+            public.consultations
+          set
+            scheduled_for = scheduled_for + interval '1 hour'
+          where
+            id = probe_id;
+            raise exception 'Completed consultation should not be reschedulable';
+        exception
+          when check_violation then
+            raise notice 'PASS: completed consultation cannot be rescheduled';
+        end;
+        -- Existing behaviour allows completed -> scheduled.
         update
           public.consultations
         set
-          scheduled_for = scheduled_for + interval '1 hour'
+          status = 'scheduled'
         where
           id = probe_id;
-          select
-            completed_at
-          into
-            persisted_completed_time
-          from
-            public.consultations
-          where
-            id = probe_id;
-            if persisted_completed_time is distinct from completed_time then
-              raise exception 'Rescheduling should not rewrite completed_at';
-              end if;
-              raise notice 'PASS: unrelated updates preserve completion time';
-              -- Existing behaviour allows completed -> scheduled.
-              update
-                public.consultations
-              set
-                status = 'scheduled'
-              where
-                id = probe_id;
-                if exists (
-                  select
-                    1
-                  from
-                    public.consultations
-                  where
-                    id = probe_id
-                    and completed_at is not null) then
-                raise exception 'Returning a consultation to scheduled should clear completed_at';
+          if exists (
+            select
+              1
+            from
+              public.consultations
+            where
+              id = probe_id
+              and completed_at is not null) then
+          raise exception 'Returning a consultation to scheduled should clear completed_at';
 end if;
 raise notice 'PASS: returning to scheduled clears completion time';
 -- PostgreSQL also owns cancellation metadata.
