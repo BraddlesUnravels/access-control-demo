@@ -75,6 +75,18 @@ jobs:
           npx --yes supabase@${SUPABASE_CLI_VERSION} start -x vector \
             2>&1 | tee -a container-stage.log
 
+      - name: Validate generated schema snapshot
+        shell: bash
+        run: |
+          set -o pipefail
+
+          {
+            echo
+            echo "=== Generated schema snapshot check ==="
+          } | tee -a container-stage.log
+
+          npm run schema:check 2>&1 | tee -a container-stage.log
+
       - name: Validate database security and access gate
         shell: bash
         run: |

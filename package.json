@@ -19,6 +19,8 @@
     "infra:down": "supabase stop --all --no-backup",
     "infra:reset": "supabase db reset",
     "infra:env": "node scripts/generate-local-env.mjs",
+    "schema:generate": "supabase db reset --local --no-seed && node scripts/check-schema-drift.mjs --write",
+    "schema:check": "node scripts/check-schema-drift.mjs",
     "invite:create": "node scripts/create-access-invite.mjs",
     "demo:start": "npm install && npm run infra:up && npm run infra:env && npm run dev",
     "test:db": "node scripts/run-rls-tests.mjs",
