@@ -17,9 +17,8 @@ export const config = {
      * - api/health (container and platform probes must not depend on Supabase)
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico
-     * - common image assets
+     * - public files with a file extension
      */
-    '/((?!api/health(?:/|$)|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api/health(?:/|$)|_next/static|_next/image|(?!api(?:/|$)).*\\.[^/]+$).*)',
   ],
 };

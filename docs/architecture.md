@@ -578,7 +578,7 @@ The duplication is intentional:
 - Route Handlers provide explicit application-level responses.
 - RLS protects row ownership if the application layer is bypassed or incorrectly configured.
 - column-level privileges restrict authenticated clients to the mutation fields exposed by the application.
-- database triggers own consultation lifecycle timestamps and enforce terminal cancellation.
+- database triggers own consultation lifecycle timestamps, enforce terminal cancellation, and prevent rescheduling completed consultations.
 
 ## Read-only administrator role
 

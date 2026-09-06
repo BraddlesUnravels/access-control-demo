@@ -321,7 +321,7 @@ cancelled
 Students can:
 
 - create a scheduled consultation;
-- change its scheduled date;
+- change the scheduled date while it is scheduled;
 - mark it completed;
 - return it to scheduled;
 - cancel it.
@@ -331,6 +331,11 @@ Cancellation is represented as a status transition rather than physical deletion
 Lifecycle timestamps are owned by PostgreSQL rather than supplied by the application. When a consultation transitions to `completed` or `cancelled`, the database records the corresponding timestamp. Returning a completed consultation to `scheduled` clears its completion timestamp. Cancelled consultations are terminal and cannot be updated.
 
 This preserves the record and its lifecycle metadata while preventing clients from forging those timestamps.
+
+The database lifecycle trigger also rejects scheduled-date changes to completed
+consultations. The completed-to-scheduled status transition remains allowed so
+the UI's "Mark incomplete" action continues to work. Cancelled consultations
+remain terminal and cannot be updated.
 
 # API summary
 
@@ -403,6 +408,10 @@ Requirements:
 - `student` role;
 - consultation owned by the authenticated student;
 - consultation not cancelled.
+
+The `scheduledFor` field can be changed only when the consultation is currently
+scheduled. Status-only updates may transition between `scheduled` and
+`completed`.
 
 ### `DELETE /api/consultations/:id`
 
