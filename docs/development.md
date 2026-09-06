@@ -226,14 +226,14 @@ Valibot runtime validation remains separate from generated TypeScript types beca
 | `npm run start`         | Start the production server                            |
 | `npm run typecheck`     | Run TypeScript without emitting files                  |
 | `npm run lint`          | Run ESLint                                             |
-| `npm run format`        | Format with Prettier                                   |
+| `npm run format`        | Format Markdown, TypeScript, and SQL                   |
 | `npm run format:check`  | Check formatting                                       |
 | `npm test`              | Run all Vitest projects                                |
 | `npm run test:node`     | Run the Node Vitest project                            |
 | `npm run test:ui`       | Run browser component tests headlessly in Chromium     |
 | `npm run test:watch`    | Run Node tests in watch mode                           |
 | `npm run test:ui:watch` | Run browser tests interactively                        |
-| `npm run test:db`       | Run PostgreSQL RLS and access-gate checks              |
+| `npm run test:db`       | Run PostgreSQL RLS, validation, and access-gate checks |
 | `npm run infra:up`      | Start local Supabase services                          |
 | `npm run infra:reset`   | Reset the database and apply migrations and seed data  |
 | `npm run infra:env`     | Generate local Supabase and gate environment variables |
@@ -241,6 +241,14 @@ Valibot runtime validation remains separate from generated TypeScript types beca
 | `npm run invite:create` | Create an invite whose lifetime begins on first use    |
 | `npm run demo:start`    | Prepare and start the complete local demonstration     |
 | `npm run db:types`      | Regenerate TypeScript database types                   |
+
+`npm run format` runs Prettier and then `pg_format` for SQL files. The
+formatter check currently covers the files supported by Prettier; use
+`npm run format:sql` when you need to apply SQL formatting directly.
+
+Database migrations are the executable source of truth. After changing a
+migration locally, run `npm run infra:reset` before `npm run test:db` so the
+running Supabase instance applies the new migration.
 
 # Project structure
 

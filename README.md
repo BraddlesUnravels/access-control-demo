@@ -4,6 +4,10 @@ A small full-stack learning management system demonstrating layered access contr
 
 The application is built with Next.js, React, TypeScript, SWR, Valibot, Supabase, PostgreSQL, Docker, and Azure Container Apps.
 
+Start with [Development](docs/development.md) for local setup, or
+[Architecture](docs/architecture.md) for the request and authorization
+boundaries.
+
 The LMS domain is intentionally small so the authentication, authorization, data-flow, and security boundaries remain explicit and easy to review.
 
 ## What this project demonstrates
@@ -70,13 +74,12 @@ Two student accounts and one administrator account are provided so the different
 
 The authenticated application has two roles:
 
-| Role          | Access                                                                             |
-| ------------- | ---------------------------------------------------------------------------------- |
-| Student       | View, create, reschedule, complete, and cancel their own consultations             |
-| Administrator | View consultations belonging to all students through a read-only dashboard and API |
-|               |
+| Role          | Access                                                                                                              |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Student       | View, create, reschedule scheduled consultations, complete, return to scheduled, and cancel their own consultations |
+| Administrator | View consultations belonging to all students through a read-only dashboard and API                                  |
 
-uthorization is enforced independently by the Next.js application and PostgreSQL row-level security.
+Authorization is enforced independently by the Next.js application and PostgreSQL row-level security.
 
 The user interface reflects the permissions available to each role, but the UI itself is not treated as a security boundary.
 
@@ -170,7 +173,7 @@ npm run invite:create -- --label "Local demo" --days 14
 3. Create a consultation.
 4. Mark the consultation as complete.
 5. Mark it as incomplete.
-6. Reschedule it.
+6. Reschedule the now-scheduled consultation.
 7. Cancel it.
 8. Sign out.
 9. Sign in as `student2@lms.com`.
@@ -210,7 +213,8 @@ npm run test:db
 npm run build
 ```
 
-See [Testing](docs/testing.md) for the complete testing strategy.
+See [Development](docs/development.md) for the full script reference and
+[Testing](docs/testing.md) for the complete testing strategy.
 
 ## Scope
 

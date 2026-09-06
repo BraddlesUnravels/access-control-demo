@@ -71,6 +71,7 @@ describe('root proxy matcher', () => {
     '/api/access/unlock',
     '/api/consultations',
     '/api/admin/consultations',
+    '/api/consultations/export.json',
   ])('should run the proxy for %s', (url) => {
     expect(
       unstable_doesMiddlewareMatch({
@@ -117,6 +118,11 @@ describe('root proxy matcher', () => {
     '/images/photo.jpeg',
     '/images/loading.gif',
     '/images/banner.webp',
+    '/styles/site.css',
+    '/fonts/inter.woff2',
+    '/site.webmanifest',
+    '/robots.txt',
+    '/sitemap.xml',
   ])('should exclude framework and static asset path %s', (url) => {
     expect(
       unstable_doesMiddlewareMatch({

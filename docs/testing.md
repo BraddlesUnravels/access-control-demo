@@ -114,6 +114,7 @@ This executes:
 
 ```text
 supabase/tests/rls_checks.sql
+supabase/tests/validation_checks.sql
 supabase/tests/access_gate_checks.sql
 ```
 
@@ -150,6 +151,14 @@ npm run test:db
 npm run build
 ```
 
+When database migrations or database policies change, reset the local Supabase
+stack before running the database suite:
+
+```bash
+npm run infra:reset
+npm run test:db
+```
+
 # Continuous integration
 
 Pull requests run application quality checks including:
@@ -165,6 +174,18 @@ Pull requests run application quality checks including:
 # Container stage
 
 The container-stage workflow provides a higher-level integration check against the assembled production application.
+
+Run the same harness locally with:
+
+```bash
+ACCESS_GATE_CODE_SECRET="$(openssl rand -hex 32)" \
+ACCESS_GATE_COOKIE_SECRET="$(openssl rand -hex 32)" \
+node scripts/container-tests/run-container-tests.mjs
+```
+
+The harness expects a running local Supabase stack and Docker. The
+`container-stage` GitHub Actions job runs automatically for pull requests with
+the `stage` label, or can be started manually with workflow dispatch.
 
 It starts a fresh disposable local Supabase stack.
 
