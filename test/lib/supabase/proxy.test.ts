@@ -183,6 +183,18 @@ describe('lib/supabase/proxy', () => {
     expect(response.cookies.get('sb-refresh-token')?.value).toBe(
       'refreshed-token',
     );
+    expect(createServerClient).toHaveBeenCalledWith(
+      'http://localhost:54321',
+      'test-key',
+      expect.objectContaining({
+        cookieOptions: {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: false,
+          path: '/',
+        },
+      }),
+    );
   });
 
   it('should preserve Supabase cache headers on an unauthenticated redirect', async () => {

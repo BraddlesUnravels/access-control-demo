@@ -48,10 +48,13 @@ export const ConsultationItem = ({
 
   const showActions = onCancel && onReschedule && onToggleCompleted;
 
-  const actionDisabled =
+  const rescheduleDisabled =
     consultation.status === 'cancelled' ||
     consultation.status === 'completed' ||
     actionInProgress;
+
+  const cancelDisabled =
+    consultation.status === 'cancelled' || actionInProgress;
 
   const completedDisabled =
     consultation.status === 'cancelled' || actionInProgress;
@@ -71,7 +74,7 @@ export const ConsultationItem = ({
                 id={`reschedule-${consultation.id}`}
                 type="datetime-local"
                 value={rescheduleValue}
-                disabled={actionDisabled}
+                disabled={rescheduleDisabled}
                 onChange={(event) => setRescheduleValue(event.target.value)}
               />
             </div>
@@ -79,7 +82,7 @@ export const ConsultationItem = ({
               <Button
                 type="button"
                 variant="outline"
-                disabled={actionDisabled}
+                disabled={rescheduleDisabled}
                 onClick={() =>
                   onReschedule &&
                   void runAction(() =>
@@ -115,7 +118,7 @@ export const ConsultationItem = ({
               <Button
                 type="button"
                 variant="destructive"
-                disabled={actionDisabled}
+                disabled={cancelDisabled}
                 onClick={() =>
                   onCancel && void runAction(() => onCancel(consultation.id))
                 }

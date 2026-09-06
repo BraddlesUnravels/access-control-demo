@@ -71,13 +71,14 @@ export function LoginForm({
           id="password"
           name="password"
           tabIndex={2}
-          show-button-tab-index={3}
+          showButtonTabIndex={3}
           autoComplete="current-password"
           required
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           aria-invalid={Boolean(state.error)}
           aria-describedby={state.error ? 'login-error' : undefined}
+          fieldLabel="Password"
           className="h-12"
         />
       </FormField>

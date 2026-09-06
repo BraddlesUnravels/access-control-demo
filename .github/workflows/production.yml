@@ -51,6 +51,62 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_REF_TYPE}" != 'tag' ]]; then
+            echo "Production deployment requires a release tag." >&2
+            exit 1
+          fi
+
+          node scripts/validate-tag.mjs "${GITHUB_REF_NAME}"
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run application tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start local Supabase
+        run: npm run infra:up
+
+      - name: Reset local Supabase
+        run: npm run infra:reset
+
+      - name: Run database tests
+        run: npm run test:db
+
+      - name: Check schema snapshot
+        run: npm run schema:check
+
+      - name: Stop local Supabase
+        if: always()
+        continue-on-error: true
+        run: npm run infra:down
+
       - name: Validate production configuration
         shell: bash
         run: |
@@ -104,14 +160,31 @@ jobs:
           set -euo pipefail
 
           docker build \
+            --platform linux/amd64 \
             --file docker/Dockerfile \
             --progress plain \
-            --build-arg "NEXT_SUPABASE_URL=${NEXT_SUPABASE_URL}" \
-            --build-arg "NEXT_SUPABASE_PUBLISHABLE_KEY=${NEXT_SUPABASE_PUBLISHABLE_KEY}" \
             --build-arg "SOURCE_REPOSITORY=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --tag "${{ steps.image.outputs.sha }}" \
             --tag "${{ steps.image.outputs.latest }}" \
             .
+
+      - name: Verify production image architecture and user
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          architecture="$(docker image inspect --format '{{.Architecture}}' '${{ steps.image.outputs.sha }}')"
+          user="$(docker image inspect --format '{{.Config.User}}' '${{ steps.image.outputs.sha }}')"
+
+          [[ "${architecture}" == 'amd64' ]] || {
+            echo "Expected an amd64 image, received ${architecture}." >&2
+            exit 1
+          }
+
+          [[ "${user}" == 'node' ]] || {
+            echo "Expected the production container to run as node, received ${user}." >&2
+            exit 1
+          }
 
       - name: Verify production image excludes development packages
         shell: bash
@@ -120,7 +193,7 @@ jobs:
 
           docker run \
             --rm \
-            --entrypoint /usr/bin/node \
+            --entrypoint node \
             "${{ steps.image.outputs.sha }}" \
             -e '
               const unexpectedPackages = [
@@ -202,6 +275,7 @@ jobs:
           docker run \
             --detach \
             --name "${container_name}" \
+            --platform linux/amd64 \
             --publish 3200:3000 \
             --env "NEXT_SUPABASE_URL=${NEXT_SUPABASE_URL}" \
             --env "NEXT_SUPABASE_PUBLISHABLE_KEY=${NEXT_SUPABASE_PUBLISHABLE_KEY}" \
@@ -275,63 +349,6 @@ jobs:
           client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Verify production bootstrap resources
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          key_vault_id="$(
-            az keyvault show \
-              --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --name "${AZURE_KEY_VAULT}" \
-              --query id \
-              --output tsv
-          )"
-
-          secret_reader_principal_id="$(
-            az identity show \
-              --resource-group "${AZURE_RESOURCE_GROUP}" \
-              --name "${AZURE_SECRET_READER_IDENTITY}" \
-              --query principalId \
-              --output tsv
-          )"
-
-          if [[ -z "${key_vault_id}" ]]; then
-            echo "Production Key Vault was not found. Run deploy/azure/bootstrap-oidc.sh first." >&2
-            exit 1
-          fi
-
-          if [[ -z "${secret_reader_principal_id}" ]]; then
-            echo "Production secret-reader identity was not found. Run deploy/azure/bootstrap-oidc.sh first." >&2
-            exit 1
-          fi
-
-          role_assignments="$(
-            az role assignment list \
-              --assignee-object-id "${secret_reader_principal_id}" \
-              --scope "${key_vault_id}" \
-              --fill-principal-name false \
-              --fill-role-definition-name false \
-              --output json
-          )"
-
-          echo "${role_assignments}" |
-            jq --exit-status \
-              --arg principal_id "${secret_reader_principal_id}" \
-              --arg role_id '4633458b-17de-408a-b874-0445c86b69e6' \
-              '
-                any(
-                  .[];
-                  (.principalId | ascii_downcase) == ($principal_id | ascii_downcase) and
-                  (.roleDefinitionId | ascii_downcase | endswith("/" + ($role_id | ascii_downcase)))
-                )
-              ' \
-              >/dev/null || {
-                echo "Secret-reader identity is missing the Key Vault Secrets User role." >&2
-                echo "Run deploy/azure/bootstrap-oidc.sh from the trusted operator workstation." >&2
-                exit 1
-              }
 
       - name: Deploy Azure Container App
         id: deploy
