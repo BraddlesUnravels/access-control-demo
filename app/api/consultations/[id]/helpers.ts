@@ -67,11 +67,21 @@ export const getOwnedConsultationOrThrow = async (
 
 export const assertConsultationCanBeUpdated = (
   consultation: ConsultationRecord,
+  update: ConsultationUpdateInput,
 ) => {
   if (consultation.status === 'cancelled')
     throw new AppError('Cancelled consultations cannot be updated', {
       status: 400,
       safeMessage: 'Cancelled consultations cannot be updated',
+    });
+
+  if (
+    consultation.status === 'completed' &&
+    typeof update.scheduledFor !== 'undefined'
+  )
+    throw new AppError('Completed consultations cannot be rescheduled', {
+      status: 400,
+      safeMessage: 'Completed consultations cannot be rescheduled',
     });
 };
 
