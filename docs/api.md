@@ -123,4 +123,6 @@ Supabase session refresh
 Route Handler or page authorization
 ```
 
-The public exceptions are `/`, `/api/access/unlock`, `/api/health/*`, and `/auth/confirm*`.
+The public exceptions are `/`, `/api/access/unlock`, and `/api/health/*`. All other application routes, including `/auth/confirm*`, require a valid access-gate session before Supabase authentication or route-handler authorization is evaluated.
+
+The middleware check above is enforced again, independently, inside each protected Route Handler via `requireAccessGateSession()`/`hasValidAccessGateSession()` (`lib/access-gate/require-session.ts`). This defense-in-depth check re-verifies the signed cookie and re-checks the shared, database-backed session cache rather than trusting that the request already passed through the root proxy. It protects `/api/consultations`, `/api/consultations/:id`, `/api/admin/consultations`, `/api/demo-accounts`, and `/auth/confirm`, and runs before Supabase authentication (`requireAuthContext()`) in each handler.

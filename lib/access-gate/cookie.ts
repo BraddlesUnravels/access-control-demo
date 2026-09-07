@@ -121,6 +121,16 @@ export const verifyAccessGateCookieValue = (
   return parsed;
 };
 
+export const getAccessGateCookiePayload = (
+  cookieValue: string | undefined,
+  secret: string | undefined,
+  nowMs: number = Date.now(),
+): AccessGateCookiePayload | undefined => {
+  if (!cookieValue || !secret) return;
+
+  return verifyAccessGateCookieValue(cookieValue, secret, nowMs);
+};
+
 export const getAccessGateCookieOptions = (expiresAtMs: number) => ({
   name: ACCESS_GATE_COOKIE_NAME,
   httpOnly: true,

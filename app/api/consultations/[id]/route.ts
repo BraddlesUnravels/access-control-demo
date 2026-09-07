@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAccessGateSession } from '@/lib/access-gate/require-session';
 import { AppError } from '@/lib/errors';
 import { requireAuthContext, assertRole } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
@@ -25,6 +26,8 @@ type ConsultationRouteContext = {
  */
 export const PATCH = withApiHandler(
   async (request: Request, context: ConsultationRouteContext) => {
+    await requireAccessGateSession();
+
     const { role, userId } = await requireAuthContext({
       redirectOnUnauthenticated: false,
     });
@@ -78,6 +81,8 @@ export const PATCH = withApiHandler(
  */
 export const DELETE = withApiHandler(
   async (_request: Request, context: ConsultationRouteContext) => {
+    await requireAccessGateSession();
+
     const { role, userId } = await requireAuthContext({
       redirectOnUnauthenticated: false,
     });
