@@ -99,6 +99,8 @@ Configure these GitHub production Environment secrets:
 AZURE_CLIENT_ID
 AZURE_TENANT_ID
 AZURE_SUBSCRIPTION_ID
+SUPABASE_ACCESS_TOKEN
+SUPABASE_DB_PASSWORD
 NEXT_SUPABASE_URL
 NEXT_SUPABASE_PUBLISHABLE_KEY
 ```
@@ -114,6 +116,7 @@ AZURE_CUSTOM_DOMAIN
 AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID
 AZURE_KEY_VAULT
 AZURE_SECRET_READER_IDENTITY
+SUPABASE_PROJECT_REF
 ```
 
 Do not configure these as GitHub production secrets:
@@ -126,6 +129,11 @@ SUPABASE_SERVICE_ROLE_KEY
 ```
 
 The deployed Next.js application does not require trusted Supabase administrative credentials.
+
+`SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` are used only by the
+protected production release job. They are not passed to the container image
+or Azure deployment. `SUPABASE_PROJECT_REF` identifies the hosted project
+targeted by the release.
 
 # Container image
 
@@ -150,6 +158,17 @@ Normal production releases use:
 ```text
 deploy/azure/main.bicep
 ```
+
+Before the Azure deployment begins, the production workflow runs the pinned
+Supabase CLI against the configured hosted project. It applies all pending
+migrations with `supabase db push` and then runs `supabase migration list`.
+The release stops if the hosted migration operation or migration-state check
+fails. This stage requires the GitHub production environment's deployment
+approval and must target a dedicated production Supabase project.
+
+The hosted database remains an external release dependency. Operators should
+use the Supabase backup and migration compatibility procedures before applying
+changes that cannot be rolled back safely.
 
 The release deployment provisions:
 
