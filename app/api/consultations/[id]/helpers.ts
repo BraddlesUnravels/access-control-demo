@@ -29,7 +29,10 @@ export const createValidationErrorResponse = (
 ) => {
   return NextResponse.json(
     {
-      error: errors[0] ?? 'Consultation input is invalid',
+      error:
+        errors[0] ??
+        Object.values(fieldErrors)[0]?.[0] ??
+        'Consultation input is invalid',
       errors,
       fieldErrors,
     },

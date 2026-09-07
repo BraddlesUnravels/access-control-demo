@@ -196,6 +196,23 @@ Security failures should fail closed:
 
 The API layer documents the public status and response contracts in [api.md](api.md).
 
+## Centralized server-side error handling
+
+The application centralizes error classification and logging while preserving the response contract required by each server surface. One universal response wrapper would be unsafe because API routes return JSON, server actions return form state or redirect, proxy code returns `NextResponse`, and rendered pages need a UI fallback.
+
+| Server surface             | Central boundary   | Public behavior                                                                                          |
+| -------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
+| API routes                 | `withApiHandler`   | `AppError` becomes a safe JSON response; unexpected errors become a generic 500                          |
+| Server actions             | `withServerAction` | Existing action state and redirects are preserved; unexpected failures are logged and rethrown           |
+| Request proxy              | `proxy`            | Expected access/session responses pass through; unexpected failures are logged and return a no-store 500 |
+| Rendered server components | `app/error.tsx`    | Unexpected rendering failures receive a safe retry UI without internal details                           |
+
+The `/api/health` route remains intentionally minimal and dependency-free because it is used by container and platform probes. It is not placed behind authentication or Supabase error handling. This is an explicit operational exception, not an authorization bypass.
+
+The shared logger uses structured fields and redaction. Boundaries log the method, pathname, operation, or action name needed for diagnosis, but do not log query strings, cookies, access tokens, refresh tokens, passwords, or other secret values.
+
+Expected control flow is kept separate from failures: access-gate denials, validation errors, form-state errors, and Next.js redirects are not converted into generic internal errors. Only unexpected failures cross the centralized logging and safe-fallback paths.
+
 ## Verification and evidence
 
 The layered model is verified at several levels:

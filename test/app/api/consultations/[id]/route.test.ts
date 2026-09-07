@@ -95,7 +95,7 @@ describe('app/api/consultations/[id]', () => {
   });
 
   describe('PATCH', () => {
-    it('returns 400 for an invalid consultation ID before querying Supabase', async () => {
+    it('should return 400 for an invalid consultation ID before querying Supabase', async () => {
       const response = await PATCH(
         buildRequest('PATCH', JSON.stringify({ status: 'completed' })),
         { params: Promise.resolve({ id: 'not-a-uuid' }) },
@@ -112,8 +112,30 @@ describe('app/api/consultations/[id]', () => {
       );
 
       expect(response.status).toBe(400);
-      await expect(response.json()).resolves.toMatchObject({
+      await expect(response.json()).resolves.toEqual({
         error: 'At least one field is required: scheduledFor or status',
+        errors: ['At least one field is required: scheduledFor or status'],
+        fieldErrors: {},
+      });
+      expect(serverRequestClient).not.toHaveBeenCalled();
+    });
+
+    it('should return form-level and field-level errors for invalid scheduled time', async () => {
+      const response = await PATCH(
+        buildRequest(
+          'PATCH',
+          JSON.stringify({ scheduledFor: 'not-a-valid-timestamp' }),
+        ),
+        ROUTE_CONTEXT,
+      );
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({
+        error: 'Scheduled time must be a valid date',
+        errors: [],
+        fieldErrors: {
+          scheduledFor: ['Scheduled time must be a valid date'],
+        },
       });
       expect(serverRequestClient).not.toHaveBeenCalled();
     });
@@ -221,7 +243,7 @@ describe('app/api/consultations/[id]', () => {
   });
 
   describe('DELETE', () => {
-    it('returns 400 for an invalid consultation ID before querying Supabase', async () => {
+    it('should return 400 for an invalid consultation ID before querying Supabase', async () => {
       const response = await DELETE(
         new Request('http://localhost/api/consultations/not-a-uuid', {
           method: 'DELETE',

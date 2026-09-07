@@ -60,7 +60,10 @@ export const POST = withApiHandler(async (request: Request) => {
   if (!validation.success)
     return NextResponse.json(
       {
-        error: validation.errors[0] ?? 'Consultation input is invalid',
+        error:
+          validation.errors[0] ??
+          Object.values(validation.fieldErrors)[0]?.[0] ??
+          'Consultation input is invalid',
         errors: validation.errors,
         fieldErrors: validation.fieldErrors,
       },

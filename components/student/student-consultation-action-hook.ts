@@ -34,8 +34,10 @@ export const useStudentConsultationActions = () => {
   const revalidateConsultations = async () => {
     try {
       await mutate(STUDENT_CONSULTATIONS_API_PATH);
-    } catch {
-      // SWR exposes failed revalidation through the consultation query state.
+    } catch (revalidationError) {
+      setError(
+        getErrorMessage(revalidationError, 'Failed to refresh consultations'),
+      );
     }
   };
 

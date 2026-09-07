@@ -2,6 +2,7 @@ import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleAccessGateRequest } from '@/lib/access-gate/proxy';
+import { logger } from '@/lib/logger';
 import { updateSession } from '@/lib/supabase/proxy';
 import { config, proxy } from '@/proxy';
 
@@ -11,6 +12,12 @@ vi.mock('@/lib/access-gate/proxy', () => ({
 
 vi.mock('@/lib/supabase/proxy', () => ({
   updateSession: vi.fn(),
+}));
+
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    error: vi.fn(),
+  },
 }));
 
 describe('root proxy orchestration', () => {
@@ -58,6 +65,54 @@ describe('root proxy orchestration', () => {
     expect(updateSession).toHaveBeenCalledWith(request);
 
     expect(response).toBe(supabaseResponse);
+  });
+
+  it('should fail closed and log when access-gate handling throws', async () => {
+    const request = new NextRequest(
+      'http://localhost/protected?token=secret-value',
+    );
+    const error = new Error('Access gate unavailable');
+
+    vi.mocked(handleAccessGateRequest).mockRejectedValue(error);
+
+    const response = await proxy(request);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Internal server error',
+    });
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(logger.error).toHaveBeenCalledWith(
+      {
+        err: error,
+        method: 'GET',
+        path: '/protected',
+      },
+      'Unhandled error at proxy boundary',
+    );
+  });
+
+  it('should fail closed and log when Supabase session handling throws', async () => {
+    const request = new NextRequest('http://localhost/protected');
+    const error = new Error('Session refresh unavailable');
+
+    vi.mocked(handleAccessGateRequest).mockResolvedValue(undefined);
+    vi.mocked(updateSession).mockRejectedValue(error);
+
+    const response = await proxy(request);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Internal server error',
+    });
+    expect(logger.error).toHaveBeenCalledWith(
+      {
+        err: error,
+        method: 'GET',
+        path: '/protected',
+      },
+      'Unhandled error at proxy boundary',
+    );
   });
 });
 

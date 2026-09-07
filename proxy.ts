@@ -1,13 +1,33 @@
 import { handleAccessGateRequest } from '@/lib/access-gate/proxy';
+import { logger } from '@/lib/logger';
 import { updateSession } from '@/lib/supabase/proxy';
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
 export async function proxy(request: NextRequest) {
-  const accessGateResponse = await handleAccessGateRequest(request);
+  try {
+    const accessGateResponse = await handleAccessGateRequest(request);
 
-  if (accessGateResponse) return accessGateResponse;
+    if (accessGateResponse) return accessGateResponse;
 
-  return await updateSession(request);
+    return await updateSession(request);
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        method: request.method,
+        path: request.nextUrl.pathname,
+      },
+      'Unhandled error at proxy boundary',
+    );
+
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      {
+        status: 500,
+        headers: { 'Cache-Control': 'no-store' },
+      },
+    );
+  }
 }
 
 export const config = {

@@ -12,9 +12,11 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-vi.mock('@/app/auth/actions', () => ({
+const authMocks = vi.hoisted(() => ({
   signInAction: vi.fn(async () => ({})),
 }));
+
+vi.mock('@/app/auth/actions', () => authMocks);
 
 test('should follow the intended login keyboard focus order', async () => {
   const { LoginForm } = await import('@/components/ui/forms/login-form');
@@ -78,4 +80,25 @@ test('should follow the intended login keyboard focus order', async () => {
   await userEvent.tab();
 
   await expect.element(signUpLink).toHaveFocus();
+});
+
+test('should show a safe login failure message returned by the server action', async () => {
+  authMocks.signInAction.mockResolvedValueOnce({
+    error: 'Invalid email or password',
+  });
+
+  const { LoginForm } = await import('@/components/ui/forms/login-form');
+  const screen = await render(<LoginForm />);
+
+  await screen
+    .getByLabelText('Email', { exact: true })
+    .fill('student@example.com');
+  await screen
+    .getByLabelText('Password', { exact: true })
+    .fill('wrong-password');
+  await screen.getByRole('button', { name: 'Sign in', exact: true }).click();
+
+  await expect
+    .element(screen.getByRole('alert'))
+    .toHaveTextContent('Invalid email or password');
 });

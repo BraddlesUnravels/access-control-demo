@@ -11,6 +11,11 @@ import {
 import { getAppOrigin } from '@/lib/app-url';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { withServerAction } from '@/lib/with-server-action';
+import { logger } from '@/lib/logger';
+
+const logAuthProviderError = (action: string, error: unknown) => {
+  logger.warn({ action, err: error }, 'Supabase authentication request failed');
+};
 
 export type SignInActionState = {
   error?: string;
@@ -40,10 +45,13 @@ export const signInAction = withServerAction(
 
     const { error } = await supabase.auth.signInWithPassword(validation.data);
 
-    if (error)
+    if (error) {
+      logAuthProviderError('signInAction', error);
+
       return {
-        error: error.message,
+        error: 'Invalid email or password',
       };
+    }
 
     redirect('/protected');
   },
@@ -107,10 +115,13 @@ export const requestPasswordResetAction = withServerAction(
       },
     );
 
-    if (error)
+    if (error) {
+      logAuthProviderError('requestPasswordResetAction', error);
+
       return {
-        error: error.message,
+        error: 'Unable to send password reset instructions',
       };
+    }
 
     return {
       success: true,
@@ -145,6 +156,9 @@ export const updatePasswordAction = withServerAction(
       error: UserError,
     } = await supabase.auth.getUser();
 
+    if (UserError)
+      logAuthProviderError('updatePasswordAction.getUser', UserError);
+
     if (UserError || !user)
       return {
         error:
@@ -155,10 +169,13 @@ export const updatePasswordAction = withServerAction(
       password: validation.data.password,
     });
 
-    if (error)
+    if (error) {
+      logAuthProviderError('updatePasswordAction', error);
+
       return {
-        error: error.message,
+        error: 'Unable to update password',
       };
+    }
 
     redirect('/auth/login');
   },
@@ -203,8 +220,10 @@ export const signUpAction = withServerAction(
     });
 
     if (error) {
+      logAuthProviderError('signUpAction', error);
+
       return {
-        error: error.message,
+        error: 'Unable to create account',
       };
     }
 

@@ -320,7 +320,8 @@ describe('app/api/consultations', () => {
       expect(response.status).toBe(400);
 
       await expect(response.json()).resolves.toMatchObject({
-        error: 'Consultation input is invalid',
+        error: 'First name is required',
+        errors: [],
         fieldErrors: {
           firstName: ['First name is required'],
         },
