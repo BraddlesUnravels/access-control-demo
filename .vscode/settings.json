@@ -1,4 +1,7 @@
 {
+  "git.decorations.enabled": true,
+  "explorer.decorations.colors": true,
+  "explorer.decorations.badges": true,
   "editor.formatOnPaste": true,
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -8,5 +11,6 @@
   "prettier.resolveGlobalModules": false,
   "tailwindCSS.lint.suggestCanonicalClasses": "warning",
   "tailwindCSS.classFunctions": ["cn", "clsx", "cva"],
-  "tailwindCSS.experimental.configFile": "app/theme/globals.css"
+  "tailwindCSS.experimental.configFile": "app/theme/globals.css",
+  "chat.permissions.default": "autopilot"
 }

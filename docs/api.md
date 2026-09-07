@@ -1,126 +1,62 @@
-# API Reference
+# API reference
 
-This document describes the HTTP boundaries exposed by the Next.js application. Every route remains responsible for its own request validation and authorization; the outer access gate does not replace Supabase Auth, role checks, ownership checks, or PostgreSQL RLS.
+This document summarizes the app's public HTTP boundaries. Each protected route still performs its own validation and authorization; the docs below are a quick contract reference, not a substitute for the middleware and handler logic.
 
-## Access gate
+## Public routes
+
+| Route                | Method | Purpose                                           |
+| -------------------- | ------ | ------------------------------------------------- |
+| `/api/health`        | `GET`  | Health probe for Docker and Azure checks          |
+| `/api/access/unlock` | `POST` | Redeem an invite and set the `access_gate` cookie |
 
 ### `POST /api/access/unlock`
 
-Redeems an invite code and establishes the outer access-gate cookie.
-
-Access requirements:
-
-- No existing access-gate cookie is required.
-- The request is rate-limited before JSON parsing or database work.
+- No existing access cookie is required.
+- The request is rate-limited before JSON parsing.
 - The invite code is normalized and hashed server-side.
-- Redemption uses the `redeem_access_invite` PostgreSQL function.
+- A successful redemption creates an access record and sets a signed cookie.
 
-Responses:
+Typical responses:
 
-- `200` — invite accepted and the signed `access_gate` cookie is set.
-- `400` — malformed JSON or invalid request payload.
-- `401` — no matching invite.
-- `403` — invite expired or revoked.
-- `429` — redemption rate limit exceeded; includes `Retry-After`.
-- `500` — unexpected invite or RPC failure.
+- `200` — invite accepted and cookie issued
+- `400` — malformed JSON or invalid payload
+- `401` — no matching invite
+- `403` — invite expired or revoked
+- `429` — rate-limited
+- `500` — unexpected failure
 
-The response is `Cache-Control: no-store`.
+## Student consultation routes
 
-## Health
-
-### `GET /api/health`
-
-Returns application health for Docker and Azure Container Apps probes.
-
-This route is intentionally independent of the access gate and Supabase Auth. It must remain available when user authentication or Supabase is unavailable.
-
-## Student consultations
-
-All student consultation endpoints require:
+All student routes require:
 
 - a valid access-gate cookie;
 - an authenticated Supabase user;
-- the `student` application role;
-- database authorization through RLS.
+- the `student` app role;
+- database authorization via RLS.
 
-### `GET /api/consultations`
+| Route                    | Method   | Behavior                                                 |
+| ------------------------ | -------- | -------------------------------------------------------- |
+| `/api/consultations`     | `GET`    | Return consultations owned by the authenticated student  |
+| `/api/consultations`     | `POST`   | Create a new scheduled consultation                      |
+| `/api/consultations/:id` | `PATCH`  | Update supported fields or lifecycle status              |
+| `/api/consultations/:id` | `DELETE` | Cancel the consultation; idempotent if already cancelled |
 
-Returns consultations owned by the authenticated student.
+A student cannot choose another student's `student_user_id` through the API. The authenticated user identity is always used as the owner.
 
-### `POST /api/consultations`
+## Admin consultation routes
 
-Creates a scheduled consultation. The owner is always derived from the authenticated user; client input cannot choose `student_user_id`.
+| Route                      | Method | Behavior                                              |
+| -------------------------- | ------ | ----------------------------------------------------- |
+| `/api/admin/consultations` | `GET`  | Read all consultations as a read-only admin dashboard |
 
-Request fields:
+Admin endpoints are restricted to the `admin` app role and do not expose mutation routes.
 
-```json
-{
-  "firstName": "Ada",
-  "lastName": "Lovelace",
-  "reason": "Consultation topic",
-  "scheduledFor": "2026-09-05T10:00:00.000Z"
-}
-```
+## Cache and validation
 
-### `PATCH /api/consultations/:id`
-
-Updates an owned consultation's supported scheduled date or lifecycle status.
-Cancelled consultations cannot be modified. A scheduled date can be changed
-only while the consultation is scheduled.
-
-Supported status transitions are:
-
-```text
-scheduled -> completed
-completed -> scheduled
-```
-
-Cancellation is handled by `DELETE`, not by PATCH. The API and database both
-enforce these lifecycle rules, so callers cannot bypass the UI by sending a
-direct request.
-
-### `DELETE /api/consultations/:id`
-
-Cancels an owned consultation by changing its status to `cancelled`. It does not delete the database row and is idempotent when already cancelled.
-
-## Administrator consultations
-
-### `GET /api/admin/consultations`
-
-Requires a valid access-gate cookie, an authenticated Supabase user, and the `admin` application role.
-
-Returns all consultations as read-only data. No administrator mutation endpoint exists.
-
-## Response validation and caching
-
-The consultation client in `lib/consultations/api.ts` treats JSON responses as `unknown` and validates successful payloads with Valibot schemas before the data reaches React components.
-
-Authenticated API responses are wrapped by `withApiHandler()` and default to:
+Authenticated API responses are wrapped by `withApiHandler()`. This applies a default:
 
 ```http
 Cache-Control: private, no-store, max-age=0, must-revalidate
 ```
 
-Route-specific cache policies are preserved when a handler sets a stricter policy.
-
-## Access-gate request flow
-
-For application routes other than the explicit public exceptions, the request passes through:
-
-```text
-HMAC cookie verification
-    |
-    v
-One-hour process-local session cache
-    |
-    v
-validate_access_gate_session() on cache miss/revalidation
-    |
-    v
-Supabase session refresh
-    |
-    v
-Route Handler or page authorization
-```
-
-The public exceptions are `/`, `/api/access/unlock`, `/api/health/*`, and `/auth/confirm*`.
+The consultation client treats successful JSON as `unknown` and validates it with Valibot before it reaches React components.

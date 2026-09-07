@@ -5,6 +5,7 @@ import { serverRequestClient } from '@/lib/supabase/server';
 import { consultationUpdateInputSchema } from '@/lib/validation/schemas';
 import { validateWithSchema } from '@/lib/validation/validate';
 import { withApiHandler } from '@/lib/with-api-handler';
+import { isUuid } from '@/lib/validation/helpers';
 import {
   parseRequestJson,
   createValidationErrorResponse,
@@ -32,6 +33,13 @@ export const PATCH = withApiHandler(
     assertRole(role, 'student');
 
     const { id } = await context.params;
+
+    if (!isUuid(id))
+      return NextResponse.json(
+        { error: 'Consultation ID is invalid' },
+        { status: 400 },
+      );
+
     const payload = await parseRequestJson(request);
     const validation = validateWithSchema(
       consultationUpdateInputSchema,
@@ -85,6 +93,13 @@ export const DELETE = withApiHandler(
     assertRole(role, 'student');
 
     const { id } = await context.params;
+
+    if (!isUuid(id))
+      return NextResponse.json(
+        { error: 'Consultation ID is invalid' },
+        { status: 400 },
+      );
+
     const supabase = await serverRequestClient();
     const existingConsultation = await getOwnedConsultationOrThrow(
       supabase,

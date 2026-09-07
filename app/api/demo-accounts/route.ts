@@ -3,8 +3,9 @@
 import { connection, NextResponse } from 'next/server';
 import { DEMO_ACCOUNTS } from '@/lib/demo-accounts';
 import { DEMO_ACCOUNT_PASSWORDS } from '@/lib/demo-account-passwords';
+import { withApiHandler } from '@/lib/with-api-handler';
 
-export const GET = async () => {
+export const GET = withApiHandler(async () => {
   // Prevent this response from being prerendered during the build.
   await connection();
 
@@ -21,4 +22,4 @@ export const GET = async () => {
       },
     },
   );
-};
+});

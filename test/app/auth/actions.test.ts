@@ -7,6 +7,7 @@ import {
   signUpAction,
   updatePasswordAction,
 } from '@/app/auth/actions';
+import { logger } from '@/lib/logger';
 import { serverActionClient } from '@/lib/supabase/server';
 
 vi.mock('next/navigation', () => ({
@@ -15,6 +16,12 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/supabase/server', () => ({
   serverActionClient: vi.fn(),
+}));
+
+vi.mock('@/lib/logger', () => ({
+  logger: {
+    error: vi.fn(),
+  },
 }));
 
 type AuthClientMocks = {
@@ -197,6 +204,13 @@ describe('app/auth/actions', () => {
       await expect(signOutAction()).rejects.toThrow('Failed to sign out');
 
       expect(redirect).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'signOutAction',
+          err: signOutError,
+        }),
+        'Unhandled error in server action',
+      );
     });
   });
 });

@@ -313,6 +313,28 @@ describe('app/api/access/unlock/route', () => {
     });
   });
 
+  it('should return a safe 500 for a null RPC result without an error', async () => {
+    setupRpcMock({
+      data: null,
+      error: null,
+    });
+
+    const response = await POST(
+      buildRequest(
+        JSON.stringify({
+          code: 'ACD-TEST-CODE',
+        }),
+      ),
+      EMPTY_CONTEXT,
+    );
+
+    expect(response.status).toBe(500);
+
+    await expect(response.json()).resolves.toEqual({
+      error: 'Unable to verify invite code',
+    });
+  });
+
   it('should treat an empty RPC result as an internal contract failure', async () => {
     setupRpcMock({
       data: [],

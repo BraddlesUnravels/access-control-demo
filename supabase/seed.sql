@@ -5,9 +5,9 @@
 -- - admin@lms.com / ReviewAdmin**00
 do $$
 declare
-  student1_passowrd text := 'ReviewStudent**01';
-  student2_passowrd text := 'ReviewStudent**02';
-  admin_passowrd text := 'ReviewAdmin**00';
+  student1_password text := 'ReviewStudent**01';
+  student2_password text := 'ReviewStudent**02';
+  admin_password text := 'ReviewAdmin**00';
 begin
   if not exists (
     select
@@ -36,7 +36,7 @@ begin
     'authenticated',
     'student1@lms.com',
     extensions.crypt(
-      student1_passowrd, extensions.gen_salt(
+      student1_password, extensions.gen_salt(
         'bf')),
     '',
     now(),
@@ -72,7 +72,7 @@ end if;
     'authenticated',
     'student2@lms.com',
     extensions.crypt(
-      student2_passowrd, extensions.gen_salt(
+      student2_password, extensions.gen_salt(
         'bf')),
     '',
     now(),
@@ -108,7 +108,7 @@ end if;
     'authenticated',
     'admin@lms.com',
     extensions.crypt(
-      admin_passowrd, extensions.gen_salt(
+      admin_password, extensions.gen_salt(
         'bf')),
     '',
     now(),
@@ -168,6 +168,28 @@ where
     where
       email = 'admin@lms.com');
 
+update
+  public.consultations as consultations
+set
+  first_name = 'Student',
+  last_name = '1'
+from
+  auth.users as users
+where
+  users.email = 'student1@lms.com'
+  and consultations.student_user_id = users.id;
+
+update
+  public.consultations as consultations
+set
+  first_name = 'Student',
+  last_name = '2'
+from
+  auth.users as users
+where
+  users.email = 'student2@lms.com'
+  and consultations.student_user_id = users.id;
+
 insert into public.consultations(
   student_user_id,
   first_name,
@@ -175,7 +197,8 @@ insert into public.consultations(
   reason,
   scheduled_for,
   status,
-  completed_at)
+  completed_at,
+  cancelled_at)
 select
   student.id,
   consultations.first_name,
@@ -183,18 +206,26 @@ select
   consultations.reason,
   consultations.scheduled_for,
   consultations.status,
-  consultations.completed_at
+  consultations.completed_at,
+  consultations.cancelled_at
 from (
-values ('Sam', 'Student', 'Review assignment feedback',
+values ('Student', '1', 'Review assignment feedback',
   timezone('utc', now()) + interval '2 days',
     'scheduled'::public.consultation_status,
+    null::timestamptz,
     null::timestamptz),
-('Sam', 'Student', 'Discuss course progression', timezone('utc',
+('Student', '1', 'Discuss course progression', timezone('utc',
   now()) - interval '1 day',
     'completed'::public.consultation_status,
-    timezone('utc', now()) - interval '20 hours')) as
+    timezone('utc', now()) - interval '20 hours',
+    null::timestamptz),
+('Student', '1', 'Clarify assessment criteria', timezone('utc',
+  now()) - interval '3 days',
+    'cancelled'::public.consultation_status,
+    null::timestamptz,
+    timezone('utc', now()) - interval '2 days')) as
       consultations(first_name, last_name, reason, scheduled_for, status,
-      completed_at)
+      completed_at, cancelled_at)
   cross join (
     select
       id
@@ -220,7 +251,8 @@ insert into public.consultations(
   reason,
   scheduled_for,
   status,
-  completed_at)
+  completed_at,
+  cancelled_at)
 select
   student.id,
   consultations.first_name,
@@ -228,18 +260,26 @@ select
   consultations.reason,
   consultations.scheduled_for,
   consultations.status,
-  consultations.completed_at
+  consultations.completed_at,
+  consultations.cancelled_at
 from (
-values ('Brad', 'Student', 'Review assignment feedback',
+values ('Student', '2', 'Review assignment feedback',
   timezone('utc', now()) + interval '2 days',
     'scheduled'::public.consultation_status,
+    null::timestamptz,
     null::timestamptz),
-('Brad', 'Student', 'Discuss course progression', timezone('utc',
+('Student', '2', 'Discuss course progression', timezone('utc',
   now()) - interval '1 day',
     'completed'::public.consultation_status,
-    timezone('utc', now()) - interval '20 hours')) as
+    timezone('utc', now()) - interval '20 hours',
+    null::timestamptz),
+('Student', '2', 'Clarify assessment criteria', timezone('utc',
+  now()) - interval '3 days',
+    'cancelled'::public.consultation_status,
+    null::timestamptz,
+    timezone('utc', now()) - interval '2 days')) as
       consultations(first_name, last_name, reason, scheduled_for, status,
-      completed_at)
+      completed_at, cancelled_at)
   cross join (
     select
       id

@@ -21,7 +21,7 @@ describe('lib/access-gate/session-validation', () => {
     vi.stubEnv('NEXT_SUPABASE_PUBLISHABLE_KEY', 'test-key');
   });
 
-  it('returns the validated boolean result from the RPC', async () => {
+  it('should return the validated boolean result from the RPC', async () => {
     const { rpc } = setup();
     rpc.mockResolvedValue({ data: true, error: null });
 
@@ -35,7 +35,7 @@ describe('lib/access-gate/session-validation', () => {
     });
   });
 
-  it('returns false when the RPC rejects the session', async () => {
+  it('should return false when the RPC rejects the session', async () => {
     const { rpc } = setup();
     rpc.mockResolvedValue({ data: false, error: null });
 
@@ -44,7 +44,7 @@ describe('lib/access-gate/session-validation', () => {
     ).resolves.toBe(false);
   });
 
-  it('fails closed on RPC errors and unexpected results', async () => {
+  it('should fail closed on RPC errors and unexpected results', async () => {
     const { rpc } = setup();
     rpc.mockResolvedValueOnce({ data: null, error: new Error('RPC failed') });
 
@@ -59,7 +59,7 @@ describe('lib/access-gate/session-validation', () => {
     ).resolves.toBe(false);
   });
 
-  it('fails closed when Supabase configuration is missing', async () => {
+  it('should fail closed when Supabase configuration is missing', async () => {
     vi.stubEnv('NEXT_SUPABASE_URL', '');
 
     await expect(

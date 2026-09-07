@@ -53,7 +53,7 @@ test('should show the empty state when the student has no consultations', async 
     .toBeVisible();
 });
 
-test('shows the loading state while consultations are being fetched', async () => {
+test('should show the loading state while consultations are being fetched', async () => {
   studentMocks.query.loading = true;
 
   const screen = await render(<ConsultationListStudent />);

@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { updatePasswordAction } from '@/app/auth/actions';
+import { KeyRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Card,
@@ -17,12 +18,16 @@ import {
 } from '@/lib/validation/limits';
 import { FormField } from '@/components/ui/form-field';
 import { Typography } from '@/components/ui/typography';
+import { FormSubmitButton } from '../form-submit-button';
 
 export function UpdatePasswordForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
-  const [state, formAction] = useActionState(updatePasswordAction, {});
+  const [state, formAction, isPending] = useActionState(
+    updatePasswordAction,
+    {},
+  );
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
@@ -55,6 +60,7 @@ export function UpdatePasswordForm({
                 aria-describedby={
                   state.error ? 'update-password-error' : undefined
                 }
+                fieldLabel="New Password"
                 className="h-12 font-mono text-sm"
               />
             </FormField>
@@ -76,6 +82,7 @@ export function UpdatePasswordForm({
                 aria-describedby={
                   state.error ? 'update-password-error' : undefined
                 }
+                fieldLabel="Confirm Password"
                 className="h-12 font-mono text-sm"
               />
             </FormField>
@@ -90,6 +97,15 @@ export function UpdatePasswordForm({
                 {state.error}
               </Typography>
             )}
+
+            <FormSubmitButton
+              isLoading={isPending}
+              loadingLabel="Updating password..."
+              className="mt-6 w-full"
+            >
+              <KeyRound aria-hidden="true" />
+              Update password
+            </FormSubmitButton>
           </form>
         </CardContent>
       </Card>

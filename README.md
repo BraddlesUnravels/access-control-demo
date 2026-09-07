@@ -1,87 +1,45 @@
 # Access Control Demo
 
-A small full-stack learning management system demonstrating layered access control, authentication, role-based authorization, resource ownership, type-safe API boundaries, client-side server-state management, and PostgreSQL row-level security.
+A small full-stack learning management system demonstrating layered access control, authentication, role-based authorization, resource ownership, and PostgreSQL row-level security.
 
-The application is built with Next.js, React, TypeScript, SWR, Valibot, Supabase, PostgreSQL, Docker, and Azure Container Apps.
+The project is intentionally compact so the security boundaries are easy to inspect and explain. It uses Next.js, TypeScript, Supabase Auth, PostgreSQL, Docker, and Azure Container Apps.
 
-Start with [Development](docs/development.md) for local setup, or
-[Architecture](docs/architecture.md) for the request and authorization
-boundaries.
+## What the project demonstrates
 
-The LMS domain is intentionally small so the authentication, authorization, data-flow, and security boundaries remain explicit and easy to review.
-
-## What this project demonstrates
-
-- An outer invite-based access gate for hosted portfolio and recruiter demos
+- Invite-based visitor access before the app is reachable
 - Signed, expiring access-gate cookies
-- HMAC-based invite-code storage without retaining plaintext codes
-- Server-side rate limiting on invite redemption to reduce automated brute-force attempts
-- Email and password authentication with Supabase Auth
-- Email confirmation and password recovery
-- Protected application routes
-- Role-based access control for students and administrators
+- HMAC-based invite-code storage without storing plaintext invite codes
+- Rate limiting on invite redemption
+- Supabase Auth for student and admin sign-in
+- Role-based access control for `student` and `admin`
 - Resource ownership checks for student consultations
 - Server-side authorization in Next.js route handlers
-- PostgreSQL row-level security
-- Read-only administrator access
-- Generated Supabase database types as the source of truth for database rows and enums
-- Typed Supabase clients across proxy and server boundaries
-- Server Action-backed authentication mutations with no direct browser Supabase access
-- Valibot runtime validation for request input and consultation API responses
-- A dedicated consultation API client that isolates HTTP transport from React components
-- SWR-based client-side server-state caching and revalidation
-- Scoped React hooks that separate consultation queries from mutation orchestration
-- Component-local state for row-specific consultation interactions
-- Local authentication email testing with MailPit
-- Automated unit, proxy, API-client, route-handler, database, and container integration tests
-- Containerized deployment with Docker
-- GitHub Actions CI/CD
-- Azure Container Apps deployment through Bicep and GitHub OIDC
+- PostgreSQL row-level security for database enforcement
+- Read-only admin access to all consultations
+- Runtime validation with Valibot
+- SWR-driven client state and mutations
+- Local email testing with MailPit
+- Automated Node, browser, database, and container checks
 
-## Access-control model
-
-The hosted application has separate visitor-access, authentication, authorization, and database-security boundaries:
+## System overview
 
 ```text
 Visitor
-   |
-   v
+  |
+  v
 Invite access gate
-   |
-   v
+  |
+  v
 Supabase authentication
-   |
-   v
+  |
+  v
 Application authorization
-   |
-   v
+  |
+  v
 PostgreSQL row-level security
 ```
 
-The invite gate determines who may reach the demonstration environment. It does not identify an LMS user or grant a student or administrator role.
-
-### Environment access gate
-
-![Environment access gate](docs/images/environment-access-gate.png)
-
-After entering the demonstration environment, visitors can select one of the seeded demo accounts from the login screen.
-
-Two student accounts and one administrator account are provided so the different authorization boundaries can be explored without creating users manually.
-
-### Demo login
-
-![Demo login experience](docs/images/visitor-login-experince-view.png)
-
-The authenticated application has two roles:
-
-| Role          | Access                                                                                                              |
-| ------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Student       | View, create, reschedule scheduled consultations, complete, return to scheduled, and cancel their own consultations |
-| Administrator | View consultations belonging to all students through a read-only dashboard and API                                  |
-
-Authorization is enforced independently by the Next.js application and PostgreSQL row-level security.
-
-The user interface reflects the permissions available to each role, but the UI itself is not treated as a security boundary.
+The invite gate is a separate outer boundary. It determines whether a browser may reach the demo, but it does not grant a user role or access to LMS data.
 
 ## Quick start
 
@@ -92,50 +50,38 @@ The user interface reflects the permissions available to each role, but the UI i
 - Supabase CLI
 - Docker
 
-Start the complete local environment with:
+### Start the local demo
 
 ```bash
 npm run demo:start
 ```
 
-This:
+This installs dependencies, starts local Supabase services, applies migrations and seed data, generates `.env.local`, and starts the Next.js app.
 
-1. Installs dependencies.
-2. Starts local Supabase services.
-3. Applies database migrations and seed data.
-4. Generates `.env.local`.
-5. Starts the Next.js development server.
-
-The application runs at:
+The app runs at:
 
 ```text
 http://localhost:3000
 ```
 
-Create a local invite:
+Create a local invite before visiting the app:
 
 ```bash
 npm run invite:create -- --label "Local demo" --days 14
 ```
 
-The command prints the plaintext invite once, for example:
+The command prints a code once, for example:
 
 ```text
 code: ACD-4GZ3-PDQJ-FWT9
 path: /?code=ACD-4GZ3-PDQJ-FWT9
 ```
 
-Open the generated path or enter the invite code at:
-
-```text
-http://localhost:3000/
-```
-
-For full local setup and environment configuration, see [Development](docs/development.md).
+Open the generated link or enter the code at the root page.
 
 ## Demo accounts
 
-The local seed data creates:
+The local seed data creates these accounts:
 
 | Role          | Email              | Password            |
 | ------------- | ------------------ | ------------------- |
@@ -143,61 +89,47 @@ The local seed data creates:
 | Student       | `student2@lms.com` | `ReviewStudent**02` |
 | Administrator | `admin@lms.com`    | `ReviewAdmin**00`   |
 
-These credentials are intended only for the demonstration environment.
-
-They are for local manual testing through the web UI. Automated tests use
-isolated fixtures and should not depend on these passwords.
-
-Invite codes are not seeded into the database. Create them after resetting the local database with:
-
-```bash
-npm run invite:create -- --label "Local demo" --days 14
-```
+These are for local demo use only. Automated tests should not rely on the seeded credentials.
 
 ## Suggested walkthrough
 
 ### Visitor access
 
 1. Create a local invite.
-2. Open `/`.
-3. Enter the generated invite code.
-4. Confirm that the application redirects to the LMS login.
-5. Delete the `access_gate` browser cookie.
-6. Re-enter the same invite.
-7. Confirm that access is restored without extending the original database expiry.
+2. Open `/` and enter the invite code.
+3. Confirm the app redirects to the LMS login screen.
+4. Delete the `access_gate` cookie, re-enter the same invite, and confirm re-entry still works without extending the original expiry.
 
-### Student
+### Student flow
 
 1. Sign in as `student1@lms.com`.
-2. Confirm that only Student 1's consultations are displayed.
+2. Confirm only Student 1's consultations are visible.
 3. Create a consultation.
-4. Mark the consultation as complete.
-5. Mark it as incomplete.
-6. Reschedule the now-scheduled consultation.
-7. Cancel it.
-8. Sign out.
-9. Sign in as `student2@lms.com`.
-10. Confirm that Student 1's consultations are not visible.
+4. Mark it complete, then incomplete.
+5. Reschedule it.
+6. Cancel it.
+7. Sign out and sign in as `student2@lms.com`.
+8. Confirm Student 1's data remains hidden.
 
-### Administrator
+### Administrator flow
 
 1. Sign in as `admin@lms.com`.
-2. Open the administrator consultations page.
-3. Confirm that consultations belonging to both students are visible.
-4. Confirm that the view is read-only.
-5. Confirm that no consultation mutation controls are available.
+2. Open the admin consultations page.
+3. Confirm both students' consultations are visible.
+4. Confirm the dashboard is read-only and no mutation controls are available.
 
-## Documentation
+## Documentation map
 
-Detailed project documentation is split by responsibility:
+This repo keeps documentation grouped by domain:
 
-- [Access control and API](docs/access-control.md) — invite access, authentication, authorization, RLS, consultation lifecycle, API routes, and database model
-- [API reference](docs/api.md) — HTTP routes, request requirements, response behavior, and cache policy
-- [Architecture](docs/architecture.md) — application boundaries, SWR, runtime validation, generated types, and design decisions
-- [Development](docs/development.md) — local setup, environment variables, MailPit, project structure, and npm scripts
-- [Secrets management](docs/secrets-management.md) — secret separation, storage, rotation, and incident response
-- [Testing](docs/testing.md) — Node, browser, database, and production-container integration testing
-- [Deployment](docs/deployment.md) — GitHub Actions, production configuration, Azure Container Apps, and OIDC
+- [Documentation index](docs/README.md) — reader-first map of the docs set
+- [Access control](docs/access-control.md) — invite gate, auth model, roles, RLS, and consultation lifecycle
+- [API reference](docs/api.md) — HTTP endpoints and request/response expectations
+- [Architecture](docs/architecture.md) — boundaries between UI, auth, proxy, API, and database
+- [Development](docs/development.md) — local setup, env vars, scripts, and MailPit
+- [Testing](docs/testing.md) — test layers and commands
+- [Secrets management](docs/secrets-management.md) — secret separation, rotation, and operational guidance
+- [Deployment](docs/deployment.md) — Azure Container Apps, Key Vault, and OIDC
 
 ## Common commands
 
@@ -213,33 +145,24 @@ npm run test:db
 npm run build
 ```
 
-See [Development](docs/development.md) for the full script reference and
-[Testing](docs/testing.md) for the complete testing strategy.
+See [docs/testing.md](docs/testing.md) for the full test strategy.
 
 ## Scope
 
-This project is intended as a focused demonstration of access control, authentication, authorization, application boundaries, and deployment practices rather than a complete learning management system.
+This is intentionally a focused demo rather than a full learning management system. The purpose is to make these behaviours easy to audit:
 
-The domain remains deliberately small so the important behaviours are easy to inspect:
+- which visitors can reach the app;
+- how invite redemption is restricted;
+- who is authenticated;
+- what role an authenticated user has;
+- which routes and records are authorized;
+- which rows PostgreSQL allows the user to read or modify;
+- which boundaries remain independent.
 
-- Which visitors may reach the demo
-- How abusive invite-redemption attempts are constrained
-- Who is authenticated
-- Which role an authenticated user has
-- Which routes that role may access
-- Which resources the user owns
-- Which rows PostgreSQL permits them to read or modify
-- Which security boundaries remain independent
+## Related docs
 
-## Potential extensions
-
-Possible future improvements include:
-
-1. Browser-level end-to-end tests for the complete invite and authentication flows.
-2. Shared access-session cache state if the application is horizontally scaled.
-3. Narrowly scoped operator commands for listing and revoking invites.
-4. Pagination, search, and filtering for the administrator dashboard.
-5. An audit log for consultation status changes.
-6. More granular permissions beyond the current student and administrator roles.
-7. Account management and profile editing.
-8. Shared rate-limit state if the application is horizontally scaled.
+- [docs/README.md](docs/README.md)
+- [docs/access-control.md](docs/access-control.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/development.md](docs/development.md)
+- [docs/testing.md](docs/testing.md)

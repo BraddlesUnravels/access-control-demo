@@ -3,6 +3,7 @@ import 'server-only';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { type NextResponse } from 'next/server';
+import { getSupabaseAuthCookieOptions } from '@/lib/supabase/cookies';
 import { type Database } from '@/lib/supabase/database.types';
 
 /**
@@ -19,6 +20,7 @@ export const serverRequestClient = async () => {
     process.env.NEXT_SUPABASE_URL!,
     process.env.NEXT_SUPABASE_PUBLISHABLE_KEY!,
     {
+      cookieOptions: getSupabaseAuthCookieOptions(),
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -35,6 +37,7 @@ export const serverActionClient = async () => {
     process.env.NEXT_SUPABASE_URL!,
     process.env.NEXT_SUPABASE_PUBLISHABLE_KEY!,
     {
+      cookieOptions: getSupabaseAuthCookieOptions(),
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -56,6 +59,7 @@ export const serverResponseClient = async () => {
     process.env.NEXT_SUPABASE_URL!,
     process.env.NEXT_SUPABASE_PUBLISHABLE_KEY!,
     {
+      cookieOptions: getSupabaseAuthCookieOptions(),
       cookies: {
         getAll() {
           return cookieStore.getAll();

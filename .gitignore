@@ -2,7 +2,10 @@
 
 # dependencies
 /node_modules
-**/.temp
+
+# supabase local runtime
+supabase/.temp/
+supabase/.branches/
 
 # testing
 /coverage

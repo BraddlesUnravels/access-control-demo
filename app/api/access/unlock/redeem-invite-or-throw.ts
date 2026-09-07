@@ -11,8 +11,9 @@ export const redeemValidInviteOrThrow = async (codeHash: string) => {
   );
 
   const data = dataArray?.[0];
+  const resultCount = dataArray?.length ?? 0;
 
-  if (error || !data || dataArray.length !== 1)
+  if (error || !data || resultCount !== 1)
     throw new AppError('Failed to redeem access invite', {
       status: 500,
       safeMessage: 'Unable to verify invite code',
@@ -24,8 +25,8 @@ export const redeemValidInviteOrThrow = async (codeHash: string) => {
           }),
 
         ...(!error &&
-          dataArray?.length !== 1 && {
-            resultCount: Array.isArray(data) ? data.length : undefined,
+          resultCount !== 1 && {
+            resultCount,
           }),
       },
     });

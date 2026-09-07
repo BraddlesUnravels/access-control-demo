@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { buildAppUrl } from '@/lib/app-url';
 import { ACCESS_GATE_DEFAULT_DESTINATION } from '@/lib/access-gate/constants';
 import { markPrivateResponse } from '@/lib/http/cache';
+import { getSupabaseAuthCookieOptions } from '@/lib/supabase/cookies';
 import type { Database } from '@/lib/supabase/database.types';
 
 const SUPABASE_CACHE_HEADERS = ['cache-control', 'expires', 'pragma'] as const;
@@ -33,6 +34,7 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_SUPABASE_URL!,
     process.env.NEXT_SUPABASE_PUBLISHABLE_KEY!,
     {
+      cookieOptions: getSupabaseAuthCookieOptions(),
       cookies: {
         getAll() {
           return request.cookies.getAll();

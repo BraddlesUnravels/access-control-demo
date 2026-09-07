@@ -3,7 +3,7 @@ import { render } from 'vitest-browser-react';
 
 import { DateTimeInput, Input, PasswordInput } from '@/components/ui/input';
 
-test('Input forwards native attributes and accepts user input', async () => {
+test('should forward native attributes and accept user input', async () => {
   const screen = await render(
     <Input
       id="email-address"
@@ -30,7 +30,7 @@ test('Input forwards native attributes and accepts user input', async () => {
   await expect.element(input).toHaveValue('student@example.com');
 });
 
-test('Input should respect its disabled state', async () => {
+test('should respect the Input disabled state', async () => {
   const screen = await render(<Input aria-label="Disabled input" disabled />);
 
   const input = screen.getByLabelText('Disabled input', {
@@ -40,10 +40,15 @@ test('Input should respect its disabled state', async () => {
   await expect.element(input).toBeDisabled();
 });
 
-test('PasswordInput should toggle visibility without clearing its value', async () => {
-  const screen = await render(<PasswordInput id="password" />);
+test('should toggle PasswordInput visibility without clearing its value', async () => {
+  const screen = await render(
+    <>
+      <label htmlFor="password">Password</label>
+      <PasswordInput id="password" />
+    </>,
+  );
 
-  const passwordInput = screen.getByLabelText('Password input field', {
+  const passwordInput = screen.getByLabelText('Password', {
     exact: true,
   });
 
@@ -79,7 +84,7 @@ test('PasswordInput should toggle visibility without clearing its value', async 
     .toHaveValue('correct-horse-battery-staple');
 });
 
-test('DateTimeInput should render an accessible picker control', async () => {
+test('should render an accessible DateTimeInput picker control', async () => {
   const screen = await render(
     <DateTimeInput id="scheduled-for" aria-label="Date and time" />,
   );
@@ -102,7 +107,7 @@ test('DateTimeInput should render an accessible picker control', async () => {
     .toHaveAttribute('aria-controls', 'scheduled-for');
 });
 
-test('DateTimeInput picker button should open its associated input', async () => {
+test('should open the associated input from the DateTimeInput picker button', async () => {
   const screen = await render(
     <DateTimeInput id="scheduled-for" aria-label="Date and time" />,
   );
@@ -125,7 +130,7 @@ test('DateTimeInput picker button should open its associated input', async () =>
   expect(showPicker).toHaveBeenCalledOnce();
 });
 
-test('DateTimeInput should disable both the input and picker button', async () => {
+test('should disable both the DateTimeInput and picker button', async () => {
   const screen = await render(
     <DateTimeInput id="scheduled-for" aria-label="Date and time" disabled />,
   );
@@ -143,7 +148,7 @@ test('DateTimeInput should disable both the input and picker button', async () =
   await expect.element(pickerButton).toBeDisabled();
 });
 
-test('DateTimeInput should associate each picker button with its own input', async () => {
+test('should associate each DateTimeInput picker button with its own input', async () => {
   const screen = await render(
     <>
       <DateTimeInput id="first-date" aria-label="First date" />
