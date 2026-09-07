@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { buildAppUrl } from '../app-url';
 import { ACCESS_GATE_COOKIE_NAME, ACCESS_GATE_ENTRY_PATH } from './constants';
-import { verifyAccessGateCookieValue } from './cookie';
+import { getAccessGateCookiePayload as verifyAccessGateCookiePayload } from './cookie';
 import { isAccessGateDisabled, tryGetAccessGateCookieSecret } from './env';
 import { getSafeAccessGateDestination, isAccessGatePublicPath } from './paths';
 import { accessGateSessionCache } from './session-cache';
@@ -12,26 +12,24 @@ const clearAccessGateCookie = (response: NextResponse): NextResponse => (
 );
 
 const getAccessGateCookiePayload = (request: NextRequest) => {
-  const secret = tryGetAccessGateCookieSecret();
-
-  if (!secret) return;
-
-  const cookieValue = request.cookies.get(ACCESS_GATE_COOKIE_NAME)?.value;
-
-  if (!cookieValue) return;
-
-  return verifyAccessGateCookieValue(cookieValue, secret);
+  return verifyAccessGateCookiePayload(
+    request.cookies.get(ACCESS_GATE_COOKIE_NAME)?.value,
+    tryGetAccessGateCookieSecret(),
+  );
 };
 
 export const hasValidAccessGateCookie = (request: NextRequest): boolean =>
   Boolean(getAccessGateCookiePayload(request));
 
-const buildEntryRedirect = (request: NextRequest): NextResponse => {
+export const buildAccessGateEntryRedirect = (
+  request: NextRequest,
+  status: 303 | 307 = 307,
+): NextResponse => {
   const requestedPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
   const redirectUrl = buildAppUrl(request, ACCESS_GATE_ENTRY_PATH);
 
   redirectUrl.searchParams.set('next', requestedPath);
-  return NextResponse.redirect(redirectUrl);
+  return NextResponse.redirect(redirectUrl, status);
 };
 
 const buildDestinationRedirect = (request: NextRequest): NextResponse => {
@@ -82,7 +80,7 @@ export const handleAccessGateRequest = async (
           headers: { 'Cache-Control': 'no-store' },
         },
       )
-    : buildEntryRedirect(request);
+    : buildAccessGateEntryRedirect(request);
 
   return hasCookie ? clearAccessGateCookie(response) : response;
 };

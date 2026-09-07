@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from '@/app/api/admin/consultations/route';
+import { AppError } from '@/lib/errors';
+import { requireAccessGateSession } from '@/lib/access-gate/require-session';
 import { requireAuthContext, type AuthContext } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
 import { buildConsultation } from '@/test/fixtures/consultation';
@@ -10,6 +12,10 @@ const createAuthContext = (
   supabase: {} as AuthContext['supabase'],
   ...overrides,
 });
+
+vi.mock('@/lib/access-gate/require-session', () => ({
+  requireAccessGateSession: vi.fn(),
+}));
 
 vi.mock('@/lib/server/auth', async () => {
   const actual =
@@ -45,12 +51,31 @@ const setupGetMock = (data: unknown, error: unknown = null) => {
 describe('GET /api/admin/consultations', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(requireAccessGateSession).mockResolvedValue();
     vi.mocked(requireAuthContext).mockResolvedValue(
       createAuthContext({
         role: 'admin',
         userId: 'admin-1',
       }),
     );
+  });
+
+  it('should return 401 when the access-gate session is invalid', async () => {
+    vi.mocked(requireAccessGateSession).mockRejectedValue(
+      new AppError('Access gate session is missing or invalid', {
+        status: 401,
+        safeMessage: 'Access invite is required.',
+      }),
+    );
+
+    const response = await GET(buildRequest(), EMPTY_CONTEXT);
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Access invite is required.',
+    });
+    expect(requireAuthContext).not.toHaveBeenCalled();
+    expect(serverRequestClient).not.toHaveBeenCalled();
   });
 
   it('should return all consultations for an administrator', async () => {

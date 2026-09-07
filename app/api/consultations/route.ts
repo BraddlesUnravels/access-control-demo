@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireAccessGateSession } from '@/lib/access-gate/require-session';
 import { AppError } from '@/lib/errors';
 import { requireAuthContext, assertRole } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
@@ -11,6 +12,8 @@ import { withApiHandler } from '@/lib/with-api-handler';
  * Retrieves all consultations for the authenticated user.
  */
 export const GET = withApiHandler(async () => {
+  await requireAccessGateSession();
+
   const { role, userId } = await requireAuthContext({
     redirectOnUnauthenticated: false,
   });
@@ -39,6 +42,8 @@ export const GET = withApiHandler(async () => {
  * Creates a new consultation for the authenticated user.
  */
 export const POST = withApiHandler(async (request: Request) => {
+  await requireAccessGateSession();
+
   const { role, userId } = await requireAuthContext({
     redirectOnUnauthenticated: false,
   });

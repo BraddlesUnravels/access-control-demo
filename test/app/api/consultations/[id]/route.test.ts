@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DELETE, PATCH } from '@/app/api/consultations/[id]/route';
+import { AppError } from '@/lib/errors';
+import { requireAccessGateSession } from '@/lib/access-gate/require-session';
 import { requireAuthContext, type AuthContext } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
 import { buildConsultation } from '@/test/fixtures/consultation';
@@ -11,6 +13,10 @@ const createAuthContext = (
   supabase: {} as AuthContext['supabase'],
   ...overrides,
 });
+
+vi.mock('@/lib/access-gate/require-session', () => ({
+  requireAccessGateSession: vi.fn(),
+}));
 
 vi.mock('@/lib/server/auth', async () => {
   const actual =
@@ -89,10 +95,32 @@ const setupSupabaseMock = ({
 describe('app/api/consultations/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(requireAccessGateSession).mockResolvedValue();
     vi.mocked(requireAuthContext).mockResolvedValue(STUDENT_AUTH);
   });
 
   describe('PATCH', () => {
+    it('should return 401 when the access-gate session is invalid', async () => {
+      vi.mocked(requireAccessGateSession).mockRejectedValue(
+        new AppError('Access gate session is missing or invalid', {
+          status: 401,
+          safeMessage: 'Access invite is required.',
+        }),
+      );
+
+      const response = await PATCH(
+        buildRequest('PATCH', JSON.stringify({ status: 'completed' })),
+        ROUTE_CONTEXT,
+      );
+
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toEqual({
+        error: 'Access invite is required.',
+      });
+      expect(requireAuthContext).not.toHaveBeenCalled();
+      expect(serverRequestClient).not.toHaveBeenCalled();
+    });
+
     it('should return validation errors before querying Supabase', async () => {
       const response = await PATCH(
         buildRequest('PATCH', JSON.stringify({})),
@@ -209,6 +237,24 @@ describe('app/api/consultations/[id]', () => {
   });
 
   describe('DELETE', () => {
+    it('should return 401 when the access-gate session is invalid', async () => {
+      vi.mocked(requireAccessGateSession).mockRejectedValue(
+        new AppError('Access gate session is missing or invalid', {
+          status: 401,
+          safeMessage: 'Access invite is required.',
+        }),
+      );
+
+      const response = await DELETE(buildRequest('DELETE'), ROUTE_CONTEXT);
+
+      expect(response.status).toBe(401);
+      await expect(response.json()).resolves.toEqual({
+        error: 'Access invite is required.',
+      });
+      expect(requireAuthContext).not.toHaveBeenCalled();
+      expect(serverRequestClient).not.toHaveBeenCalled();
+    });
+
     it('should return 404 when the student does not own the consultation', async () => {
       setupSupabaseMock({ existing: null });
 

@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { requireAccessGateSession } from '@/lib/access-gate/require-session';
 import { AppError } from '@/lib/errors';
 import { assertRole, requireAuthContext } from '@/lib/server/auth';
 import { serverRequestClient } from '@/lib/supabase/server';
 import { withApiHandler } from '@/lib/with-api-handler';
 
 export const GET = withApiHandler(async () => {
+  await requireAccessGateSession();
+
   const { role } = await requireAuthContext({
     redirectOnUnauthenticated: false,
   });
