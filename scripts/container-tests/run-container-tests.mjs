@@ -111,12 +111,10 @@ const main = async () => {
       'build',
       '--file',
       'docker/Dockerfile',
+      '--platform',
+      'linux/amd64',
       '--progress',
       'plain',
-      '--build-arg',
-      `NEXT_SUPABASE_URL=${internalSupabaseUrl}`,
-      '--build-arg',
-      `NEXT_SUPABASE_PUBLISHABLE_KEY=${publishableKey}`,
       '--build-arg',
       `SOURCE_REPOSITORY=${sourceRepository}`,
       '--tag',
@@ -129,6 +127,8 @@ const main = async () => {
       '--detach',
       '--name',
       containerName,
+      '--platform',
+      'linux/amd64',
       '--network',
       networkName,
       '--publish',
@@ -248,6 +248,14 @@ const main = async () => {
      * does not itself authenticate the user.
      */
     await assertStatus(`${applicationUrl}/auth/login`, 200, {}, gateCookieJar);
+
+    run('npm', ['run', 'test:container:browser'], {
+      env: {
+        ...process.env,
+        BASE_URL: applicationUrl,
+        ACCESS_GATE_COOKIE: gateCookieJar.get('access_gate'),
+      },
+    });
 
     await assertStatus(`${applicationUrl}/protected`, 307, {}, gateCookieJar);
 

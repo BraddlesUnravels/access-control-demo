@@ -70,7 +70,7 @@ Two student accounts and one administrator account are provided so the different
 
 ### Demo login
 
-![Demo login experience](docs/images/visitor-login-experince-view.png)
+![Demo login experience](docs/images/visitor-login-experience-view.png)
 
 The authenticated application has two roles:
 

@@ -2,8 +2,6 @@ export const ACCESS_GATE_COOKIE_NAME = 'access_gate';
 
 export const ACCESS_GATE_ENTRY_PATH = '/';
 
-export const TOKEN_TTL_FROM_FIRST_USE = 1000 * 60 * 60 * 24 * 14; // 14 days
-
 export const ACCESS_GATE_DEFAULT_DESTINATION = '/auth/login';
 
 export const ACCESS_GATE_CONTACT_EMAIL = 'bradley.laskey1990@gmail.com';

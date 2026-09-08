@@ -4,6 +4,7 @@ import {
   CONSULTATION_REASON_MAX_LENGTH,
 } from '@/lib/validation/limits';
 import { Constants } from '@/lib/supabase/database.types';
+import { isIsoTimestamp } from '@/lib/validation/helpers';
 
 const DATE_ERROR_MESSAGE = 'Scheduled time must be a valid date';
 
@@ -20,7 +21,7 @@ const requiredText = (label: string, maxLength: number) =>
 
 const scheduledForSchema = v.pipe(
   v.string(),
-  v.check((value) => !Number.isNaN(Date.parse(value)), DATE_ERROR_MESSAGE),
+  v.check((value) => isIsoTimestamp(value), DATE_ERROR_MESSAGE),
 );
 
 export const consultationStatusSchema = v.picklist([

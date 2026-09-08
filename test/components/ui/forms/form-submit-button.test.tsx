@@ -3,7 +3,7 @@ import { render } from 'vitest-browser-react';
 // Test for the FormSubmitButton component
 import { FormSubmitButton } from '@/components/ui/form-submit-button';
 
-test('should reneder the normal label when not loading', async () => {
+test('should render the normal label when not loading', async () => {
   const screen = await render(
     <FormSubmitButton loadingLabel="Saving..." isLoading={false}>
       Save
@@ -18,7 +18,7 @@ test('should reneder the normal label when not loading', async () => {
   await expect.element(button).not.toHaveAttribute('aria-busy', 'true');
 });
 
-test('should reneder the loading label when loading', async () => {
+test('should render the loading label when loading', async () => {
   const screen = await render(
     <FormSubmitButton loadingLabel="Saving..." isLoading={true}>
       Save
@@ -33,7 +33,7 @@ test('should reneder the loading label when loading', async () => {
   await expect.element(button).toHaveAttribute('aria-busy', 'true');
 });
 
-test('should respect and expicitly set disabled state', async () => {
+test('should respect and explicitly set disabled state', async () => {
   const screen = await render(
     <FormSubmitButton loadingLabel="Saving..." isLoading={false} disabled>
       Save

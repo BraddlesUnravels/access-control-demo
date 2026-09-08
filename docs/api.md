@@ -73,11 +73,12 @@ Supported status transitions are:
 ```text
 scheduled -> completed
 completed -> scheduled
+scheduled/completed -> cancelled (via DELETE)
 ```
 
 Cancellation is handled by `DELETE`, not by PATCH. The API and database both
 enforce these lifecycle rules, so callers cannot bypass the UI by sending a
-direct request.
+direct request. Cancelled consultations remain terminal and cannot be updated.
 
 ### `DELETE /api/consultations/:id`
 
@@ -90,6 +91,31 @@ Cancels an owned consultation by changing its status to `cancelled`. It does not
 Requires a valid access-gate cookie, an authenticated Supabase user, and the `admin` application role.
 
 Returns all consultations as read-only data. No administrator mutation endpoint exists.
+
+## Demo accounts
+
+### `GET /api/demo-accounts`
+
+Returns the seeded demo-account choices used by the login experience. This is
+demo-only application data, not a general account-management API. The route
+requires a valid access-gate session, but does not require an authenticated
+Supabase user. It does not return accounts to a visitor who has not passed the
+outer access gate.
+
+The endpoint must not be expanded to expose production credentials or used as a
+replacement for Supabase account management.
+
+## Authentication callbacks
+
+### `/auth/confirm*`
+
+The confirmation Route Handler processes Supabase email-confirmation and
+password-recovery callbacks. It exchanges a confirmation `code` or verifies a
+`token_hash`, then redirects to the appropriate authentication page.
+
+These callback paths are explicit access-gate exceptions because Supabase must
+be able to deliver the link before the visitor has an LMS session. They still
+perform their own callback validation and do not grant an application role.
 
 ## Response validation and caching
 
@@ -123,6 +149,10 @@ Supabase session refresh
 Route Handler or page authorization
 ```
 
-The public exceptions are `/`, `/api/access/unlock`, and `/api/health/*`. All other application routes, including `/auth/confirm*`, require a valid access-gate session before Supabase authentication or route-handler authorization is evaluated.
+The public exceptions are `/`, `/api/access/unlock`, `/api/health/*`,
+`/auth/confirm`, and `/auth/confirm-email`. All other application routes require
+a valid access-gate session before Supabase authentication or route-handler
+authorization is evaluated. See [Access Control and API](access-control.md)
+for the full redemption, cookie, and revalidation behavior.
 
 The middleware check above is enforced again, independently, inside each protected Route Handler via `requireAccessGateSession()`/`hasValidAccessGateSession()` (`lib/access-gate/require-session.ts`). This defense-in-depth check re-verifies the signed cookie and re-checks the shared, database-backed session cache rather than trusting that the request already passed through the root proxy. It protects `/api/consultations`, `/api/consultations/:id`, `/api/admin/consultations`, `/api/demo-accounts`, and `/auth/confirm`, and runs before Supabase authentication (`requireAuthContext()`) in each handler.

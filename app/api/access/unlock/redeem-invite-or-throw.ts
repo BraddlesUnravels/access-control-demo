@@ -25,7 +25,7 @@ export const redeemValidInviteOrThrow = async (codeHash: string) => {
 
         ...(!error &&
           dataArray?.length !== 1 && {
-            resultCount: Array.isArray(data) ? data.length : undefined,
+            resultCount: dataArray.length,
           }),
       },
     });

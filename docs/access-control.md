@@ -2,6 +2,11 @@
 
 This document describes the application's visitor access gate, LMS authentication and authorization model, consultation lifecycle, HTTP API, and database authorization boundary.
 
+This is the canonical reference for invite redemption, access-cookie
+validation, session revalidation, and the visitor-access exceptions. The
+[architecture](architecture.md) document explains why the boundaries exist,
+and the [API reference](api.md) lists endpoint contracts.
+
 ## Visitor invite code gate
 
 The hosted demo sits behind an outer invite gate so the intentionally simple demonstration credentials are not directly exposed to the public internet.
@@ -336,6 +341,12 @@ The database lifecycle trigger also rejects scheduled-date changes to completed
 consultations. The completed-to-scheduled status transition remains allowed so
 the UI's "Mark incomplete" action continues to work. Cancelled consultations
 remain terminal and cannot be updated.
+
+These lifecycle rules are enforced twice: route handlers validate the request
+and ownership before writing, while the PostgreSQL trigger
+`enforce_consultation_lifecycle()` and its related constraints reject invalid
+transitions at the database boundary. The database remains protective even if a
+caller bypasses the Next.js UI or route handler.
 
 # API summary
 

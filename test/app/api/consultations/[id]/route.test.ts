@@ -35,16 +35,18 @@ vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn() },
 }));
 
+const CONSULTATION_ID = '0197d2ee-6242-7616-8ef5-474ad0ecff0f';
+
 const STUDENT_AUTH = createAuthContext({
   role: 'student',
   userId: 'student-1',
 });
 const ROUTE_CONTEXT = {
-  params: Promise.resolve({ id: 'consultation-1' }),
+  params: Promise.resolve({ id: CONSULTATION_ID }),
 };
 
 const buildRequest = (method: 'PATCH' | 'DELETE', body?: string) =>
-  new Request('http://localhost/api/consultations/consultation-1', {
+  new Request(`http://localhost/api/consultations/${CONSULTATION_ID}`, {
     method,
     body,
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
@@ -100,6 +102,16 @@ describe('app/api/consultations/[id]', () => {
   });
 
   describe('PATCH', () => {
+    it('returns 400 for an invalid consultation ID before querying Supabase', async () => {
+      const response = await PATCH(
+        buildRequest('PATCH', JSON.stringify({ status: 'completed' })),
+        { params: Promise.resolve({ id: 'not-a-uuid' }) },
+      );
+
+      expect(response.status).toBe(400);
+      expect(serverRequestClient).not.toHaveBeenCalled();
+    });
+
     it('should return 401 when the access-gate session is invalid', async () => {
       vi.mocked(requireAccessGateSession).mockRejectedValue(
         new AppError('Access gate session is missing or invalid', {
@@ -148,7 +160,7 @@ describe('app/api/consultations/[id]', () => {
       await expect(response.json()).resolves.toEqual({
         error: 'Consultation was not found',
       });
-      expect(ownedIdEq).toHaveBeenCalledWith('id', 'consultation-1');
+      expect(ownedIdEq).toHaveBeenCalledWith('id', CONSULTATION_ID);
       expect(ownedStudentEq).toHaveBeenCalledWith(
         'student_user_id',
         'student-1',
@@ -212,7 +224,7 @@ describe('app/api/consultations/[id]', () => {
 
         expect(response.status).toBe(200);
         expect(update).toHaveBeenCalledWith({ status });
-        expect(updateIdEq).toHaveBeenCalledWith('id', 'consultation-1');
+        expect(updateIdEq).toHaveBeenCalledWith('id', CONSULTATION_ID);
         expect(updateStudentEq).toHaveBeenCalledWith(
           'student_user_id',
           'student-1',
@@ -237,6 +249,18 @@ describe('app/api/consultations/[id]', () => {
   });
 
   describe('DELETE', () => {
+    it('returns 400 for an invalid consultation ID before querying Supabase', async () => {
+      const response = await DELETE(
+        new Request('http://localhost/api/consultations/not-a-uuid', {
+          method: 'DELETE',
+        }),
+        { params: Promise.resolve({ id: 'not-a-uuid' }) },
+      );
+
+      expect(response.status).toBe(400);
+      expect(serverRequestClient).not.toHaveBeenCalled();
+    });
+
     it('should return 401 when the access-gate session is invalid', async () => {
       vi.mocked(requireAccessGateSession).mockRejectedValue(
         new AppError('Access gate session is missing or invalid', {
@@ -280,6 +304,26 @@ describe('app/api/consultations/[id]', () => {
       expect(update).not.toHaveBeenCalled();
     });
 
+    it('should cancel a completed consultation', async () => {
+      const completed = buildConsultation({ status: 'completed' });
+      const cancelled = buildConsultation({ status: 'cancelled' });
+      const { update, updateIdEq, updateStudentEq } = setupSupabaseMock({
+        existing: completed,
+        updated: cancelled,
+      });
+
+      const response = await DELETE(buildRequest('DELETE'), ROUTE_CONTEXT);
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({ data: cancelled });
+      expect(update).toHaveBeenCalledWith({ status: 'cancelled' });
+      expect(updateIdEq).toHaveBeenCalledWith('id', CONSULTATION_ID);
+      expect(updateStudentEq).toHaveBeenCalledWith(
+        'student_user_id',
+        'student-1',
+      );
+    });
+
     it('should cancel an owned consultation without writing lifecycle timestamps in the API', async () => {
       const cancelled = buildConsultation({
         status: 'cancelled',
@@ -293,7 +337,7 @@ describe('app/api/consultations/[id]', () => {
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({ data: cancelled });
       expect(update).toHaveBeenCalledWith({ status: 'cancelled' });
-      expect(updateIdEq).toHaveBeenCalledWith('id', 'consultation-1');
+      expect(updateIdEq).toHaveBeenCalledWith('id', CONSULTATION_ID);
       expect(updateStudentEq).toHaveBeenCalledWith(
         'student_user_id',
         'student-1',
