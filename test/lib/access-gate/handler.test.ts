@@ -99,6 +99,17 @@ describe('lib/access-gate/proxy', () => {
     expect(response?.headers.get('location')).toBeNull();
   });
 
+  it('should allow Server Actions to reach their own access-gate checks', async () => {
+    const request = new NextRequest('http://localhost:3000/auth/login', {
+      method: 'POST',
+      headers: {
+        'Next-Action': 'test-action-id',
+      },
+    });
+
+    await expect(handleAccessGateRequest(request)).resolves.toBeUndefined();
+  });
+
   it('should consult the session cache before allowing a valid signed cookie', async () => {
     const cookieValue = createAccessGateCookieValue(
       { inviteId: INVITE_ID, visitId: VISIT_ID },

@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { hasValidAccessGateSession } from '@/lib/access-gate/require-session';
 import { serverActionClient } from '@/lib/supabase/server';
 import {
   LoginInputSchema,
@@ -15,10 +16,16 @@ export type SignInActionState = {
   error?: string;
 };
 
+const redirectToAccessGateIfNeeded = async (): Promise<void> => {
+  if (!(await hasValidAccessGateSession())) redirect('/');
+};
+
 export async function signInAction(
   _previousState: SignInActionState,
   formData: FormData,
 ): Promise<SignInActionState> {
+  await redirectToAccessGateIfNeeded();
+
   const validation = validateWithSchema(LoginInputSchema, {
     email: formData.get('email'),
     password: formData.get('password'),
@@ -72,6 +79,8 @@ export async function requestPasswordResetAction(
   _previousState: PasswordResetRequestActionState,
   formData: FormData,
 ): Promise<PasswordResetRequestActionState> {
+  await redirectToAccessGateIfNeeded();
+
   const validation = validateWithSchema(PasswordResetRequestSchema, {
     email: formData.get('email'),
   });
@@ -112,6 +121,8 @@ export const updatePasswordAction = async (
   _previousState: UpdatePasswordActionState,
   formData: FormData,
 ): Promise<UpdatePasswordActionState> => {
+  await redirectToAccessGateIfNeeded();
+
   const validation = validateWithSchema(UpdatePasswordInputSchema, {
     password: formData.get('new-password'),
     repeatPassword: formData.get('confirm-password'),
@@ -155,6 +166,8 @@ export async function signUpAction(
   _previousState: SignUpActionState,
   formData: FormData,
 ): Promise<SignUpActionState> {
+  await redirectToAccessGateIfNeeded();
+
   const validation = validateWithSchema(SignUpInputSchema, {
     email: formData.get('email'),
     password: formData.get('password'),

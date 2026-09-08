@@ -7,6 +7,7 @@ import {
   signUpAction,
   updatePasswordAction,
 } from '@/app/auth/actions';
+import { hasValidAccessGateSession } from '@/lib/access-gate/require-session';
 import { serverActionClient } from '@/lib/supabase/server';
 
 vi.mock('next/navigation', () => ({
@@ -15,6 +16,10 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/supabase/server', () => ({
   serverActionClient: vi.fn(),
+}));
+
+vi.mock('@/lib/access-gate/require-session', () => ({
+  hasValidAccessGateSession: vi.fn(),
 }));
 
 type AuthClientMocks = {
@@ -112,11 +117,12 @@ const buildPasswordResetFormData = (
   return formData;
 };
 
-describe('app/auth/actions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(hasValidAccessGateSession).mockResolvedValue(true);
+});
 
+describe('app/auth/actions', () => {
   describe('signInAction', () => {
     it('rejects invalid login input before creating a Supabase client', async () => {
       const result = await signInAction(
@@ -199,6 +205,61 @@ describe('app/auth/actions', () => {
       expect(redirect).not.toHaveBeenCalled();
     });
   });
+
+  it.each([
+    [
+      'sign in',
+      () =>
+        signInAction(
+          {},
+          buildLoginFormData('student@example.com', 'TestPassword1!'),
+        ),
+    ],
+    [
+      'sign up',
+      () =>
+        signUpAction(
+          {},
+          buildSignUpFormData(
+            'student@example.com',
+            'ReviewStudent**1',
+            'ReviewStudent**1',
+          ),
+        ),
+    ],
+    [
+      'request password reset',
+      () => {
+        const formData = new FormData();
+        formData.set('email', 'student@example.com');
+        return requestPasswordResetAction({}, formData);
+      },
+    ],
+    [
+      'update password',
+      () =>
+        updatePasswordAction(
+          {},
+          buildPasswordResetFormData(
+            'UpdatedPassword**1',
+            'UpdatedPassword**1',
+          ),
+        ),
+    ],
+  ])(
+    'redirects %s to the access gate when the session is invalid',
+    async (_, action) => {
+      vi.mocked(hasValidAccessGateSession).mockResolvedValue(false);
+      vi.mocked(redirect).mockImplementationOnce(() => {
+        throw new Error('REDIRECT');
+      });
+
+      await expect(action()).rejects.toThrow('REDIRECT');
+
+      expect(redirect).toHaveBeenCalledWith('/');
+      expect(serverActionClient).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('signUpAction', () => {
