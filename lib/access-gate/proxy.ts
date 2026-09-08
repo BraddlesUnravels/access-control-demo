@@ -18,6 +18,9 @@ const getAccessGateCookiePayload = (request: NextRequest) => {
   );
 };
 
+const isServerActionRequest = (request: NextRequest): boolean =>
+  request.headers.has('next-action');
+
 export const hasValidAccessGateCookie = (request: NextRequest): boolean =>
   Boolean(getAccessGateCookiePayload(request));
 
@@ -62,6 +65,8 @@ export const handleAccessGateRequest = async (
 
     return hasCookie ? clearAccessGateCookie(response) : response;
   }
+
+  if (isServerActionRequest(request)) return;
 
   if (isAccessGatePublicPath(pathname)) return NextResponse.next({ request });
 
