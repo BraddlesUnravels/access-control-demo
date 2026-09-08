@@ -55,6 +55,7 @@ export function SignUpForm({
                   name="password"
                   required
                   autoComplete="new-password"
+                  fieldLabel="Password"
                 />
               </FormField>
 
@@ -64,6 +65,7 @@ export function SignUpForm({
                   name="repeat-password"
                   required
                   autoComplete="new-password"
+                  fieldLabel="Repeat Password"
                 />
               </FormField>
 

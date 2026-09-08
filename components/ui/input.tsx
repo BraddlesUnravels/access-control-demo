@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 
 type InputProps = ComponentProps<'input'> & {
   endIcon?: ReactNode;
-  'show-button-tab-index'?: number;
+  fieldLabel?: string;
+  showButtonTabIndex?: number;
 };
 
 const inputStyles = [
@@ -44,13 +45,21 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 Input.displayName = 'Input';
 
 const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, fieldLabel, showButtonTabIndex, ...props }, ref) => {
     const [hidden, setHidden] = useState(true);
+
+    const getAriaLabel = (isHidden: boolean): string => {
+      if (!fieldLabel) {
+        return isHidden ? 'Show password' : 'Hide password';
+      }
+      return isHidden
+        ? `Show ${fieldLabel.toLowerCase()}`
+        : `Hide ${fieldLabel.toLowerCase()}`;
+    };
 
     return (
       <div className="relative">
         <input
-          aria-label="Password input field"
           type={hidden ? 'password' : 'text'}
           className={cn(inputStyles, className)}
           ref={ref}
@@ -58,13 +67,11 @@ const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
         />
 
         <button
-          id="show-password-button"
-          name="show-password-button"
-          tabIndex={props['show-button-tab-index']}
+          tabIndex={showButtonTabIndex}
           type="button"
           className="absolute inset-y-0 right-3 flex items-center text-zinc-500 transition-colors hover:cursor-pointer hover:text-zinc-400"
           onClick={() => setHidden(!hidden)}
-          aria-label={hidden ? 'Show password' : 'Hide password'}
+          aria-label={getAriaLabel(hidden)}
         >
           {hidden ? (
             <Eye className="size-5" aria-hidden="true" />
@@ -80,16 +87,7 @@ const PasswordInput = forwardRef<HTMLInputElement, InputProps>(
 PasswordInput.displayName = 'PasswordInput';
 
 const DateTimeInput = forwardRef<HTMLInputElement, InputProps>(
-  (
-    {
-      className,
-      disabled,
-      onClick,
-      'show-button-tab-index': pickerButtonTabIndex,
-      ...props
-    },
-    ref,
-  ) => {
+  ({ className, disabled, onClick, ...props }, ref) => {
     const showDateTimePicker = (input: HTMLInputElement) => {
       if (!input.disabled && typeof input.showPicker === 'function') {
         input.showPicker();
@@ -109,7 +107,6 @@ const DateTimeInput = forwardRef<HTMLInputElement, InputProps>(
           }}
         />
         <button
-          tabIndex={pickerButtonTabIndex}
           disabled={disabled}
           onClick={(event) => {
             const input = event.currentTarget.previousElementSibling;

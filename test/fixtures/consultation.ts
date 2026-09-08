@@ -1,7 +1,7 @@
 import type { ConsultationRecord } from '@/lib/validation/types';
 
 const BASE_CONSULTATION: ConsultationRecord = {
-  id: 'consultation-1',
+  id: '0197d2ee-6242-7616-8ef5-474ad0ecff0f',
   student_user_id: 'student-1',
   first_name: 'Taylor',
   last_name: 'Nguyen',

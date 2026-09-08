@@ -129,15 +129,16 @@ test('should disable all consultation actions when cancelled', async () => {
     .toBeDisabled();
 });
 
-test('should allow a completed consultation to be marked incomplete', async () => {
+test('should allow a completed consultation to be marked incomplete and cancelled', async () => {
   const consultation = buildConsultation({
     status: 'completed',
   });
+  const onCancel = vi.fn().mockResolvedValue(undefined);
 
   const screen = await render(
     <ConsultationItem
       consultation={consultation}
-      onCancel={vi.fn().mockResolvedValue(undefined)}
+      onCancel={onCancel}
       onReschedule={vi.fn().mockResolvedValue(undefined)}
       onToggleCompleted={vi.fn().mockResolvedValue(undefined)}
     />,
@@ -157,11 +158,14 @@ test('should allow a completed consultation to be marked incomplete', async () =
     )
     .toBeDisabled();
 
-  await expect
-    .element(
-      screen.getByRole('button', {
-        name: 'Cancel',
-      }),
-    )
-    .toBeDisabled();
+  const cancelButton = screen.getByRole('button', {
+    name: 'Cancel',
+  });
+
+  await expect.element(cancelButton).toBeEnabled();
+
+  await cancelButton.click();
+
+  expect(onCancel).toHaveBeenCalledOnce();
+  expect(onCancel).toHaveBeenCalledWith(consultation.id);
 });

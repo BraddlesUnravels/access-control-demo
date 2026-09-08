@@ -5,9 +5,9 @@
 -- - admin@lms.com / ReviewAdmin**00
 do $$
 declare
-  student1_passowrd text := 'ReviewStudent**01';
-  student2_passowrd text := 'ReviewStudent**02';
-  admin_passowrd text := 'ReviewAdmin**00';
+  student1_password text := 'ReviewStudent**01';
+  student2_password text := 'ReviewStudent**02';
+  admin_password text := 'ReviewAdmin**00';
 begin
   if not exists (
     select
@@ -36,7 +36,7 @@ begin
     'authenticated',
     'student1@lms.com',
     extensions.crypt(
-      student1_passowrd, extensions.gen_salt(
+      student1_password, extensions.gen_salt(
         'bf')),
     '',
     now(),
@@ -72,7 +72,7 @@ end if;
     'authenticated',
     'student2@lms.com',
     extensions.crypt(
-      student2_passowrd, extensions.gen_salt(
+      student2_password, extensions.gen_salt(
         'bf')),
     '',
     now(),
@@ -108,7 +108,7 @@ end if;
     'authenticated',
     'admin@lms.com',
     extensions.crypt(
-      admin_passowrd, extensions.gen_salt(
+      admin_password, extensions.gen_salt(
         'bf')),
     '',
     now(),

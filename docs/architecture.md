@@ -76,6 +76,12 @@ The root `proxy.ts` creates its own request-scoped Supabase client and calls
 the request and response, and Supabase's `Cache-Control`, `Expires`, and
 `Pragma` headers are preserved when the proxy returns an auth redirect.
 
+Requests carrying Next.js's `Next-Action` header are allowed through the proxy
+without a proxy redirect so the Server Action protocol receives a valid action
+response. Authentication actions perform their own access-gate check before
+calling Supabase; this avoids returning an HTML redirect where Next.js expects a
+Server Action response when a login page has become stale.
+
 Authenticated JSON API handlers are wrapped with `withApiHandler()`. That
 boundary applies:
 
@@ -107,22 +113,24 @@ and is also enforced by PostgreSQL RLS. The administrator endpoint remains
 read-only and is independently restricted to administrators.
 
 Authentication Server Actions are callable server entry points and therefore
-validate their inputs on every invocation:
+validate the access-gate session and their inputs on every invocation:
 
-- `signInAction()` and `signUpAction()` are intentionally unauthenticated
-  entry points and validate credentials before calling Supabase Auth.
-- `requestPasswordResetAction()` is intentionally unauthenticated and
-  validates the email before requesting a reset message.
-- `updatePasswordAction()` validates both passwords and calls `getUser()`
+- `signInAction()`, `signUpAction()`, and `requestPasswordResetAction()` are
+  identity-unauthenticated entry points, but still require a valid visitor
+  access-gate session before calling Supabase Auth.
+- `updatePasswordAction()` requires the visitor access-gate session, validates
+  both passwords, and calls `getUser()`
   before changing the password, so an expired or missing reset session cannot
   perform the mutation.
 - `signOutAction()` is idempotent session cleanup. It uses the server action
-  client and does not mutate protected application data, so it does not need a
+  client and does not require a visitor access-gate session, so users can still
+  clear authentication state after the outer gate expires. It does not need a
   separate role or ownership check.
 
-These checks are required even when the action is only called by a visible UI
-form. Hidden controls, layouts, and proxy redirects are not authorization
-boundaries.
+These checks are required even when the actions are only called by visible UI
+forms. A stale form after access-gate cookie deletion redirects to `/` before
+authentication work begins. Hidden controls, layouts, and proxy redirects are
+not authorization boundaries.
 
 ## Authenticated consultation flow
 

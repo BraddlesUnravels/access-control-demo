@@ -171,6 +171,14 @@ Pull requests run application quality checks including:
 - production builds;
 - dependency review.
 
+The standard CI workflow does not start Supabase and does not run
+`npm run test:db`. Database security, lifecycle, and access-gate SQL tests
+must be run locally when migrations, policies, functions, grants, or schema
+snapshots change. Pull requests carrying the `stage` label also run the
+separate container-stage workflow, which starts a disposable Supabase stack,
+checks schema drift, runs the database tests, and exercises the production
+container.
+
 # Container stage
 
 The container-stage workflow provides a higher-level integration check against the assembled production application.

@@ -66,6 +66,10 @@ The Azure federated credential subject uses GitHub's immutable owner-ID and repo
 
 Production access-gate secrets are stored only in Azure Key Vault.
 
+See [Secrets Management](secrets-management.md) for the canonical secret
+inventory, rotation procedures, and incident-response guidance. This document
+only describes how production infrastructure supplies those values.
+
 GitHub Actions does not store or receive:
 
 ```text
@@ -265,6 +269,98 @@ The OIDC bootstrap tooling is located at:
 deploy/azure/bootstrap-oidc.sh
 ```
 
+# Hosted Supabase production setup
+
+The Azure deployment provisions the application container, but the hosted Supabase project still needs operational configuration before the production site can authenticate users and send email-based auth flows.
+
+## Apply the database migrations
+
+The application treats the migration history in `supabase/migrations/` as the executable source of truth. The hosted Supabase project must be pointed at the correct project and then have the migration history applied before production traffic is enabled.
+
+Typical steps:
+
+```bash
+supabase link --project <project-ref>
+supabase db push
+```
+
+If the project is being managed by CI rather than a trusted operator workstation, run the same migration step in the release pipeline and do not rely on the local dev database snapshot alone.
+
+After changing a migration locally, regenerate the schema snapshot and verify that it matches the live migration state:
+
+```bash
+npm run schema:generate
+npm run schema:check
+```
+
+Do not treat `supabase/schema.sql` as the source of truth. It is a generated snapshot intended to detect drift against the migration history.
+
+## Provision the hosted demo users
+
+The application expects the same demo-user boundary used by the local project: one student account, a second student account, and one administrator account. These users must be created in the hosted Supabase Auth project before the production demo is useful.
+
+Use a trusted operator workflow to create the same accounts used by the project documentation, or a one-time admin script that creates the accounts with the expected email addresses and role assignments. The exact credentials should match the app's supported demo workflow and the documentation in the repository.
+
+The production environment should not depend on the local seed data or local MailPit state. Provisioning is a deployment prerequisite rather than a runtime side effect.
+
+## Configure Auth redirect allow-lists
+
+Supabase Auth requires exact URLs in its redirect allow-list. Configure the production project with:
+
+```text
+site_url = "https://<production-domain>"
+additional_redirect_urls = [
+  "https://<production-domain>/auth/confirm",
+  "https://<production-domain>/auth/confirm?next=/protected",
+  "https://<production-domain>/auth/confirm-email?next=/protected",
+  "https://<production-domain>/auth/update-password",
+  "https://<production-domain>/protected",
+]
+```
+
+These routes are required because the app generates password-reset and email-confirmation links that redirect back into the application. Missing entries here prevent the auth token callback from completing in production.
+
+## Install or verify the confirmation templates
+
+The application uses Supabase Auth email flows for:
+
+- sign-up confirmation;
+- password reset;
+- update-password completion.
+
+Make sure the hosted project has the relevant email templates installed and that their links point to the application routes created by the app:
+
+- `/auth/confirm?next=/auth/update-password`
+- `/auth/confirm-email?next=/protected`
+- `/auth/update-password`
+
+The confirmation flow intentionally splits signup-email confirmation and recovery-token verification. The templates and redirect targets must match that logic or the app will redirect users to the wrong screen or reject valid tokens.
+
+## Configure the production email provider
+
+Hosted Supabase Auth sends confirmation and reset emails through an SMTP provider rather than MailPit. Configure the production project with a real email provider and verified sender address before enabling user sign-up or password recovery.
+
+Typical settings include:
+
+```text
+SMTP host
+SMTP port
+SMTP username
+SMTP password
+sender name
+sender email
+TLS / STARTTLS and verification state
+```
+
+Use a production domain that is already verified by the provider. Test the full flow end-to-end after configuration:
+
+1. sign up with a real email address;
+2. confirm the email flow;
+3. request a password reset;
+4. verify the reset link reaches `/auth/confirm` and then `/auth/update-password`.
+
+The project does not rely on a local MailPit SMTP server in production. The hosted Supabase project must be configured to deliver real email to end users.
+
 # Access-gate configuration
 
 Production uses two separate cryptographic secrets:
@@ -297,29 +393,10 @@ If the application is later scaled horizontally, rate-limit state should move to
 
 # Access-session revalidation
 
-Protected application requests use a signed `access_gate` cookie as a fast
-local check and then consult the existing `validate_access_gate_session()` RPC
-through a process-local cache.
-
-Successful validation is cached for up to one hour and no longer than the
-cookie's absolute expiry. Rejected sessions and RPC failures are not cached;
-they fail closed and the supplied access cookie is cleared where the response
-can modify cookies.
-
-The cache is bounded to 1,000 sessions and is held in the application process.
-The current Container App uses one active replica, so all requests share that
-cache. If the application is horizontally scaled, each replica can have a
-different validation view unless the cache is moved to shared infrastructure or
-each request revalidates directly against the database.
-
-The only public application access-gate route is:
-
-```text
-POST /api/access/unlock
-```
-
-Health probes and Supabase authentication callbacks remain public operational
-exceptions.
+The Container App's single active replica currently supports the process-local
+access-session cache and rate limiter described in [Access Control and API](access-control.md).
+That document is the canonical reference for cache bounds, revalidation timing,
+public access-gate exceptions, and the implications of horizontal scaling.
 
 # Health probes
 
@@ -419,7 +496,10 @@ Azure Key Vault
 Next.js environment variables
 ```
 
-The browser authenticates directly with Supabase using the publishable key.
+Browser authentication forms submit to Next.js Server Actions; browser code
+does not instantiate a Supabase client. The server uses the publishable key
+through request-scoped typed clients, while Supabase callback URLs are handled
+by Route Handlers.
 
 Next.js route handlers enforce application authorization before performing privileged application operations.
 
