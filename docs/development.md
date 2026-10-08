@@ -417,11 +417,6 @@ supabase/
 docker/
 └── Dockerfile
 
-deploy/
-└── azure/
-    ├── bootstrap-oidc.sh
-    └── main.bicep
-
 docs/
 ├── images/
 ├── access-control.md
@@ -437,9 +432,7 @@ docs/
     ├── ci.yml
     ├── container-stage.yml
     ├── dependency-review.yml
-    ├── production.yml
-    ├── production-teardown.yml
-    └── take-containers-offline.yml
+    └── release.yml
 
 proxy.ts
 ```
@@ -470,8 +463,7 @@ proxy.ts
 - `scripts/create-access-invite.mjs` — trusted invite operator tool
 - `scripts/container-tests/**` — production-container integration harness
 - `docker/Dockerfile` — production standalone Next.js container
-- `deploy/azure/**` — Azure Container Apps infrastructure and OIDC bootstrap
-- `.github/workflows/**` — CI, staging, dependency review, deployment, and production operations
+- `.github/workflows/**` — CI, staging, dependency review, and production image publish + IaC dispatch
 
 # HTTP API overview
 

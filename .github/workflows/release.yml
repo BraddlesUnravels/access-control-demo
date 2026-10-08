@@ -1,0 +1,424 @@
+name: Publish production image and dispatch IaC
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: access-control-demo-release-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  APPLICATION: access-control-demo
+  CONTAINER_REPOSITORY: access-control-demo
+  ACR_LOGIN_SERVER: braddlesunravelsacr.azurecr.io
+  IAC_REPOSITORY: BraddlesUnravels/iac
+  RELEASE_TAG_PATTERN: '^v[0-9]+\.[0-9]+\.[0-9]+$'
+  IMAGE_NAME: access-control-demo:release-candidate
+  SUPABASE_CLI_VERSION: '2.114.0'
+  SUPABASE_TELEMETRY_DISABLED: '1'
+
+jobs:
+  verify-test-build-push:
+    name: Verify, test, build and push release image
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: image-publish
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      NEXT_SUPABASE_URL: ${{ secrets.NEXT_SUPABASE_URL }}
+      NEXT_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_SUPABASE_PUBLISHABLE_KEY }}
+    outputs:
+      source-commit-sha: ${{ steps.evidence.outputs.source-commit-sha }}
+      image-tag: ${{ steps.evidence.outputs.image-tag }}
+      image-digest: ${{ steps.evidence.outputs.image-digest }}
+      release-id: ${{ steps.evidence.outputs.release-id }}
+      release-tag: ${{ steps.evidence.outputs.release-tag }}
+      source-repository: ${{ steps.evidence.outputs.source-repository }}
+      source-repository-id: ${{ steps.evidence.outputs.source-repository-id }}
+
+    steps:
+      - name: Checkout source commit
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Validate release source
+        id: release_guard
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          source_sha="$(git rev-parse HEAD)"
+          if [[ ! "${source_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Source commit SHA must be 40 lowercase hex characters: ${source_sha}" >&2
+            exit 1
+          fi
+
+          if [[ "${EVENT_NAME}" == 'workflow_dispatch' ]]; then
+            if [[ "${EVENT_REF}" != 'refs/heads/main' ]]; then
+              echo "Manual releases must run from main (got ${EVENT_REF})." >&2
+              exit 1
+            fi
+            if [[ "${source_sha}" != "${EVENT_SHA}" ]]; then
+              echo 'Checked-out HEAD does not match the workflow_dispatch commit.' >&2
+              exit 1
+            fi
+            release_tag='main'
+            release_id="${RUN_ID}"
+          else
+            tag_name="${GITHUB_REF_NAME}"
+            if [[ ! "${tag_name}" =~ ${RELEASE_TAG_PATTERN} ]]; then
+              echo "Release tag must match ${RELEASE_TAG_PATTERN}: ${tag_name}" >&2
+              exit 1
+            fi
+            node scripts/validate-tag.mjs "${tag_name}"
+            tag_object="$(git rev-parse "refs/tags/${tag_name}^{commit}")"
+            if [[ "${source_sha}" != "${tag_object}" ]]; then
+              echo 'Checked-out HEAD does not match the peeled release tag commit.' >&2
+              exit 1
+            fi
+            # Prefer GitHub release id when a published release exists for the tag.
+            release_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag_name}" --jq '.id' 2>/dev/null || true)"
+            if [[ ! "${release_id}" =~ ^[0-9]+$ ]]; then
+              release_id="${RUN_ID}"
+            fi
+            release_tag="${tag_name}"
+          fi
+
+          {
+            echo "source-commit-sha=${source_sha}"
+            echo "release-tag=${release_tag}"
+            echo "release-id=${release_id}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run application tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start local Supabase
+        run: npx --yes supabase@${{ env.SUPABASE_CLI_VERSION }} start -x vector
+
+      - name: Reset local Supabase
+        run: npx --yes supabase@${{ env.SUPABASE_CLI_VERSION }} db reset
+
+      - name: Run database tests
+        run: npm run test:db
+
+      - name: Check schema snapshot
+        run: npm run schema:check
+
+      - name: Stop local Supabase
+        if: always()
+        continue-on-error: true
+        run: npx --yes supabase@${{ env.SUPABASE_CLI_VERSION }} stop --no-backup
+
+      - name: Validate migration operator secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for value_name in SUPABASE_PROJECT_REF SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD NEXT_SUPABASE_URL NEXT_SUPABASE_PUBLISHABLE_KEY; do
+            if [[ -z "${!value_name:-}" ]]; then
+              echo "Missing production environment value: ${value_name}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Apply and verify hosted Supabase migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          latest_migration_version="$(
+            find supabase/migrations \
+              -maxdepth 1 \
+              -type f \
+              -name '*.sql' \
+              -printf '%f\n' |
+              sort |
+              tail -n 1 |
+              cut -d '_' -f 1
+          )"
+
+          if [[ -z "${latest_migration_version}" ]]; then
+            echo 'No Supabase migrations were found in the repository.' >&2
+            exit 1
+          fi
+
+          npx --yes "supabase@${SUPABASE_CLI_VERSION}" db push \
+            --project-ref "${SUPABASE_PROJECT_REF}" \
+            --password "${SUPABASE_DB_PASSWORD}" \
+            --yes
+
+          migration_status="$(
+            npx --yes "supabase@${SUPABASE_CLI_VERSION}" migration list \
+              --project-ref "${SUPABASE_PROJECT_REF}" \
+              --output pretty
+          )"
+
+          printf '%s\n' "${migration_status}"
+
+          if ! grep -F -- "${latest_migration_version}" <<<"${migration_status}" >/dev/null; then
+            echo "Hosted Supabase does not report the latest repository migration: ${latest_migration_version}." >&2
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Build release image
+        run: docker build -f docker/Dockerfile -t "${IMAGE_NAME}" .
+
+      - name: Verify production image excludes development packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint node "${IMAGE_NAME}" -e '
+            const unexpectedPackages = [
+              "@eslint/eslintrc",
+              "@vitejs/plugin-react",
+              "eslint",
+              "next-themes",
+              "pino-pretty",
+              "prettier",
+              "typescript",
+              "vitest",
+              "vitest-browser-react",
+            ];
+            let unexpectedPackageFound = false;
+            for (const packageName of unexpectedPackages) {
+              try {
+                require.resolve(packageName);
+                console.error(`Unexpected package in runtime image: ${packageName}`);
+                unexpectedPackageFound = true;
+              } catch (error) {
+                if (error?.code !== "MODULE_NOT_FOUND") throw error;
+              }
+            }
+            if (unexpectedPackageFound) process.exit(1);
+          '
+
+      - name: Smoke test production image
+        shell: bash
+        run: |
+          set -euo pipefail
+          container_name="access-control-demo-release-smoke-${GITHUB_RUN_ID}"
+          test_access_gate_code_secret="$(openssl rand -hex 32)"
+          test_access_gate_cookie_secret="$(openssl rand -hex 32)"
+          cleanup() { docker rm --force "${container_name}" >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          cleanup
+          docker run --detach --name "${container_name}" --platform linux/amd64 --publish 3200:3000 \
+            --env "NEXT_SUPABASE_URL=${NEXT_SUPABASE_URL}" \
+            --env "NEXT_SUPABASE_PUBLISHABLE_KEY=${NEXT_SUPABASE_PUBLISHABLE_KEY}" \
+            --env 'ACCESS_GATE_DISABLED=false' \
+            --env "ACCESS_GATE_CODE_SECRET=${test_access_gate_code_secret}" \
+            --env "ACCESS_GATE_COOKIE_SECRET=${test_access_gate_cookie_secret}" \
+            "${IMAGE_NAME}"
+          healthy=false
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error "http://127.0.0.1:3200/api/health" >/dev/null; then
+              healthy=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "${healthy}" != 'true' ]]; then
+            docker logs "${container_name}" || true
+            echo 'Production container did not become healthy.' >&2
+            exit 1
+          fi
+
+      - name: Azure OIDC login as image publisher
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_PUBLISHER_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to ACR with publisher token
+        shell: bash
+        run: |
+          set -euo pipefail
+          token="$(az acr login --name braddlesunravelsacr --expose-token --output tsv --query accessToken)"
+          printf '%s' "${token}" | docker login "${ACR_LOGIN_SERVER}" \
+            --username 00000000-0000-0000-0000-000000000000 \
+            --password-stdin
+
+      - name: Tag, push, and resolve immutable digest
+        id: push
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.release_guard.outputs.source-commit-sha }}
+        run: |
+          set -euo pipefail
+          remote_tag="${ACR_LOGIN_SERVER}/${CONTAINER_REPOSITORY}:${SOURCE_SHA}"
+          docker tag "${IMAGE_NAME}" "${remote_tag}"
+
+          if az acr repository show \
+            --name braddlesunravelsacr \
+            --image "${CONTAINER_REPOSITORY}:${SOURCE_SHA}" \
+            --output json >/tmp/existing-image.json 2>/dev/null; then
+            digest="$(jq -er '.digest // .manifest.digest // empty' /tmp/existing-image.json)"
+            echo "Tag already exists in ACR with digest ${digest}; reusing immutable image."
+          else
+            docker push "${remote_tag}"
+            metadata="$(az acr repository show --name braddlesunravelsacr --image "${CONTAINER_REPOSITORY}:${SOURCE_SHA}" --output json)"
+            digest="$(jq -er '.digest // .manifest.digest' <<<"${metadata}")"
+          fi
+
+          if [[ ! "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Resolved digest is malformed: ${digest}" >&2
+            exit 1
+          fi
+
+          echo "image-tag=${remote_tag}" >> "${GITHUB_OUTPUT}"
+          echo "image-digest=${digest}" >> "${GITHUB_OUTPUT}"
+
+      - name: Record non-secret release evidence
+        id: evidence
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.release_guard.outputs.source-commit-sha }}
+          IMAGE_TAG: ${{ steps.push.outputs.image-tag }}
+          IMAGE_DIGEST: ${{ steps.push.outputs.image-digest }}
+          RELEASE_ID: ${{ steps.release_guard.outputs.release-id }}
+          RELEASE_TAG: ${{ steps.release_guard.outputs.release-tag }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_REPOSITORY_ID: ${{ github.repository_id }}
+        run: |
+          set -euo pipefail
+          {
+            echo "source-commit-sha=${SOURCE_SHA}"
+            echo "image-tag=${IMAGE_TAG}"
+            echo "image-digest=${IMAGE_DIGEST}"
+            echo "release-id=${RELEASE_ID}"
+            echo "release-tag=${RELEASE_TAG}"
+            echo "source-repository=${SOURCE_REPOSITORY}"
+            echo "source-repository-id=${SOURCE_REPOSITORY_ID}"
+          } >> "${GITHUB_OUTPUT}"
+
+  dispatch-iac:
+    name: Dispatch deployment to IaC repository
+    needs: [verify-test-build-push]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Create GitHub App installation token for IaC only
+        id: app-token
+        uses: actions/create-github-app-token@3ff1caaa28b64c9cc276ce0a02e2ff584f3900c5 # v2.0.2
+        with:
+          app-id: ${{ vars.IAC_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.IAC_DISPATCH_APP_PRIVATE_KEY }}
+          owner: BraddlesUnravels
+          repositories: iac
+          permission-contents: write
+
+      - name: Post repository_dispatch evidence payload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SOURCE_REPOSITORY: ${{ needs.verify-test-build-push.outputs.source-repository }}
+          SOURCE_REPOSITORY_ID: ${{ needs.verify-test-build-push.outputs.source-repository-id }}
+          RELEASE_ID: ${{ needs.verify-test-build-push.outputs.release-id }}
+          RELEASE_TAG: ${{ needs.verify-test-build-push.outputs.release-tag }}
+          SOURCE_COMMIT_SHA: ${{ needs.verify-test-build-push.outputs.source-commit-sha }}
+          IMAGE_TAG: ${{ needs.verify-test-build-push.outputs.image-tag }}
+          IMAGE_DIGEST: ${{ needs.verify-test-build-push.outputs.image-digest }}
+        run: |
+          set -euo pipefail
+
+          payload="$(jq -n \
+            --arg application 'access-control-demo' \
+            --arg environment 'production' \
+            --arg sourceRepository "${SOURCE_REPOSITORY}" \
+            --arg sourceRepositoryId "${SOURCE_REPOSITORY_ID}" \
+            --arg releaseId "${RELEASE_ID}" \
+            --arg releaseTag "${RELEASE_TAG}" \
+            --arg sourceCommitSha "${SOURCE_COMMIT_SHA}" \
+            --arg imageTag "${IMAGE_TAG}" \
+            --arg imageDigest "${IMAGE_DIGEST}" \
+            '{
+              event_type: "single-container-web-release-v1",
+              client_payload: {
+                schemaVersion: 1,
+                application: $application,
+                environment: $environment,
+                sourceRepository: $sourceRepository,
+                sourceRepositoryId: $sourceRepositoryId,
+                releaseId: $releaseId,
+                releaseTag: $releaseTag,
+                sourceCommitSha: $sourceCommitSha,
+                imageTag: $imageTag,
+                imageDigest: $imageDigest
+              }
+            }')"
+
+          http_code="$(curl --silent --show-error --output /tmp/dispatch-body \
+            --write-out '%{http_code}' \
+            -X POST \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${IAC_REPOSITORY}/dispatches" \
+            -d "${payload}")"
+
+          if [[ "${http_code}" != '204' ]]; then
+            echo "repository_dispatch was not accepted (HTTP ${http_code})" >&2
+            cat /tmp/dispatch-body >&2 || true
+            exit 1
+          fi
+
+          {
+            echo '## IaC dispatch'
+            echo
+            echo '- Status: **dispatch accepted / deployment pending**'
+            echo "- IaC repository: \`${IAC_REPOSITORY}\`"
+            echo '- Event type: `single-container-web-release-v1`'
+            echo "- Central workflow: \`https://github.com/${IAC_REPOSITORY}/actions\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
