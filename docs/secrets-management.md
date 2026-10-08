@@ -5,16 +5,16 @@ never required by browser code.
 
 ## Secret inventory
 
-| Secret | Used by | Purpose |
-| --- | --- | --- |
-| `ACCESS_GATE_CODE_SECRET` | Invite operator and unlock Route Handler | HMAC-hashes invite codes before database lookup. |
-| `ACCESS_GATE_COOKIE_SECRET` | Access-gate proxy | Signs and verifies the `access_gate` cookie. |
-| `NEXT_SUPABASE_URL` | Server Supabase clients | Hosted Supabase project URL (treated as secret). |
-| `NEXT_SUPABASE_PUBLISHABLE_KEY` | Server and browser-safe Supabase clients | Accesses Supabase using the publishable-key trust model. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Trusted invite operator tooling only | Creates invite records through the Supabase admin client. |
-| `SUPABASE_ACCESS_TOKEN` | Release migration job only | Supabase CLI auth for hosted `db push`. |
-| `SUPABASE_DB_PASSWORD` | Release migration job only | Hosted database password for migration apply. |
-| `SUPABASE_PROJECT_REF` | Release migration job only | Hosted project identifier for migration apply. |
+| Secret                          | Used by                                  | Purpose                                                   |
+| ------------------------------- | ---------------------------------------- | --------------------------------------------------------- |
+| `ACCESS_GATE_CODE_SECRET`       | Invite operator and unlock Route Handler | HMAC-hashes invite codes before database lookup.          |
+| `ACCESS_GATE_COOKIE_SECRET`     | Access-gate proxy                        | Signs and verifies the `access_gate` cookie.              |
+| `NEXT_SUPABASE_URL`             | Server Supabase clients                  | Hosted Supabase project URL (treated as secret).          |
+| `NEXT_SUPABASE_PUBLISHABLE_KEY` | Server and browser-safe Supabase clients | Accesses Supabase using the publishable-key trust model.  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Trusted invite operator tooling only     | Creates invite records through the Supabase admin client. |
+| `SUPABASE_ACCESS_TOKEN`         | Release migration job only               | Supabase CLI auth for hosted `db push`.                   |
+| `SUPABASE_DB_PASSWORD`          | Release migration job only               | Hosted database password for migration apply.             |
+| `SUPABASE_PROJECT_REF`          | Release migration job only               | Hosted project identifier for migration apply.            |
 
 `SUPABASE_SECRET_KEY` remains a legacy fallback name for the invite operator
 script; `SUPABASE_SERVICE_ROLE_KEY` is the documented current variable.

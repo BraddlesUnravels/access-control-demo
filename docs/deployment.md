@@ -19,10 +19,10 @@ repository's:
 
 # Release triggers
 
-| Trigger | When | `releaseTag` sent to IaC |
-| --- | --- | --- |
-| Push of a version tag matching `vX.Y.Z` | Normal audited release | `vX.Y.Z` |
-| `workflow_dispatch` on `main` | Operator hotfix / replay | `main` |
+| Trigger                                 | When                     | `releaseTag` sent to IaC |
+| --------------------------------------- | ------------------------ | ------------------------ |
+| Push of a version tag matching `vX.Y.Z` | Normal audited release   | `vX.Y.Z`                 |
+| `workflow_dispatch` on `main`           | Operator hotfix / replay | `main`                   |
 
 Do **not** auto-deploy on every push to `main`.
 
@@ -100,28 +100,28 @@ secrets.IAC_DISPATCH_APP_PRIVATE_KEY
 
 # Runtime configuration (Azure)
 
-| Item | Value |
-| --- | --- |
-| Resource group | `rg-platform-production` |
-| Stack | `single-container-web` |
-| ACA environment | `acae-access-control-demo-production` |
-| Container app | `aca-access-control-demo` |
-| Custom domain | `aca.braddlesunravels.online` |
-| Runtime identity | `id-access-control-demo-secrets` |
-| Key Vault | `kv-acd-prod-braddles` |
-| Health probe | `GET /api/health` |
-| Replicas | min = max = 1 |
+| Item             | Value                                 |
+| ---------------- | ------------------------------------- |
+| Resource group   | `rg-platform-production`              |
+| Stack            | `single-container-web`                |
+| ACA environment  | `acae-access-control-demo-production` |
+| Container app    | `aca-access-control-demo`             |
+| Custom domain    | `aca.braddlesunravels.online`         |
+| Runtime identity | `id-access-control-demo-secrets`      |
+| Key Vault        | `kv-acd-prod-braddles`                |
+| Health probe     | `GET /api/health`                     |
+| Replicas         | min = max = 1                         |
 
 Plain contract env (non-secret) includes `NODE_ENV`, `PORT`, bind-all host,
 telemetry flags, and `ACCESS_GATE_DISABLED=false`.
 
 # Runtime secrets (Key Vault only)
 
-| Env var | Key Vault secret name |
-| --- | --- |
-| `ACCESS_GATE_CODE_SECRET` | `access-gate-code-secret` |
-| `ACCESS_GATE_COOKIE_SECRET` | `access-gate-cookie-secret` |
-| `NEXT_SUPABASE_URL` | `next-supabase-url` |
+| Env var                         | Key Vault secret name           |
+| ------------------------------- | ------------------------------- |
+| `ACCESS_GATE_CODE_SECRET`       | `access-gate-code-secret`       |
+| `ACCESS_GATE_COOKIE_SECRET`     | `access-gate-cookie-secret`     |
+| `NEXT_SUPABASE_URL`             | `next-supabase-url`             |
 | `NEXT_SUPABASE_PUBLISHABLE_KEY` | `next-supabase-publishable-key` |
 
 Architecture rule: the Supabase project URL is a **secret**, not plain contract
