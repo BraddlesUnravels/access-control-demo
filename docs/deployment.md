@@ -134,7 +134,7 @@ env and not injected by a deploy job.
 
 Create or rotate values from a trusted operator workstation only. Secret values
 never pass through GitHub Actions deploy jobs, dispatch payloads, or rendered
-Bicep parameters. See [Secrets Management](secrets-management.md).
+Azure deploy parameters. See [Secrets Management](secrets-management.md).
 
 # GitHub configuration (this repository)
 
