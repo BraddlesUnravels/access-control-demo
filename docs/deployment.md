@@ -1,129 +1,166 @@
 # Deployment
 
-Production is deployed as a standalone Next.js container to Azure Container Apps.
+Production runs as a standalone Next.js container on Azure Container Apps inside
+the shared platform resource group `rg-platform-production`.
 
-GitHub Actions builds and publishes immutable production images and authenticates to Azure using OpenID Connect rather than a stored Azure client secret.
+This application repository owns:
 
-# Production bootstrap
+- CI and tests
+- immutable image publish to the shared Azure Container Registry (ACR)
+- hosted Supabase migration gates before dispatch
+- `repository_dispatch` evidence to the central IaC repository
 
-Production has persistent security resources that are provisioned separately from normal application releases.
+Azure infrastructure apply, custom-domain binding, and planner/deployer OIDC
+live in [BraddlesUnravels/iac](https://github.com/BraddlesUnravels/iac). See that
+repository's:
 
-Bootstrap infrastructure is defined under:
+- `docs/workloads/single-container-web-runbook.md`
+- `docs/workloads/access-control-demo-runbook.md`
 
-```text
-deploy/azure/
-├── bootstrap.bicep
-├── bootstrap-oidc.sh
-├── main.bicep
-└── set-production-secrets.sh
-```
+# Release triggers
 
-The one-time bootstrap creates or configures:
+| Trigger                                 | When                     | `releaseTag` sent to IaC |
+| --------------------------------------- | ------------------------ | ------------------------ |
+| Push of a version tag matching `vX.Y.Z` | Normal audited release   | `vX.Y.Z`                 |
+| `workflow_dispatch` on `main`           | Operator hotfix / replay | `main`                   |
 
-- the production resource group;
-- required Azure resource-provider registrations;
-- the GitHub deployment managed identity;
-- the GitHub OIDC federated credential;
-- Contributor access for the GitHub deployment identity at the production resource-group scope;
-- the production Azure Key Vault;
-- the user-assigned managed identity used by Container Apps to resolve Key Vault secrets;
-- the `Key Vault Secrets User` assignment for that secret-reader identity;
-- the `Key Vault Secrets Officer` assignment for the trusted bootstrap operator.
+Do **not** auto-deploy on every push to `main`.
 
-The bootstrap script is intended to run from a trusted operator workstation, not GitHub Actions. The signed-in operator must be allowed to create role assignments at the production resource-group scope because bootstrap assigns both the GitHub deployment role and Key Vault data-plane roles.
+Both paths must publish an immutable 40-character commit SHA image tag. IaC
+rejects `latest` as a deploy identity.
 
-Before running it, configure:
+Workflow:
 
 ```text
-AZURE_SUBSCRIPTION_ID
-AZURE_RESOURCE_GROUP
-AZURE_KEY_VAULT
-REPOSITORY_SLUG
+.github/workflows/release.yml
 ```
 
-Optional bootstrap values are:
+# Image path
+
+Images are built from:
 
 ```text
-AZURE_LOCATION
-AZURE_IDENTITY_NAME
-AZURE_SECRET_READER_IDENTITY
-DEPLOYMENT_ENVIRONMENT
-REPOSITORY_OWNER_ID
-REPOSITORY_ID
+docker/Dockerfile
 ```
 
-Run:
-
-```bash
-deploy/azure/bootstrap-oidc.sh
-```
-
-The script prints the GitHub production Environment values that must be configured after bootstrap.
-
-The Azure federated credential subject uses GitHub's immutable owner-ID and repository-ID subject format. The configured Azure subject must exactly match the subject GitHub issues for this repository and production environment. Repositories that predate GitHub's immutable-subject rollout must opt in before using this subject format.
-
-# Production secrets
-
-Production access-gate secrets are stored only in Azure Key Vault.
-
-See [Secrets Management](secrets-management.md) for the canonical secret
-inventory, rotation procedures, and incident-response guidance. This document
-only describes how production infrastructure supplies those values.
-
-GitHub Actions does not store or receive:
+using the Next.js standalone output, then pushed to:
 
 ```text
-ACCESS_GATE_CODE_SECRET
-ACCESS_GATE_COOKIE_SECRET
+braddlesunravelsacr.azurecr.io/access-control-demo:<40-char-sha>
 ```
 
-The Key Vault contains these secret names:
+Production no longer publishes to GHCR and no longer applies Bicep from this
+repository.
+
+Publisher authentication uses GitHub OIDC against the
+`id-access-control-production-publisher` user-assigned managed identity via the
+protected `image-publish` environment.
+
+# Supabase migrations
+
+Before IaC dispatch, the release job applies hosted migrations with the pinned
+Supabase CLI (`db push` + migration list check). Failure blocks dispatch.
+
+Migration operator secrets stay in the `image-publish` environment only:
 
 ```text
-access-gate-code-secret
-access-gate-cookie-secret
+SUPABASE_PROJECT_REF
+SUPABASE_ACCESS_TOKEN
+SUPABASE_DB_PASSWORD
 ```
 
-After bootstrap, populate or rotate the values from the trusted operator workstation:
+`NEXT_SUPABASE_URL` and `NEXT_SUPABASE_PUBLISHABLE_KEY` are present on
+`image-publish` solely for the local container smoke test. Runtime values in
+Azure come from Key Vault, not from GitHub deploy jobs.
 
-```bash
-export AZURE_KEY_VAULT=<production-key-vault-name>
-deploy/azure/set-production-secrets.sh
-```
+# IaC dispatch
 
-The code secret must exactly match the production secret used when creating access invites against hosted Supabase.
-
-The Container App uses versionless Key Vault references. The application receives the values through Container Apps secret references rather than GitHub or Bicep receiving the secret contents.
-
-# Production GitHub environment
-
-Configure these GitHub production Environment secrets:
+After a successful image push, the workflow posts:
 
 ```text
-AZURE_CLIENT_ID
+event_type: single-container-web-release-v1
+```
+
+to `BraddlesUnravels/iac` with a non-secret evidence payload (application,
+source repository ids, release id/tag, source commit SHA, image tag, digest).
+
+IaC then:
+
+1. verifies provenance and the workload contract
+2. plans with the access-control planner UAMI (`production-plan`)
+3. applies with the access-control deployer UAMI (`production`)
+4. verifies HTTP health on the platform-hosted app
+
+Dispatch authentication uses the repository GitHub App installation:
+
+```text
+vars.IAC_DISPATCH_APP_ID
+secrets.IAC_DISPATCH_APP_PRIVATE_KEY
+```
+
+# Runtime configuration (Azure)
+
+| Item             | Value                                 |
+| ---------------- | ------------------------------------- |
+| Resource group   | `rg-platform-production`              |
+| Stack            | `single-container-web`                |
+| ACA environment  | `acae-access-control-demo-production` |
+| Container app    | `aca-access-control-demo`             |
+| Custom domain    | `aca.braddlesunravels.online`         |
+| Runtime identity | `id-access-control-demo-secrets`      |
+| Key Vault        | `kv-acd-prod-braddles`                |
+| Health probe     | `GET /api/health`                     |
+| Replicas         | min = max = 1                         |
+
+Plain contract env (non-secret) includes `NODE_ENV`, `PORT`, bind-all host,
+telemetry flags, and `ACCESS_GATE_DISABLED=false`.
+
+# Runtime secrets (Key Vault only)
+
+| Env var                         | Key Vault secret name           |
+| ------------------------------- | ------------------------------- |
+| `ACCESS_GATE_CODE_SECRET`       | `access-gate-code-secret`       |
+| `ACCESS_GATE_COOKIE_SECRET`     | `access-gate-cookie-secret`     |
+| `NEXT_SUPABASE_URL`             | `next-supabase-url`             |
+| `NEXT_SUPABASE_PUBLISHABLE_KEY` | `next-supabase-publishable-key` |
+
+Architecture rule: the Supabase project URL is a **secret**, not plain contract
+env and not injected by the deploy job.
+
+Create or rotate values from a trusted operator workstation only. Secret values
+never pass through GitHub Actions deploy jobs, dispatch payloads, or rendered
+Bicep parameters. See [Secrets Management](secrets-management.md).
+
+# GitHub environments after cutover
+
+## `image-publish` (this repository)
+
+Variables:
+
+```text
+AZURE_PUBLISHER_CLIENT_ID
 AZURE_TENANT_ID
 AZURE_SUBSCRIPTION_ID
+```
+
+Secrets:
+
+```text
+SUPABASE_PROJECT_REF
 SUPABASE_ACCESS_TOKEN
 SUPABASE_DB_PASSWORD
 NEXT_SUPABASE_URL
 NEXT_SUPABASE_PUBLISHABLE_KEY
 ```
 
-Configure these GitHub production Environment variables:
+Repository-level dispatch:
 
 ```text
-AZURE_RESOURCE_GROUP
-AZURE_LOCATION
-AZURE_CONTAINER_ENVIRONMENT
-AZURE_CONTAINER_APP
-AZURE_CUSTOM_DOMAIN
-AZURE_CUSTOM_DOMAIN_CERTIFICATE_ID
-AZURE_KEY_VAULT
-AZURE_SECRET_READER_IDENTITY
-SUPABASE_PROJECT_REF
+vars.IAC_DISPATCH_APP_ID
+secrets.IAC_DISPATCH_APP_PRIVATE_KEY
 ```
 
-Do not configure these as GitHub production secrets:
+## Do not keep as GitHub runtime secrets
 
 ```text
 ACCESS_GATE_CODE_SECRET
@@ -132,103 +169,39 @@ SUPABASE_SECRET_KEY
 SUPABASE_SERVICE_ROLE_KEY
 ```
 
-The deployed Next.js application does not require trusted Supabase administrative credentials.
+Access-gate plaintext and Supabase service-role credentials belong on a trusted
+operator workstation (invite tooling), never in application runtime GitHub
+configuration.
 
-`SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` are used only by the
-protected production release job. They are not passed to the container image
-or Azure deployment. `SUPABASE_PROJECT_REF` identifies the hosted project
-targeted by the release.
+Legacy `production` environment Azure client ids, resource-group variables, and
+GHCR-oriented settings are obsolete after cutover and should be removed once the
+platform path is verified.
 
-# Container image
+# Operator foundation and cutover
 
-Production images are built using:
+Privileged one-time steps (foundation apply, managed certificate, DNS CNAME,
+legacy RG deletion) are documented in the IaC access-control runbook. This
+repository does not contain Bicep bootstrap or Azure apply workflows.
 
-```text
-docker/Dockerfile
-```
+Rough operator order:
 
-The application uses the Next.js standalone production output.
-
-Images are published to GitHub Container Registry.
-
-Production deployments use immutable commit-SHA image references.
-
-The production workflow also verifies that known development-only packages are not resolvable from the final runtime image.
-
-# Azure infrastructure
-
-Normal production releases use:
-
-```text
-deploy/azure/main.bicep
-```
-
-Before the Azure deployment begins, the production workflow runs the pinned
-Supabase CLI against the configured hosted project. It applies all pending
-migrations with `supabase db push` and then runs `supabase migration list`.
-The release stops if the hosted migration operation or migration-state check
-fails. This stage requires the GitHub production environment's deployment
-approval and must target a dedicated production Supabase project.
-
-The hosted database remains an external release dependency. Operators should
-use the Supabase backup and migration compatibility procedures before applying
-changes that cannot be rolled back safely.
-
-The release deployment provisions:
-
-- a Log Analytics workspace for production observability;
-- the Azure Container Apps environment;
-- an Azure Monitor diagnostic setting;
-- the Container App;
-- external HTTPS ingress;
-- application runtime configuration;
-- Key Vault-backed Container Apps secret references;
-- startup probes;
-- readiness probes;
-- liveness probes;
-- a single always-available application replica.
-
-`main.bicep` treats the Key Vault and secret-reader managed identity as existing persistent resources. The production workflow verifies that they exist before attempting the release deployment.
-
-# Key Vault access model
-
-The running Container App has a dedicated user-assigned managed identity for Key Vault secret resolution.
-
-That identity has only the `Key Vault Secrets User` role on the production vault.
-
-The Container App configures the identity with an application lifecycle of `None`, because the identity is used by the Container Apps platform to resolve Key Vault references rather than by application code to obtain Azure tokens.
-
-A trusted operator receives `Key Vault Secrets Officer` on the vault so production secrets can be created and rotated without giving the application write access.
+1. Foundation identities / env / ACR ABAC already in `rg-platform-production`
+2. Seed Key Vault secrets + secret-scoped RBAC for the runtime identity
+3. Merge this release workflow
+4. First release (tag or manual main); approve IaC plan/apply
+5. Verify default FQDN `/api/health` before DNS change
+6. Managed cert + SNI binding on the new environment
+7. GoDaddy: point `aca` CNAME to the new app FQDN only after SNI is verified
+8. Verify `https://aca.braddlesunravels.online/api/health`
+9. Delete `rg-access-control-demo` (certs/env first if the RG sticks)
 
 # Observability
 
-Production logging uses the platform-native stdout/stderr pipeline:
+Production logging remains the platform stdout/stderr pipeline into Azure
+Monitor / Log Analytics on the platform-hosted environment. Application Insights
+distributed tracing is intentionally out of scope.
 
-```text
-Next.js / Pino
-      |
-      | structured JSON to stdout/stderr
-      v
-Azure Container Apps
-      |
-      | Azure Monitor resource logs
-      v
-Diagnostic setting
-      |
-      v
-Log Analytics workspace
-```
-
-The Container Apps environment uses `azure-monitor` as its application log destination.
-
-The diagnostic setting sends:
-
-- `ContainerAppConsoleLogs`, containing application stdout/stderr including Pino records;
-- `ContainerAppSystemLogs`, containing Container Apps platform and lifecycle events.
-
-The application does not use an Azure-specific Pino transport. Pino remains responsible for structured application logging, while Azure Container Apps and Azure Monitor handle collection, routing, retention, and querying.
-
-A useful query for recent Pino records is:
+Example query:
 
 ```kusto
 ContainerAppConsoleLogs
@@ -245,262 +218,48 @@ ContainerAppConsoleLogs
 | order by TimeGenerated desc
 ```
 
-The production deployment verifies the Azure Monitor destination and diagnostic-setting configuration. It does not fail based on immediate Log Analytics ingestion.
-
-Application Insights distributed tracing is intentionally not part of this logging deployment. If tracing is required later, add it as a separate observability change using Next.js instrumentation and OpenTelemetry.
-
-# GitHub OIDC
-
-GitHub Actions authenticates to Azure through OpenID Connect.
-
-The release workflow requires only the identifiers needed for OIDC authentication:
-
-```text
-AZURE_CLIENT_ID
-AZURE_TENANT_ID
-AZURE_SUBSCRIPTION_ID
-```
-
-No long-lived Azure client secret is stored in GitHub.
-
-The OIDC bootstrap tooling is located at:
-
-```text
-deploy/azure/bootstrap-oidc.sh
-```
-
-# Hosted Supabase production setup
-
-The Azure deployment provisions the application container, but the hosted Supabase project still needs operational configuration before the production site can authenticate users and send email-based auth flows.
-
-## Apply the database migrations
-
-The application treats the migration history in `supabase/migrations/` as the executable source of truth. The hosted Supabase project must be pointed at the correct project and then have the migration history applied before production traffic is enabled.
-
-Typical steps:
-
-```bash
-supabase link --project <project-ref>
-supabase db push
-```
-
-If the project is being managed by CI rather than a trusted operator workstation, run the same migration step in the release pipeline and do not rely on the local dev database snapshot alone.
-
-After changing a migration locally, regenerate the schema snapshot and verify that it matches the live migration state:
-
-```bash
-npm run schema:generate
-npm run schema:check
-```
-
-Do not treat `supabase/schema.sql` as the source of truth. It is a generated snapshot intended to detect drift against the migration history.
-
-## Provision the hosted demo users
-
-The application expects the same demo-user boundary used by the local project: one student account, a second student account, and one administrator account. These users must be created in the hosted Supabase Auth project before the production demo is useful.
-
-Use a trusted operator workflow to create the same accounts used by the project documentation, or a one-time admin script that creates the accounts with the expected email addresses and role assignments. The exact credentials should match the app's supported demo workflow and the documentation in the repository.
-
-The production environment should not depend on the local seed data or local MailPit state. Provisioning is a deployment prerequisite rather than a runtime side effect.
-
-## Configure Auth redirect allow-lists
-
-Supabase Auth requires exact URLs in its redirect allow-list. Configure the production project with:
-
-```text
-site_url = "https://<production-domain>"
-additional_redirect_urls = [
-  "https://<production-domain>/auth/confirm",
-  "https://<production-domain>/auth/confirm?next=/protected",
-  "https://<production-domain>/auth/confirm-email?next=/protected",
-  "https://<production-domain>/auth/update-password",
-  "https://<production-domain>/protected",
-]
-```
-
-These routes are required because the app generates password-reset and email-confirmation links that redirect back into the application. Missing entries here prevent the auth token callback from completing in production.
-
-## Install or verify the confirmation templates
-
-The application uses Supabase Auth email flows for:
-
-- sign-up confirmation;
-- password reset;
-- update-password completion.
-
-Make sure the hosted project has the relevant email templates installed and that their links point to the application routes created by the app:
-
-- `/auth/confirm?next=/auth/update-password`
-- `/auth/confirm-email?next=/protected`
-- `/auth/update-password`
-
-The confirmation flow intentionally splits signup-email confirmation and recovery-token verification. The templates and redirect targets must match that logic or the app will redirect users to the wrong screen or reject valid tokens.
-
-## Configure the production email provider
-
-Hosted Supabase Auth sends confirmation and reset emails through an SMTP provider rather than MailPit. Configure the production project with a real email provider and verified sender address before enabling user sign-up or password recovery.
-
-Typical settings include:
-
-```text
-SMTP host
-SMTP port
-SMTP username
-SMTP password
-sender name
-sender email
-TLS / STARTTLS and verification state
-```
-
-Use a production domain that is already verified by the provider. Test the full flow end-to-end after configuration:
-
-1. sign up with a real email address;
-2. confirm the email flow;
-3. request a password reset;
-4. verify the reset link reaches `/auth/confirm` and then `/auth/update-password`.
-
-The project does not rely on a local MailPit SMTP server in production. The hosted Supabase project must be configured to deliver real email to end users.
-
-# Access-gate configuration
-
-Production uses two separate cryptographic secrets:
-
-```text
-ACCESS_GATE_CODE_SECRET
-ACCESS_GATE_COOKIE_SECRET
-```
-
-Their values are resolved from Azure Key Vault at runtime.
-
-`ACCESS_GATE_DISABLED=true` cannot disable the access gate when the application is running in Azure.
-
-This prevents a development bypass from accidentally disabling the public production boundary.
-
-# Rate limiting
-
-Invite redemption currently uses process-local rate limiting.
-
-The production deployment intentionally runs a single active application replica.
-
-Under that deployment model, all invite-redemption attempts reach one effective in-memory limiter.
-
-If the application is later scaled horizontally, rate-limit state should move to:
-
-- shared Redis;
-- PostgreSQL;
-- another shared data store;
-- an upstream gateway or rate-limiting layer.
-
-# Access-session revalidation
-
-The Container App's single active replica currently supports the process-local
-access-session cache and rate limiter described in [Access Control and API](access-control.md).
-That document is the canonical reference for cache bounds, revalidation timing,
-public access-gate exceptions, and the implications of horizontal scaling.
-
-# Health probes
-
-The application exposes:
-
-```text
-GET /api/health
-```
-
-for Docker and Azure health probes.
-
-The health route bypasses visitor access and LMS authentication.
-
-Health checks therefore do not depend on a user session.
-
-# Supabase Auth password policy
-
-Password creation and authentication intentionally use different application validation rules:
-
-- sign-up and password updates accept passwords between 15 and 64 characters;
-- passwords may contain any supported characters and do not require a prescribed mix of uppercase letters, lowercase letters, numbers, or symbols;
-- sign-in requires only a non-empty password so the application does not pre-reject a credential before Supabase Auth evaluates it.
-
-Local Supabase Auth mirrors the 15-character minimum through `supabase/config.toml`.
-
-The hosted Supabase project's Auth password settings must also use a minimum password length of 15 and must not add character-composition requirements. This keeps direct Supabase Auth requests aligned with the application's password-creation boundary.
-
-The 64-character maximum is enforced by the application when creating or changing passwords.
-
-# Production workflows
-
-The repository contains GitHub Actions workflows for:
-
-```text
-.github/workflows/
-├── production.yml
-├── production-teardown.yml
-└── take-containers-offline.yml
-```
-
-These provide:
-
-- production deployment and configuration verification;
-- taking the application offline;
-- tearing down the Container App and Container Apps environment.
-
-Persistent bootstrap resources are intentionally outside the normal application teardown lifecycle:
-
-- Azure Key Vault;
-- production access-gate secrets;
-- secret-reader managed identity;
-- GitHub OIDC deployment identity and federation;
-- Log Analytics historical data.
+# Access-gate and scaling notes
+
+- `ACCESS_GATE_DISABLED=true` cannot disable the access gate when the app runs
+  in Azure.
+- Invite redemption uses process-local rate limiting; production stays at a
+  single replica (`minReplicas = maxReplicas = 1`).
+- Horizontal scale requires shared rate-limit and access-session state.
+
+# Hosted Supabase operational prerequisites
+
+Infrastructure deploy does not replace Supabase Auth configuration. Operators
+still need:
+
+- migrations applied (release job gate)
+- demo users provisioned when required
+- Auth redirect allow-list for `https://aca.braddlesunravels.online`
+- confirmation email templates aligned with app routes
+- production SMTP
+
+Password policy must stay aligned with the application (minimum length 15, no
+composition requirements on hosted Auth).
 
 # Deployment boundary
-
-The production flow is approximately:
 
 ```text
 Trusted operator
       |
       v
-bootstrap-oidc.sh
-      |
-      +--> GitHub OIDC identity
-      +--> Key Vault
-      +--> secret-reader identity
-      +--> Key Vault RBAC
+IaC foundations/single-container-web + Key Vault secrets
       |
       v
-set-production-secrets.sh
+GitHub Actions (this repo)  --OIDC publisher--> shared ACR
       |
+      | repository_dispatch evidence
       v
-Azure Key Vault
-
-GitHub Actions
+IaC deploy-single-container-release.yml
       |
-      | OIDC
+      | planner / deployer OIDC
       v
-Azure deployment identity
+stacks/single-container-web (platform RG)
       |
+      | runtime UAMI secret resolve
       v
-main.bicep
-      |
-      +--> Container Apps environment
-      +--> Container App
-      +--> Azure Monitor / Log Analytics
-      |
-      v
-Container Apps platform
-      |
-      | secret-reader managed identity
-      v
-Azure Key Vault
-      |
-      v
-Next.js environment variables
+Key Vault --> Container App env --> Next.js
 ```
-
-Browser authentication forms submit to Next.js Server Actions; browser code
-does not instantiate a Supabase client. The server uses the publishable key
-through request-scoped typed clients, while Supabase callback URLs are handled
-by Route Handlers.
-
-Next.js route handlers enforce application authorization before performing privileged application operations.
-
-PostgreSQL RLS and database permissions independently enforce the same security properties for direct Data API access.

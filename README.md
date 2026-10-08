@@ -36,7 +36,7 @@ The LMS domain is intentionally small so the authentication, authorization, data
 - Automated unit, proxy, API-client, route-handler, database, and container integration tests
 - Containerized deployment with Docker
 - GitHub Actions CI/CD
-- Azure Container Apps deployment through Bicep and GitHub OIDC
+- Azure Container Apps deployment through shared ACR, GitHub OIDC image publish, and central IaC release
 
 ## Access-control model
 
