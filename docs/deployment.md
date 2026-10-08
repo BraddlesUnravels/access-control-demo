@@ -1,9 +1,9 @@
 # Deployment
 
-Production runs as a standalone Next.js container on Azure Container Apps inside
-the shared platform resource group `rg-platform-production`.
+Production runs as a standalone Next.js container on Azure Container Apps in the
+shared platform resource group `rg-platform-production`.
 
-This application repository owns:
+This repository owns:
 
 - CI and tests
 - immutable image publish to the shared Azure Container Registry (ACR)
@@ -11,11 +11,14 @@ This application repository owns:
 - `repository_dispatch` evidence to the central IaC repository
 
 Azure infrastructure apply, custom-domain binding, and planner/deployer OIDC
-live in [BraddlesUnravels/iac](https://github.com/BraddlesUnravels/iac). See that
-repository's:
+live in [BraddlesUnravels/iac](https://github.com/BraddlesUnravels/iac). Canonical
+operator docs there:
 
 - `docs/workloads/single-container-web-runbook.md`
 - `docs/workloads/access-control-demo-runbook.md`
+
+This repository does **not** contain Bicep, ARM, bootstrap scripts, or an Azure
+apply workflow.
 
 # Release triggers
 
@@ -26,8 +29,8 @@ repository's:
 
 Do **not** auto-deploy on every push to `main`.
 
-Both paths must publish an immutable 40-character commit SHA image tag. IaC
-rejects `latest` as a deploy identity.
+Both paths publish an immutable 40-character commit SHA image tag. IaC rejects
+`latest` as a deploy identity.
 
 Workflow:
 
@@ -49,12 +52,9 @@ using the Next.js standalone output, then pushed to:
 braddlesunravelsacr.azurecr.io/access-control-demo:<40-char-sha>
 ```
 
-Production no longer publishes to GHCR and no longer applies Bicep from this
-repository.
-
-Publisher authentication uses GitHub OIDC against the
-`id-access-control-production-publisher` user-assigned managed identity via the
-protected `image-publish` environment.
+Publisher authentication uses GitHub OIDC against
+`id-access-control-production-publisher` via the protected `image-publish`
+environment.
 
 # Supabase migrations
 
@@ -69,9 +69,9 @@ SUPABASE_ACCESS_TOKEN
 SUPABASE_DB_PASSWORD
 ```
 
-`NEXT_SUPABASE_URL` and `NEXT_SUPABASE_PUBLISHABLE_KEY` are present on
-`image-publish` solely for the local container smoke test. Runtime values in
-Azure come from Key Vault, not from GitHub deploy jobs.
+`NEXT_SUPABASE_URL` and `NEXT_SUPABASE_PUBLISHABLE_KEY` exist on `image-publish`
+only for the pre-publish container smoke test. Runtime values in Azure come from
+Key Vault, not from GitHub deploy jobs.
 
 # IaC dispatch
 
@@ -81,8 +81,8 @@ After a successful image push, the workflow posts:
 event_type: single-container-web-release-v1
 ```
 
-to `BraddlesUnravels/iac` with a non-secret evidence payload (application,
-source repository ids, release id/tag, source commit SHA, image tag, digest).
+to `BraddlesUnravels/iac` with a non-secret evidence payload (application, source
+repository ids, release id/tag, source commit SHA, image tag, digest).
 
 IaC then:
 
@@ -98,22 +98,27 @@ vars.IAC_DISPATCH_APP_ID
 secrets.IAC_DISPATCH_APP_PRIVATE_KEY
 ```
 
+Source job success means **dispatch accepted / deployment pending**. Final Azure
+health is owned by the IaC run (`deploy-single-container-release.yml`).
+
 # Runtime configuration (Azure)
 
-| Item             | Value                                 |
-| ---------------- | ------------------------------------- |
-| Resource group   | `rg-platform-production`              |
-| Stack            | `single-container-web`                |
-| ACA environment  | `acae-access-control-demo-production` |
-| Container app    | `aca-access-control-demo`             |
-| Custom domain    | `aca.braddlesunravels.online`         |
-| Runtime identity | `id-access-control-demo-secrets`      |
-| Key Vault        | `kv-acd-prod-braddles`                |
-| Health probe     | `GET /api/health`                     |
-| Replicas         | min = max = 1                         |
+| Item                | Value                                                    |
+| ------------------- | -------------------------------------------------------- |
+| Resource group      | `rg-platform-production`                                 |
+| Stack               | `single-container-web`                                   |
+| ACA environment     | `acae-access-control-demo-production`                    |
+| Container app       | `aca-access-control-demo`                                |
+| Custom domain       | `aca.braddlesunravels.online`                            |
+| Default FQDN suffix | `greenwave-bd9d2bee.australiaeast.azurecontainerapps.io` |
+| Runtime identity    | `id-access-control-demo-secrets`                         |
+| Key Vault           | `kv-acd-prod-braddles`                                   |
+| Health probe        | `GET /api/health`                                        |
+| Replicas            | min = max = 1                                            |
 
 Plain contract env (non-secret) includes `NODE_ENV`, `PORT`, bind-all host,
-telemetry flags, and `ACCESS_GATE_DISABLED=false`.
+telemetry flags, and `ACCESS_GATE_DISABLED=false`. The stack injects
+`AZURE_CUSTOM_DOMAIN=aca.braddlesunravels.online` when custom domain is enabled.
 
 # Runtime secrets (Key Vault only)
 
@@ -125,15 +130,15 @@ telemetry flags, and `ACCESS_GATE_DISABLED=false`.
 | `NEXT_SUPABASE_PUBLISHABLE_KEY` | `next-supabase-publishable-key` |
 
 Architecture rule: the Supabase project URL is a **secret**, not plain contract
-env and not injected by the deploy job.
+env and not injected by a deploy job.
 
 Create or rotate values from a trusted operator workstation only. Secret values
 never pass through GitHub Actions deploy jobs, dispatch payloads, or rendered
-Bicep parameters. See [Secrets Management](secrets-management.md).
+Azure deploy parameters. See [Secrets Management](secrets-management.md).
 
-# GitHub environments after cutover
+# GitHub configuration (this repository)
 
-## `image-publish` (this repository)
+## `image-publish` environment
 
 Variables:
 
@@ -153,14 +158,14 @@ NEXT_SUPABASE_URL
 NEXT_SUPABASE_PUBLISHABLE_KEY
 ```
 
-Repository-level dispatch:
+## Repository-level dispatch
 
 ```text
 vars.IAC_DISPATCH_APP_ID
 secrets.IAC_DISPATCH_APP_PRIVATE_KEY
 ```
 
-## Do not keep as GitHub runtime secrets
+## Do not store as application runtime GitHub secrets
 
 ```text
 ACCESS_GATE_CODE_SECRET
@@ -173,32 +178,13 @@ Access-gate plaintext and Supabase service-role credentials belong on a trusted
 operator workstation (invite tooling), never in application runtime GitHub
 configuration.
 
-Legacy `production` environment Azure client ids, resource-group variables, and
-GHCR-oriented settings are obsolete after cutover and should be removed once the
-platform path is verified.
-
-# Operator foundation and cutover
-
-Privileged one-time steps (foundation apply, managed certificate, DNS CNAME,
-legacy RG deletion) are documented in the IaC access-control runbook. This
-repository does not contain Bicep bootstrap or Azure apply workflows.
-
-Rough operator order:
-
-1. Foundation identities / env / ACR ABAC already in `rg-platform-production`
-2. Seed Key Vault secrets + secret-scoped RBAC for the runtime identity
-3. Merge this release workflow
-4. First release (tag or manual main); approve IaC plan/apply
-5. Verify default FQDN `/api/health` before DNS change
-6. Managed cert + SNI binding on the new environment
-7. GoDaddy: point `aca` CNAME to the new app FQDN only after SNI is verified
-8. Verify `https://aca.braddlesunravels.online/api/health`
-9. Delete `rg-access-control-demo` (certs/env first if the RG sticks)
+The legacy GitHub `production` environment (old Azure client ids, resource-group
+variables, and access-gate secrets) is unused and should remain empty.
 
 # Observability
 
-Production logging remains the platform stdout/stderr pipeline into Azure
-Monitor / Log Analytics on the platform-hosted environment. Application Insights
+Production logging is the platform stdout/stderr pipeline into Azure Monitor /
+Log Analytics on the platform-hosted environment. Application Insights
 distributed tracing is intentionally out of scope.
 
 Example query:
@@ -257,7 +243,7 @@ IaC deploy-single-container-release.yml
       |
       | planner / deployer OIDC
       v
-stacks/single-container-web (platform RG)
+stacks/single-container-web (rg-platform-production)
       |
       | runtime UAMI secret resolve
       v

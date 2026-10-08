@@ -197,7 +197,7 @@ Detailed project documentation is split by responsibility:
 - [Development](docs/development.md) — local setup, environment variables, MailPit, project structure, and npm scripts
 - [Secrets management](docs/secrets-management.md) — secret separation, storage, rotation, and incident response
 - [Testing](docs/testing.md) — Node, browser, database, and production-container integration testing
-- [Deployment](docs/deployment.md) — GitHub Actions, production configuration, Azure Container Apps, and OIDC
+- [Deployment](docs/deployment.md) — shared ACR publish, IaC dispatch, platform Container Apps, and OIDC
 
 ## Common commands
 
