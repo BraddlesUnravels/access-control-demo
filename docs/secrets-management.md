@@ -51,7 +51,7 @@ the runtime identity `id-access-control-demo-secrets`. GitHub Actions deploy
 jobs do not receive these secret contents.
 
 Architecture rule: `NEXT_SUPABASE_URL` is a Key Vault secret, not plain
-contract env and not a deploy-time Bicep parameter.
+contract env and not a GitHub deploy-job value.
 
 ### Release migration (GitHub `image-publish` only)
 
@@ -61,7 +61,7 @@ SUPABASE_ACCESS_TOKEN
 SUPABASE_DB_PASSWORD
 ```
 
-These never enter the Container App, IaC dispatch payload, or Bicep parameters.
+These never enter the Container App, IaC dispatch payload, or Azure deploy parameters.
 
 `NEXT_SUPABASE_URL` / `NEXT_SUPABASE_PUBLISHABLE_KEY` may also exist on
 `image-publish` for the pre-publish container smoke test only.
