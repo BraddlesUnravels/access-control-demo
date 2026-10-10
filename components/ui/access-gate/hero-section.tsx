@@ -6,38 +6,42 @@ export const HeroSection = () => (
       <span className="h-px w-8 bg-cyan-300/70" />
 
       <Typography
-        as="p"
-        variant="body-small"
-        className="font-mono font-medium uppercase tracking-[0.22em] text-cyan-300"
+        variant="eyebrow"
+        className="font-mono font-medium uppercase tracking-widest  text-cyan-300"
       >
-        Application security architecture
+        Same application. Different access.
       </Typography>
     </div>
 
     <Typography
       id="main-heading"
-      as="h1"
       variant="display"
       className="max-w-195 font-semibold leading-[0.96] tracking-[-0.055em] text-white"
     >
-      Security should hold at&nbsp;
+      Explore the app.&nbsp;
       <Typography
-        as="span"
+        as="p"
         variant="display"
         className="block bg-linear-to-r from-zinc-400 via-zinc-300 to-zinc-600 bg-clip-text text-transparent"
       >
-        every boundary.
+        Inspect the engineering.
       </Typography>
     </Typography>
 
     <Typography
-      as="p"
-      variant="section-title"
-      className="mt-12 mb-6 max-w-160 font-light leading-8 text-zinc-400"
+      variant="body-large"
+      className="mt-8 lg:mt-10 mb-4 max-w-160 font-light leading-8 text-zinc-400"
     >
-      A deliberately small learning-management application built to demonstrate
-      layered authentication, authorization, resource ownership, and
-      database-level access control.
+      A consultation-management application where students manage their own
+      records and an administrator has read-only access across accounts.
+    </Typography>
+
+    <Typography
+      variant="body-large"
+      className="hidden md:flex max-w-160 font-light leading-8 mb-8 text-zinc-400"
+    >
+      Explore the application, follow how it works through the interface, API,
+      database, automated tests and Azure deployment.
     </Typography>
   </div>
 );
