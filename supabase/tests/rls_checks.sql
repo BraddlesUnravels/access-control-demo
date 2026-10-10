@@ -1,6 +1,6 @@
 begin;
 
-\echo 'RLS CHECK 1/6: Verifying required policies exist'
+\echo 'RLS CHECK 1/7: Verifying required policies exist'
 do $$
 declare
   expected_policies text[] := array['profiles_select_own', 'consultations_select_own_or_admin',
@@ -32,7 +32,7 @@ begin
 end
 $$;
 
-\echo 'RLS CHECK 2/6: Verifying RLS is enabled on target tables'
+\echo 'RLS CHECK 2/7: Verifying RLS is enabled on target tables'
 do $$
 begin
   if not exists(
@@ -63,17 +63,114 @@ end if;
 end
 $$;
 
-\echo 'RLS CHECK 3/6: Verifying authenticated role lacks DELETE on consultations'
+\echo 'RLS CHECK 3/7: Verifying least-privilege table grants for LMS tables'
 do $$
+declare
+  role_name text;
+  table_name text;
+  privilege_name text;
+  non_row_privileges text[] := array['DELETE', 'TRUNCATE',
+    'REFERENCES', 'TRIGGER', 'MAINTAIN'];
+  browser_roles text[] := array['anon', 'authenticated'];
+  lms_tables text[] := array['public.profiles', 'public.consultations'];
 begin
-  if has_table_privilege('authenticated', 'public.consultations', 'DELETE') then
-    raise exception 'authenticated role should not have DELETE on public.consultations';
+  -- Browser-facing roles must not hold privileges that RLS cannot constrain,
+  -- and must not hold physical DELETE on consultations.
+  foreach role_name in array browser_roles loop
+    foreach table_name in array lms_tables loop
+      foreach privilege_name in array non_row_privileges loop
+        if has_table_privilege(role_name, table_name, privilege_name) then
+          raise exception '% must not have % on %', role_name, privilege_name, table_name;
+        end if;
+      end loop;
+    end loop;
+  end loop;
+  if has_table_privilege('anon', 'public.profiles', 'SELECT') or
+    has_table_privilege('anon', 'public.profiles', 'INSERT') or
+    has_table_privilege('anon', 'public.profiles', 'UPDATE') or
+    has_table_privilege('anon', 'public.consultations', 'SELECT') or
+    has_table_privilege('anon', 'public.consultations', 'INSERT') or
+    has_table_privilege('anon', 'public.consultations', 'UPDATE') then
+    raise exception 'anon must not have direct row privileges on LMS tables';
   end if;
-  raise notice 'PASS: authenticated does not have DELETE privilege on public.consultations';
+  if not has_table_privilege('authenticated', 'public.profiles', 'SELECT') then
+    raise exception 'authenticated must retain SELECT on public.profiles';
+  end if;
+  if not has_table_privilege('authenticated', 'public.consultations', 'SELECT') then
+    raise exception 'authenticated must retain SELECT on public.consultations';
+  end if;
+  -- Consultation mutations are intentionally column-scoped. Table-level
+  -- INSERT/UPDATE privileges stay absent; only these columns are writable.
+  if not has_column_privilege('authenticated', 'public.consultations',
+    'student_user_id', 'INSERT') or not
+    has_column_privilege('authenticated', 'public.consultations', 'first_name',
+    'INSERT') or not has_column_privilege('authenticated',
+    'public.consultations', 'last_name', 'INSERT') or not
+    has_column_privilege('authenticated', 'public.consultations', 'reason',
+    'INSERT') or not has_column_privilege('authenticated',
+    'public.consultations', 'scheduled_for', 'INSERT') then
+    raise exception 'authenticated must retain column INSERT privileges on public.consultations';
+  end if;
+  if not has_column_privilege('authenticated', 'public.consultations',
+    'scheduled_for', 'UPDATE') or not
+    has_column_privilege('authenticated', 'public.consultations', 'status',
+    'UPDATE') then
+    raise exception 'authenticated must retain column UPDATE privileges on public.consultations';
+  end if;
+  if has_column_privilege('authenticated', 'public.consultations', 'id',
+    'INSERT') or has_column_privilege('authenticated', 'public.consultations',
+    'status', 'INSERT') or has_column_privilege('authenticated',
+    'public.consultations', 'created_at', 'INSERT') or
+    has_column_privilege('authenticated', 'public.consultations', 'updated_at',
+    'INSERT') or has_column_privilege('authenticated',
+    'public.consultations', 'completed_at', 'INSERT') or
+    has_column_privilege('authenticated', 'public.consultations', 'cancelled_at',
+    'INSERT') or has_column_privilege('authenticated',
+    'public.consultations', 'completed_at', 'UPDATE') or
+    has_column_privilege('authenticated', 'public.consultations', 'cancelled_at',
+    'UPDATE') then
+    raise exception 'authenticated must not write protected consultation columns';
+  end if;
+  -- service_role is reserved for trusted operator paths such as invite creation.
+  -- It must not retain direct LMS table privileges by default.
+  foreach table_name in array lms_tables loop
+    foreach privilege_name in array array['SELECT', 'INSERT',
+      'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES',
+      'TRIGGER', 'MAINTAIN'] loop
+      if has_table_privilege('service_role', table_name, privilege_name) then
+        raise exception 'service_role must not have % on %', privilege_name, table_name;
+      end if;
+    end loop;
+  end loop;
+  raise notice 'PASS: LMS table privileges match the least-privilege model';
 end
 $$;
 
-\echo 'RLS CHECK 4/6: Verifying student/admin visibility behavior'
+\echo 'RLS CHECK 4/7: Verifying TRUNCATE is denied at runtime for browser roles'
+do $$
+begin
+  begin
+    execute 'set local role anon';
+    execute 'truncate table public.consultations';
+    raise exception 'anon was able to truncate public.consultations';
+  exception
+    when insufficient_privilege then
+      raise notice 'PASS: anon cannot truncate public.consultations';
+  end;
+  reset role;
+  begin
+    execute 'set local role authenticated';
+    execute 'truncate table public.profiles';
+    raise exception 'authenticated was able to truncate public.profiles';
+  exception
+    when insufficient_privilege then
+      raise notice 'PASS: authenticated cannot truncate public.profiles';
+  end;
+  reset role;
+end
+$$;
+
+\echo 'RLS CHECK 5/7: Verifying student/admin visibility behavior'
 do $$
 declare
   student_id uuid;
@@ -155,7 +252,7 @@ $$;
 
 reset role;
 
-\echo 'RLS CHECK 5/6: Verifying student mutation boundary and lifecycle enforcement'
+\echo 'RLS CHECK 6/7: Verifying student mutation boundary and lifecycle enforcement'
 do $$
 declare
   student_id uuid;
@@ -369,7 +466,7 @@ reset role;
 
 reset role;
 
-\echo 'RLS CHECK 6/6: Verifying administrator write access is denied'
+\echo 'RLS CHECK 7/7: Verifying administrator write access is denied'
 do $$
 declare
   admin_id uuid;
@@ -453,5 +550,5 @@ $$;
 
 reset role;
 
-\echo 'RLS CHECK RESULT: ALL 6 CHECKS PASSED (transaction rolled back)'
+\echo 'RLS CHECK RESULT: ALL 7 CHECKS PASSED (transaction rolled back)'
 rollback;

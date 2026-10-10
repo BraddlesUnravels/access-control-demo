@@ -124,7 +124,8 @@ The database suite verifies:
 - student ownership restrictions;
 - administrator read access;
 - mutation restrictions;
-- table privileges;
+- least-privilege table grants for `anon`, `authenticated`, and `service_role`;
+- denial of non-RLS table operations such as `TRUNCATE`;
 - table and column privileges;
 - database-managed consultation lifecycle timestamps;
 - RPC execution privileges;

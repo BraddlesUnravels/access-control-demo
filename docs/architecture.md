@@ -579,14 +579,17 @@ Browser redemption occurs through the dedicated database function.
 
 ## Defense in depth
 
-LMS authorization is enforced both by Next.js and PostgreSQL RLS.
+LMS authorization is enforced both by Next.js and PostgreSQL.
 
 The duplication is intentional:
 
 - Route Handlers provide explicit application-level responses.
 - RLS protects row ownership if the application layer is bypassed or incorrectly configured.
+- table privileges deny operations that RLS cannot constrain, including `TRUNCATE`;
 - column-level privileges restrict authenticated clients to the mutation fields exposed by the application.
 - database triggers own consultation lifecycle timestamps, enforce terminal cancellation, and prevent rescheduling completed consultations.
+
+Default privileges for future `public` tables created by `postgres` do not re-grant broad client-role access. New tables start locked and receive only the grants a migration deliberately adds.
 
 ## Read-only administrator role
 
