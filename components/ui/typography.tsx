@@ -15,6 +15,7 @@ type Variant =
   | 'body-small'
   | 'label'
   | 'action'
+  | 'eyebrow'
   | 'caption';
 
 type TypographyOwnProps<T extends ElementType> = {
@@ -39,6 +40,7 @@ const variantStyles: Record<Variant, string> = {
   'body-small': 'text-body-small',
   label: 'text-label',
   action: 'text-action',
+  eyebrow: 'text-eyebrow',
   caption: 'text-caption',
 };
 
@@ -52,6 +54,7 @@ const defaultTag: Record<Variant, ElementType> = {
   'body-small': 'p',
   label: 'span',
   action: 'span',
+  eyebrow: 'span',
   caption: 'span',
 };
 

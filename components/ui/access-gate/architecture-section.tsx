@@ -1,36 +1,39 @@
 import { Typography } from '@/components/ui/typography';
 import {
   ArrowRight,
-  Database,
-  KeyRound,
-  ServerCog,
-  UserRoundCheck,
+  ContainerIcon,
+  AppWindowIcon,
+  FingerprintIcon,
+  FlaskConicalIcon,
 } from 'lucide-react';
 
 const securityLayers = [
   {
     number: '01',
-    icon: KeyRound,
-    title: 'Invite gate',
-    description: 'Controls access to the hosted portfolio environment.',
+    icon: AppWindowIcon,
+    title: 'The application',
+    description: 'Compare what different users can see and change.',
   },
   {
     number: '02',
-    icon: UserRoundCheck,
-    title: 'Authentication',
-    description: 'Supabase Auth establishes the signed-in application user.',
+    icon: FingerprintIcon,
+    title: 'The access controls',
+    description:
+      'Follow role and ownership checks through the server and database.',
   },
   {
     number: '03',
-    icon: ServerCog,
-    title: 'Authorization',
-    description: 'Server handlers enforce roles and resource ownership.',
+    icon: FlaskConicalIcon,
+    title: 'The tests',
+    description:
+      'Inspect how permitted actions and forbidden requests are checked.',
   },
   {
     number: '04',
-    icon: Database,
-    title: 'Database policy',
-    description: 'PostgreSQL RLS independently enforces data access.',
+    icon: ContainerIcon,
+    title: 'The deployment',
+    description:
+      'Explore the container, deployment pipeline and Azure infrastructure.',
   },
 ];
 
@@ -49,23 +52,15 @@ export const Architecture = () => (
         <Typography
           as="p"
           variant="body-large"
-          className="font-mono uppercase tracking-[0.2em] text-zinc-600"
+          className="font-mono uppercase tracking-[0.2em] text-zinc-300"
         >
-          Request lifecycle
+          What you can explore
         </Typography>
 
-        <Typography as="p" variant="body-small" className="mt-1 text-zinc-400">
+        <Typography as="p" variant="body-small" className="mt-1 text-zinc-600">
           Independent enforcement across four boundaries
         </Typography>
       </div>
-
-      <Typography
-        as="p"
-        variant="body-small"
-        className="hidden font-mono text-zinc-700 md:block"
-      >
-        REQUEST → IDENTITY → POLICY → DATA
-      </Typography>
     </div>
 
     <ol className="relative grid grid-cols-2 overflow-hidden rounded-xl border border-white/8 bg-white/2.5 shadow-2xl shadow-black/20 backdrop-blur-sm lg:grid-cols-4 lg:overflow-y-visible">

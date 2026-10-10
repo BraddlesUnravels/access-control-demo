@@ -122,7 +122,7 @@ export function AccessGateForm({
           'active:translate-y-px',
         )}
       >
-        Unlock demo
+        Open demo
         <ArrowRight
           className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
           aria-hidden="true"
