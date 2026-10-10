@@ -44,8 +44,14 @@ end if;
 end if;
     if has_table_privilege('anon', 'public.access_invites', 'SELECT')
       or has_table_privilege('anon', 'public.access_invites', 'INSERT')
+      or has_table_privilege('anon', 'public.access_invites', 'UPDATE')
+      or has_table_privilege('anon', 'public.access_invites', 'DELETE')
+      or has_table_privilege('anon', 'public.access_invites', 'TRUNCATE')
       or has_table_privilege('authenticated', 'public.access_invites', 'SELECT')
       or has_table_privilege('authenticated', 'public.access_invites', 'INSERT')
+      or has_table_privilege('authenticated', 'public.access_invites', 'UPDATE')
+      or has_table_privilege('authenticated', 'public.access_invites', 'DELETE')
+      or has_table_privilege('authenticated', 'public.access_invites', 'TRUNCATE')
       then
       raise exception 'Browser-facing roles must not directly access access_invites';
     end if;
@@ -53,13 +59,17 @@ end if;
       'SELECT') or not has_table_privilege('service_role',
       'public.access_invites', 'INSERT') or has_table_privilege('service_role',
       'public.access_invites', 'UPDATE') or has_table_privilege('service_role',
-      'public.access_invites', 'DELETE') then
+      'public.access_invites', 'DELETE') or has_table_privilege('service_role',
+      'public.access_invites', 'TRUNCATE') then
       raise exception 'service_role access_invites privileges are not least-privilege';
     end if;
     if has_table_privilege('anon', 'public.access_visits', 'SELECT')
       or has_table_privilege('authenticated', 'public.access_visits', 'SELECT')
       or has_table_privilege('service_role', 'public.access_visits', 'SELECT')
       or has_table_privilege('service_role', 'public.access_visits', 'INSERT')
+      or has_table_privilege('anon', 'public.access_visits', 'TRUNCATE')
+      or has_table_privilege('authenticated', 'public.access_visits', 'TRUNCATE')
+      or has_table_privilege('service_role', 'public.access_visits', 'TRUNCATE')
       then
       raise exception 'access_visits should not be directly exposed to application roles';
     end if;
@@ -101,8 +111,8 @@ end if;
     if not has_function_privilege('anon', 'public.validate_access_gate_session(uuid, uuid)',
       'EXECUTE') or not has_function_privilege('authenticated',
       'public.validate_access_gate_session(uuid, uuid)', 'EXECUTE') or not
-      has_function_privilege('service_role', 'public.validate_access_gate_session(uuid, uuid)', 'EXECUTE')
-      then
+      has_function_privilege('service_role', 'public.validate_access_gate_session(uuid, uuid)',
+      'EXECUTE') then
       raise exception 'All application roles must be able to execute validate_access_gate_session(uuid, uuid)';
     end if;
     select
